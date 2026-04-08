@@ -1,0 +1,104 @@
+# 📐 PHI-COMPLEXITY — FEUILLE DE ROUTE SOUVERAINE
+
+> *"Un système de code ne doit pas être jugé par les règles arbitraires d'une culture, mais par les lois invariantes de la géométrie."*
+> — Tomy Verreault, Morphic Phi Framework (φ-Meta), 2026
+
+---
+
+## 🎯 Vision du Projet
+
+`phi-complexity` est la **première bibliothèque PyPI** à mesurer la qualité du code en utilisant des invariants mathématiques universels dérivés du nombre d'or (φ = 1.618...).
+
+Contrairement à `pylint` (règles culturelles) ou `radon` (métriques McCabe), `phi-complexity` répond à :
+> *"Ce code est-il en résonance avec les lois naturelles de l'ordre, ou s'effondre-t-il sous sa propre entropie ?"*
+
+---
+
+## ✅ PHASE 1 — NOYAU MATHÉMATIQUE — COMPLÉTÉE
+
+| Fichier | Statut | Radiance |
+|---|---|---|
+| `core.py` | ✅ Hermétique | 90.11 ✦ |
+| `analyseur.py` | ✅ Suturé (3 cycles BMAD) | 56.72 ◈ |
+| `metriques.py` | ✅ Suturé | 66.51 ◈ |
+| `rapport.py` | ✅ Opérationnel | — |
+| `__init__.py` | ✅ API publique | — |
+
+**6 métriques souveraines** : radiance, lilith_variance, shannon_entropy, phi_ratio, fibonacci_distance, zeta_score
+**4 règles de Codage Souverain** : LILITH, RAII, Fibonacci, Herméticité
+
+---
+
+## ✅ PHASE 2 — CLI SOUVERAIN — COMPLÉTÉE
+
+```bash
+phi check mon_script.py            ✅ Opérationnel
+phi check ./mon_projet/            ✅ Opérationnel
+phi report mon_script.py           ✅ Opérationnel
+phi check ./src/ --min-radiance 75 ✅ Opérationnel (CI strict)
+phi check ./src/ --format json     ✅ Opérationnel
+```
+
+**cli.py** suturé (BMAD) : 59.03 → 70.99 ◈ (+12 points de radiance)
+
+---
+
+## ✅ PHASE 3 — RAPPORTS PREMIUM — COMPLÉTÉE
+
+- ✅ Section "Audit Fractal" (ligne par ligne — style CodeRabbit)
+- ✅ Barres de radiance ASCII (barre █░░░ progressive)
+- ✅ Identification de l'OUDJAT (fonction dominante)
+- ✅ Export JSON (CI/CD)
+- ✅ Export Markdown (documentation)
+- ⬜ Graphique ASCII d'évolution (v0.2)
+
+---
+
+## ✅ PHASE 4 — TESTS & DOCUMENTATION — COMPLÉTÉE
+
+- ✅ 26 tests unitaires et d'intégration (100% verts)
+- ✅ README.md complet (badges, API, exemples)
+- ✅ docs/MATHEMATIQUES.md (preuve formelle — 9 sections)
+- ✅ LICENSE MIT
+- ⬜ docs/GUIDE.md (guide utilisateur — à faire)
+- ⬜ Coverage > 85% (à mesurer)
+
+---
+
+## 🔄 PHASE 5 — PUBLICATION PyPI — EN COURS
+
+### Checklist de Publication
+- ✅ Package installable (`pip install -e .`)
+- ✅ Commande `phi` enregistrée dans pyproject.toml
+- ✅ Zéro dépendance externe
+- ⬜ `docs/GUIDE.md` — Guide utilisateur complet
+- ⬜ `examples/code_chaotique.py` — Exemple de mauvais code
+- ⬜ `examples/code_harmonieux.py` — Exemple de bon code
+- ⬜ Mesure de la couverture de tests (`pytest --cov`)
+- ⬜ `# phi: ignore` — Annotations pour faux positifs
+- ⬜ Repo GitHub public (`spockoo/phi-complexity`)
+- ⬜ `twine upload dist/*` → PyPI
+
+---
+
+## 🚀 PHASES FUTURES
+
+### v0.2.0 — Règle 5 + Annotations `phi: ignore`
+- Règle V : Complexité Cyclomatique (nb de chemins d'exécution)
+- `# phi: ignore` pour marquer les faux positifs structurels (ex: AST traversal)
+- Graphique ASCII d'évolution de la radiance dans le rapport
+
+### v0.3.0 — Intégrations
+- Pre-commit hook (`.pre-commit-config.yaml`)
+- GitHub Action officielle
+- Badge Radiance (img.shields.io)
+- Extension VSCode (webview + score en temps réel)
+
+### v1.0.0 — API REST Phidélia Genesis
+- Endpoint `/api/audit` dans `server_phidelia.py`
+- Les clients uploadent leurs fichiers → reçoivent un rapport phi-complexity
+- Modèle tarifaire : Free (1 fichier) / Pro (dossier complet) / Enterprise
+
+---
+
+*Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*

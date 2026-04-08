@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phi-complexity"
+version = "0.1.0"
+description = "Code quality metrics based on Golden Ratio (φ) mathematical invariants"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Tomy Verreault", email = "contact@phidelia.dev"}
+]
+keywords = [
+    "code-quality", "complexity", "golden-ratio", "fibonacci",
+    "static-analysis", "ast", "phi", "metrics", "entropy"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
+dependencies = []  # Zero dépendances tierces — Souveraineté totale
+
+[project.scripts]
+phi = "phi_complexity.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/spockoo/phi-complexity"
+Repository = "https://github.com/spockoo/phi-complexity"
+Documentation = "https://github.com/spockoo/phi-complexity/blob/main/docs/GUIDE.md"
+"Bug Tracker" = "https://github.com/spockoo/phi-complexity/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["phi_complexity*"]

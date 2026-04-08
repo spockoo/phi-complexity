@@ -1,0 +1,206 @@
+"""
+metriques.py — Calcul de l'Indice de Radiance et des métriques φ-Meta.
+Suturée selon les recommandations de phi-complexity v0.1.0 (Protocole BMAD).
+'calculer()' décomposée en fonctions hermétiques — Règle I + Règle IV (Fibonacci).
+Formule fondatrice : Radiance = 100 - f(Var_Lilith) - g(Entropie) - h(Anomalies) - i(Fibonacci)
+"""
+import math
+from typing import List
+
+from .core import (
+    PHI, TAXE_SUTURE, ETA_GOLDEN,
+    statut_gnostique
+)
+from .analyseur import ResultatAnalyse
+
+
+class CalculateurRadiance:
+    """
+    Transforme les métriques brutes en Indice de Radiance (0-100).
+    Ancrage : AX-A39 (Attracteur Doré) + EQ-AFR-BMAD (Loi Antifragile).
+    """
+
+    def __init__(self, resultat: ResultatAnalyse):
+        self.r = resultat
+
+    # ────────────────────────────────────────────────────────
+    # API PUBLIQUE
+    # ────────────────────────────────────────────────────────
+
+    def calculer(self) -> dict:
+        """Orchestre le calcul — délègue tout aux fonctions spécialisées."""
+        if not self.r.fonctions:
+            return self._resultat_vide()
+        brutes = self._extraire_mesures()
+        radiance = self._indice_radiance(brutes)
+        return self._assembler_resultat(brutes, radiance)
+
+    # ────────────────────────────────────────────────────────
+    # EXTRACTION DES MESURES BRUTES (hermétique)
+    # ────────────────────────────────────────────────────────
+
+    def _extraire_mesures(self) -> dict:
+        """Extrait toutes les mesures brutes depuis le résultat d'analyse."""
+        complexites = [f.complexite for f in self.r.fonctions]
+        return {
+            "complexites": complexites,
+            "lilith_variance": self._variance(complexites),
+            "shannon_entropy": self._entropie_shannon(complexites),
+            "phi_ratio": self._phi_ratio(complexites),
+            "fibonacci_distance": sum(f.distance_fib for f in self.r.fonctions),
+            "zeta_score": self._zeta_score(complexites),
+            "nb_anomalies": len([
+                a for a in self.r.annotations
+                if a.niveau in ("WARNING", "CRITICAL")
+            ]),
+        }
+
+    # ────────────────────────────────────────────────────────
+    # ASSEMBLAGE DU RÉSULTAT (hermétique)
+    # ────────────────────────────────────────────────────────
+
+    def _assembler_resultat(self, brutes: dict, radiance: float) -> dict:
+        """Construit le dictionnaire final à partir des mesures et du score."""
+        phi_ratio = brutes["phi_ratio"]
+        return {
+            "fichier": self.r.fichier,
+            "radiance": round(radiance, 2),
+            "statut_gnostique": statut_gnostique(radiance),
+            "lilith_variance": round(brutes["lilith_variance"], 3),
+            "shannon_entropy": round(brutes["shannon_entropy"], 3),
+            "phi_ratio": round(phi_ratio, 3),
+            "phi_ratio_delta": round(abs(phi_ratio - PHI), 3),
+            "fibonacci_distance": round(brutes["fibonacci_distance"], 3),
+            "zeta_score": round(brutes["zeta_score"], 4),
+            "nb_fonctions": len(self.r.fonctions),
+            "nb_classes": self.r.nb_classes,
+            "nb_imports": self.r.nb_imports,
+            "nb_lignes_total": self.r.nb_lignes_total,
+            "ratio_commentaires": round(
+                self.r.nb_commentaires / max(1, self.r.nb_lignes_total), 3
+            ),
+            "oudjat": self._serialiser_oudjat(),
+            "annotations": self._serialiser_annotations(),
+        }
+
+    def _serialiser_oudjat(self) -> dict:
+        """Sérialise la fonction Oudjat (la plus complexe) en dictionnaire."""
+        if not self.r.oudjat:
+            return None
+        o = self.r.oudjat
+        return {
+            "nom": o.nom,
+            "ligne": o.ligne,
+            "complexite": o.complexite,
+            "nb_lignes": o.nb_lignes,
+            "phi_ratio": round(o.phi_ratio, 3),
+        }
+
+    def _serialiser_annotations(self) -> list:
+        """Sérialise la liste des annotations en dictionnaires."""
+        return [
+            {
+                "ligne": a.ligne,
+                "niveau": a.niveau,
+                "categorie": a.categorie,
+                "message": a.message,
+                "extrait": a.extrait,
+            }
+            for a in self.r.annotations
+        ]
+
+    # ────────────────────────────────────────────────────────
+    # FORMULE FONDATRICE — INDICE DE RADIANCE
+    # ────────────────────────────────────────────────────────
+
+    def _indice_radiance(self, brutes: dict) -> float:
+        """
+        R = 100 - f(Lilith) - g(Shannon) - h(Anomalies) - i(Fibonacci)
+        Chaque déduction est plafonnée (Loi d'Indulgence).
+        Plancher : 40 (Loi Antifragile — EQ-AFR-BMAD).
+        """
+        score = 100.0
+        score -= self._deduction_lilith(brutes["lilith_variance"])
+        score -= self._deduction_entropie(brutes["shannon_entropy"])
+        score -= self._deduction_anomalies(brutes["nb_anomalies"])
+        score -= self._deduction_fibonacci(brutes["fibonacci_distance"])
+        return max(40.0, score)
+
+    def _deduction_lilith(self, variance: float) -> float:
+        """f(Lilith) = min(25, (σ²_L / seuil) × 25). Seuil naturel = φ² × 100."""
+        seuil = PHI ** 2 * 100
+        return min(25.0, (variance / seuil) * 25.0)
+
+    def _deduction_entropie(self, entropie: float) -> float:
+        """g(H) = min(20, max(0, H - H_max) × 5). H_max = log₂(φ⁴) ≈ 2.88 bits."""
+        seuil = math.log2(PHI ** 4)
+        return min(20.0, max(0.0, entropie - seuil) * 5.0)
+
+    def _deduction_anomalies(self, nb: int) -> float:
+        """h(A) = min(30, A × τ_L × 3). τ_L = Taxe de Suture (CM-018)."""
+        return min(30.0, nb * TAXE_SUTURE * 3)
+
+    def _deduction_fibonacci(self, distance: float) -> float:
+        """i(D_F) = min(10, D_F × η_golden)."""
+        return min(10.0, distance * ETA_GOLDEN)
+
+    # ────────────────────────────────────────────────────────
+    # FORMULES MATHÉMATIQUES SOUVERAINES (atomiques)
+    # ────────────────────────────────────────────────────────
+
+    def _variance(self, valeurs: List[float]) -> float:
+        """σ²_L = (1/n) · Σ(κᵢ - μ)². Variance de Lilith."""
+        if not valeurs:
+            return 0.0
+        mean = sum(valeurs) / len(valeurs)
+        return sum((v - mean) ** 2 for v in valeurs) / len(valeurs)
+
+    def _entropie_shannon(self, valeurs: List[float]) -> float:
+        """H = -Σ pᵢ · log₂(pᵢ). Entropie de Shannon normalisée."""
+        if not valeurs:
+            return 0.0
+        total = sum(valeurs)
+        if total == 0:
+            return 0.0
+        probas = [v / total for v in valeurs]
+        return -sum(p * math.log2(p) for p in probas if p > 0)
+
+    def _phi_ratio(self, valeurs: List[float]) -> float:
+        """φ-ratio = max(κ) / μ. Doit tendre vers φ = 1.618."""
+        if not valeurs or len(valeurs) < 2:
+            return 1.0
+        mean = sum(valeurs) / len(valeurs)
+        return (max(valeurs) / mean) if mean else 1.0
+
+    def _zeta_score(self, valeurs: List[float]) -> float:
+        """ζ_meta = min(1, [Σ 1/(i+1)^φ / n] × φ). Résonance globale."""
+        if not valeurs:
+            return 0.0
+        n = len(valeurs)
+        zeta = sum(1.0 / ((i + 1) ** PHI) for i in range(n)) / n
+        return min(1.0, zeta * PHI)
+
+    # ────────────────────────────────────────────────────────
+    # RÉSULTAT NEUTRE (fichiers sans fonctions)
+    # ────────────────────────────────────────────────────────
+
+    def _resultat_vide(self) -> dict:
+        """Score neutre (60) pour les fichiers de constantes ou de configuration."""
+        return {
+            "fichier": self.r.fichier,
+            "radiance": 60.0,
+            "statut_gnostique": statut_gnostique(60.0),
+            "lilith_variance": 0.0,
+            "shannon_entropy": 0.0,
+            "phi_ratio": 1.0,
+            "phi_ratio_delta": PHI - 1.0,
+            "fibonacci_distance": 0.0,
+            "zeta_score": 0.0,
+            "nb_fonctions": 0,
+            "nb_classes": self.r.nb_classes,
+            "nb_imports": self.r.nb_imports,
+            "nb_lignes_total": self.r.nb_lignes_total,
+            "ratio_commentaires": 0.0,
+            "oudjat": None,
+            "annotations": [],
+        }
