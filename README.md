@@ -4,8 +4,8 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/phi-complexity.svg)](https://pypi.org/project/phi-complexity/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-26%20passed-brightgreen)](tests/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/spockoo/phi-complexity/blob/main/LICENSE)
+[![Tests](https://img.shields.io/badge/tests-26%20passed-brightgreen)](https://github.com/spockoo/phi-complexity/tree/main/tests)
 
 `phi-complexity` is the **first code quality library** that measures the health of your Python code using **universal mathematical invariants** derived from the Golden Ratio (φ = 1.618...).
 
@@ -118,7 +118,7 @@ The **Sovereign Coding Rules** are derived from:
 - **The C Book** (Banahan, Brady, Doran) — Scope hermeticity, resource lifecycle
 - **JaCaMo / Multi-Agent Programming** — Agent independence and encapsulation
 
-Full mathematical proof: [docs/MATHEMATIQUES.md](docs/MATHEMATIQUES.md)
+Full mathematical proof: [docs/MATHEMATIQUES.md](https://github.com/spockoo/phi-complexity/blob/main/docs/MATHEMATIQUES.md)
 
 ---
 
