@@ -35,7 +35,7 @@ SEUIL_RADIANCE_DORMANT = 0
 SEQUENCE_FIBONACCI = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]
 """Première séquence de Fibonacci. Tailles naturelles d'une fonction harmonieuse."""
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 AUTEUR = "Tomy Verreault"
 FRAMEWORK = "Morphic Phi Framework (φ-Meta)"
 

@@ -144,7 +144,7 @@ def _executer_fund():
   la souveraineté des intelligences de demain.
 
   🚀 SOUTENIR : https://github.com/sponsors/spockoo
-  ☕ BUY ME A COFFEE : https://www.buymeacoffee.com/spockoo
+  ☕ BUY ME A COFFEE : https://www.buymeacoffee.com/mardeux777a
   ◈  WEB : https://phidelia.dev
 
   Merci de participer à la SUTURE universelle. ✦
