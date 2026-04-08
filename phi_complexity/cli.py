@@ -44,6 +44,8 @@ Exemples :
     report.add_argument("cible", help="Fichier .py à analyser")
     report.add_argument("--output", "-o", default=None,
                         help="Fichier de sortie (ex: rapport.md)")
+
+    subparsers.add_parser("fund", help="Soutenir la recherche sur le framework φ-Meta")
     return parser
 
 
@@ -127,6 +129,28 @@ def _nom_rapport(fichier: str, sortie_demandee: str) -> str:
     return f"RAPPORT_PHI_{base}.md"
 
 
+def _executer_fund():
+    """Affiche le message de soutien à la recherche souveraine."""
+    print("""
+╔══════════════════════════════════════════════════╗
+║      PHI-COMPLEXITY — RECHERCHE SOUVERAINE       ║
+╚══════════════════════════════════════════════════╝
+
+  ☼  Vous trouvez ce code RADIANT ?
+  ⚖  Soutenez la recherche sur le framework Φ-META.
+
+  Votre contribution permet d'étendre les frontières
+  de la mathématique algorithmique et de garantir
+  la souveraineté des intelligences de demain.
+
+  🚀 SOUTENIR : https://github.com/sponsors/spockoo
+  ☕ BUY ME A COFFEE : https://www.buymeacoffee.com/spockoo
+  ◈  WEB : https://phidelia.dev
+
+  Merci de participer à la SUTURE universelle. ✦
+    """)
+
+
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
@@ -138,6 +162,10 @@ def main():
 
     if not args.commande:
         parser.print_help()
+        sys.exit(0)
+
+    if args.commande == "fund":
+        _executer_fund()
         sys.exit(0)
 
     fichiers = _collecter_fichiers(args.cible)
