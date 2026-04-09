@@ -1,7 +1,10 @@
 from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .backends.base import AnalyseurBackend
 
 from .core import fibonacci_plus_proche, distance_fibonacci
 
@@ -52,7 +55,34 @@ class ResultatAnalyse:
 
 class AnalyseurPhi:
     """
-    Analyseur fractal basé sur AST.
+    Usine (Factory) de l'Analyseur.
+    Détecte le langage du fichier et instancie le backend approprié.
+    """
+
+    def __init__(self, fichier: str):
+        self.fichier = fichier
+        self.backend = self._selectionner_backend()
+
+    def _selectionner_backend(self) -> "AnalyseurBackend":
+        """Sélectionne le moteur d'analyse selon l'extension."""
+        from .backends.python import PythonBackend
+        from .backends.c_rust_light import CRustLightBackend
+
+        ext = self.fichier.split(".")[-1].lower()
+        if ext in ("c", "cpp", "h", "hpp", "rs"):
+            return CRustLightBackend(self.fichier)
+        
+        # Défaut: Python
+        return PythonBackend(self.fichier)
+
+    def analyser(self) -> ResultatAnalyse:
+        """Délègue l'analyse au backend sélectionné."""
+        return self.backend.analyser()
+
+
+class AnalyseurPythonInternal:
+    """
+    Analyseur fractal basé sur AST (Original Python).
     Dissèque le code Python pour extraire ses métriques souveraines.
     """
 
@@ -62,7 +92,7 @@ class AnalyseurPhi:
         self.lignes: List[str] = []
         self.resultat = ResultatAnalyse(fichier=fichier)
 
-    def charger(self) -> AnalyseurPhi:
+    def charger(self) -> AnalyseurPythonInternal:
         """Charge et parse le fichier Python avec gestionnaire de contexte (Règle II)."""
         with open(self.fichier, "r", encoding="utf-8") as f:
             contenu = f.read()

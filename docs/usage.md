@@ -1,6 +1,13 @@
-# Usage de la CLI 🛠
-
 L'outil `phi` est votre interface principale pour interagir avec le framework.
+
+### Langages Supportés
+
+| Extension | Langage | Précision |
+|---|---|---|
+| `.py` | **Python** | Expert (AST) |
+| `.c`, `.h` | **C** | Radiance (Brace) |
+| `.cpp`, `.hpp` | **C++** | Radiance (Brace) |
+| `.rs` | **Rust** | Radiance (Brace) |
 
 ## Commande `check`
 

@@ -51,21 +51,23 @@ Exemples :
 # ────────────────────────────────────────────────────────
 
 def _fichiers_depuis_dossier(dossier: str) -> List[str]:
-    """Collecte récursivement les .py d'un dossier (boucles isolées)."""
+    """Collecte récursivement les fichiers supportés d'un dossier."""
+    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs")
     fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
             os.path.join(racine, nom)
             for nom in noms
-            if nom.endswith(".py")
+            if nom.lower().endswith(extensions)
         )
     return sorted(fichiers)
 
 
 def _collecter_fichiers(cible: str) -> List[str]:
-    """Retourne la liste des fichiers Python à auditer depuis un chemin."""
+    """Retourne la liste des fichiers à auditer depuis un chemin."""
+    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs")
     if os.path.isfile(cible):
-        return [cible] if cible.endswith(".py") else []
+        return [cible] if cible.lower().endswith(extensions) else []
     if os.path.isdir(cible):
         return _fichiers_depuis_dossier(cible)
     return []
