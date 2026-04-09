@@ -53,7 +53,7 @@ class MoteurGnostique:
         sceau_enregistre = registre[resultat.fichier]["sceau"]
         sceau_actuel = self.calculer_sceau(resultat)
         
-        return sceau_enregistre == sceau_actuel
+        return bool(sceau_enregistre == sceau_actuel)
 
     def calculer_sceau(self, r: ResultatAnalyse) -> str:
         """
