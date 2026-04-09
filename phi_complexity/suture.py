@@ -41,7 +41,7 @@ class SutureAgent:
         
         briefing = bmad.generer_briefing_conseil({})
         
-        # Phase 11.6 : Conversion en dictionnaire transparent (Suture de type)
+        # Phase 11.6 : Conversion en dictionnaire holographique (Suture simplifiée)
         metriques_brutes = {
             "fichier": resultat.fichier,
             "radiance": resultat.radiance,
@@ -49,7 +49,7 @@ class SutureAgent:
             "lilith_variance": resultat.lilith_variance,
             "shannon_entropy": resultat.shannon_entropy,
             "phi_ratio": resultat.phi_ratio,
-            "signature": resultat.signature if hasattr(resultat, "signature") else ""
+            "signature": resultat.signature
         }
         pattern_similaire = akasha.trouver_similitude(metriques_brutes)
         

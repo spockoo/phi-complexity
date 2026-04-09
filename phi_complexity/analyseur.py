@@ -40,7 +40,11 @@ class Annotation:
 class ResultatAnalyse:
     """Contient tous les résultats bruts d'une analyse de fichier."""
     fichier: str
-    radiance: float = 0.0 # Ajouté pour Phidélia (Phase 8)
+    radiance: float = 0.0
+    lilith_variance: float = 0.0      # Règle I (Entropie)
+    shannon_entropy: float = 0.0      # Règle I (Information)
+    phi_ratio: float = 0.0           # Règle III (Harmonique)
+    resistance: float = 0.0          # Résistance Ω (Phase 10)
     fonctions: List[MetriqueFonction] = field(default_factory=list)
     annotations: List[Annotation] = field(default_factory=list)
     nb_classes: int = 0
@@ -50,7 +54,7 @@ class ResultatAnalyse:
     oudjat: Optional[MetriqueFonction] = None
     pole_alpha: Optional[int] = None      # Ligne du Pôle Alpha (Source)
     pole_omega: Optional[int] = None      # Ligne du Pôle Omega (Oudjat)
-    resistance: float = 0.0               # Résistance Ω (Phase 10)
+    signature: str = ""                   # Signature Gnostique (Phase 11)
 
 
 # ────────────────────────────────────────────────────────
@@ -124,10 +128,13 @@ class AnalyseurPythonInternal:
             return
         
         # Pôle Alpha : Première définition ou instruction significative après les imports
-        for node in self.tree.body:
-            if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                self.resultat.pole_alpha = node.lineno
-                break
+        # On utilise une variable locale pour garantir le type à MyPy
+        root = self.tree
+        if isinstance(root, ast.Module):
+            for node in root.body:
+                if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                    self.resultat.pole_alpha = node.lineno
+                    break
         
         # Pôle Omega : La ligne de l'Oudjat (déjà identifiée)
         if self.resultat.oudjat:

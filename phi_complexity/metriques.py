@@ -60,22 +60,29 @@ class CalculateurRadiance:
         from .bmad import OrchestrateurBMAD
         orchestrateur = OrchestrateurBMAD()
         complexite_totale = sum(brutes["complexites"])
+        
+        # Phase 11.6 : Alignement Matriciel (Peuplement de la dataclass souveraine)
+        self.r.radiance = radiance
+        self.r.lilith_variance = float(brutes["lilith_variance"])
+        self.r.shannon_entropy = float(brutes["shannon_entropy"])
+        self.r.phi_ratio = float(phi_ratio)
         self.r.resistance = orchestrateur.calculer_omega_resistance(radiance, complexite_totale)
+        self.r.signature = f"v{self.r.lilith_variance:.2f}_e{self.r.shannon_entropy:.2f}_p{self.r.phi_ratio:.2f}"
 
         return {
             "fichier": self.r.fichier,
-            "radiance": round(radiance, 2),
-            "statut_gnostique": statut_gnostique(radiance),
-            "lilith_variance": round(brutes["lilith_variance"], 3),
-            "shannon_entropy": round(brutes["shannon_entropy"], 3),
-            "phi_ratio": round(phi_ratio, 3),
-            "phi_ratio_delta": round(abs(phi_ratio - PHI), 3),
+            "radiance": round(self.r.radiance, 2),
+            "statut_gnostique": statut_gnostique(self.r.radiance),
+            "lilith_variance": round(self.r.lilith_variance, 3),
+            "shannon_entropy": round(self.r.shannon_entropy, 3),
+            "phi_ratio": round(self.r.phi_ratio, 3),
+            "phi_ratio_delta": round(abs(self.r.phi_ratio - PHI), 3),
             "fibonacci_distance": round(brutes["fibonacci_distance"], 3),
             "zeta_score": round(brutes["zeta_score"], 4),
             "resistance": round(self.r.resistance, 4),
             "pole_alpha": self.r.pole_alpha,
             "pole_omega": self.r.pole_omega,
-            "signature": f"v{brutes['lilith_variance']:.2f}_e{brutes['shannon_entropy']:.2f}_p{phi_ratio:.2f}",
+            "signature": self.r.signature,
             "nb_fonctions": len(self.r.fonctions),
             "nb_classes": self.r.nb_classes,
             "nb_imports": self.r.nb_imports,

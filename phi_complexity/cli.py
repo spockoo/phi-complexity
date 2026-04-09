@@ -191,33 +191,43 @@ def _executer_suture(args: argparse.Namespace) -> int:
 
 
 def _executer_memory() -> int:
-    """Exécute la commande Phase 11 : Affiche l'historique Akashique."""
+    """Affiche les annales akashiques avec le moteur holographique."""
+    from .akasha import RegistreAkashique, MatriceHolographique
     import time
-    try:
-        from .akasha import RegistreAkashique
-        akasha = RegistreAkashique()
-        annales = akasha.consulter_historique(10)
-        
-        print("\n" + "═" * 60)
-        print(" 𓂀  ANNALES AKASHIQUES (PHIDÉLIA)")
-        print("═" * 60)
-        
-        if not annales:
-            print("  Le grand livre est encore vierge. Lancez 'phi check' pour l'éveiller.")
-            return 0
-            
-        for entry in annales:
-            date = time.strftime('%Y-%m-%d %H:%M', time.localtime(entry['timestamp']))
-            rad = entry['radiance']
-            res = entry['resistance']
-            f = os.path.basename(entry['fichier'])
-            print(f"  [{date}] {f:<25} | Rad: {rad:>6.2f} | Ω: {res:.4f}")
-            
-        print("═" * 60)
+    akasha = RegistreAkashique()
+    annales = akasha.consulter_historique(10)
+    
+    print("\n  𓂀  ANNALES AKASHIQUES — MÉMOIRE HOLOGRAPHIQUE")
+    print("  " + "─" * 45)
+    
+    if not annales:
+        print("      L'Akasha est encore vierge. Lancez un audit pour l'élever.")
         return 0
-    except Exception as e:
-        print(f"⚠ Erreur de lecture Akashique : {e}")
-        return 1
+
+    for i, entry in enumerate(annales):
+        timestamp = entry.get("timestamp", time.time())
+        date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(timestamp))
+        f = os.path.basename(entry['fichier'])
+        print(f"\n  [{i+1}] {f} — {date_str}")
+        print(f"      Radiance: {entry['radiance']:.1f} | Masse Harmonique: {entry.get('masse_harmonique', 'N/A')}")
+        print(f"      Cohérence C_bit: {entry.get('coherence_c_bit', 'N/A')}%")
+        
+        # Affichage du dôme de résonance si le vecteur est présent
+        if "vecteur" in entry:
+            # Reconstruction de la matrice pour affichage
+            donnees_simulees = {
+                "radiance": entry["radiance"],
+                "resistance": entry.get("resistance", 0),
+                "lilith_variance": entry.get("lilith_variance", 0),
+                "shannon_entropy": entry.get("shannon_entropy", 0),
+                "phi_ratio": entry.get("phi_ratio", 0)
+            }
+            mat = MatriceHolographique(donnees_simulees)
+            mat.vecteur = entry["vecteur"]
+            print(mat.vers_grille())
+
+    print("\n  ◈  Utilisez 'phi suture <fichier>' pour puiser dans cette sagesse.")
+    return 0
 
 
 def _executer_fund() -> None:
