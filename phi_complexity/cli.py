@@ -52,6 +52,14 @@ Exemples :
 
     subparsers.add_parser("memory", help="Consulter les annales akashiques (Phase 11)")
 
+    seal_parser = subparsers.add_parser("seal", help="Apposer un sceau gnostique permanent (Phase 12).")
+    seal_parser.add_argument("cible", help="Fichier à sceller")
+
+    heal_parser = subparsers.add_parser("heal", help="Lancer une guérison autonome (Auto-Suture Phase 12).")
+    heal_parser.add_argument("cible", help="Fichier à guérir")
+    heal_parser.add_argument("--force", action="store_true", help="Forcer la guérison même si la radiance est élevée")
+    heal_parser.add_argument("--url", help="URL de l'API LLM locale")
+
     return parser
 
 
@@ -104,6 +112,25 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
             if getattr(args, "bmad", False):
                 _afficher_bmad(fichier)
             
+            # Phase 12 : Vérification du Sceau Gnostique
+            try:
+                from .gnose import MoteurGnostique
+                from .analyseur import AnalyseurPhi
+                gnose = MoteurGnostique()
+                analyseur = AnalyseurPhi(fichier)
+                resultat = analyseur.analyser()
+                if gnose.verifier(resultat):
+                    print("  🛡  SCEAU GNOSTIQUE : Vérifié (Résonance Intacte) ✦")
+                else:
+                    # On vérifie si un sceau existe pour ce fichier
+                    import json
+                    if os.path.exists(gnose.gnose_path):
+                        with open(gnose.gnose_path, "r") as f:
+                            if resultat.fichier in json.load(f):
+                                print("  ⚠  SCEAU BRISÉ : Divergence spectrale détectée ! ░")
+            except Exception:
+                pass
+
             # Phase 11 : Enregistrement Akashique automatique
             try:
                 from .akasha import RegistreAkashique
@@ -187,6 +214,39 @@ def _executer_suture(args: argparse.Namespace) -> int:
         return 0
     except Exception as e:
         print(f"  ❌ Erreur lors de la suture : {e}")
+        return 1
+
+
+def _executer_seal(args: argparse.Namespace) -> int:
+    """Phase 12 : Appose un sceau gnostique permanent sur un fichier."""
+    from .gnose import MoteurGnostique
+    from .analyseur import AnalyseurPhi
+    
+    print(f"  🛡  Scellement gnostique de {args.cible}...")
+    try:
+        analyseur = AnalyseurPhi(args.cible)
+        resultat = analyseur.analyser()
+        gnose = MoteurGnostique()
+        sceau = gnose.sceller(resultat)
+        print(f"      Sceau apposé : {sceau[:16]}... (Z[φ] Resonance Locked)")
+        return 0
+    except Exception as e:
+        print(f"  ❌ Erreur de scellement : {e}")
+        return 1
+
+
+def _executer_heal(args: argparse.Namespace) -> int:
+    """Phase 12 : Tente une guérison autonome du fichier."""
+    from .autosuture import AutoSuture
+    
+    print(f"  ⚕  Tentative de guérison autonome pour {args.cible}...")
+    try:
+        medecin = AutoSuture(api_url=args.url)
+        verdict = medecin.guerir(args.cible, force=args.force)
+        print(f"\n  {verdict}")
+        return 0
+    except Exception as e:
+        print(f"  ❌ Échec de la guérison : {e}")
         return 1
 
 
@@ -274,6 +334,12 @@ def main() -> None:
 
     if args.commande == "suture":
         sys.exit(_executer_suture(args))
+
+    if args.commande == "seal":
+        sys.exit(_executer_seal(args))
+
+    if args.commande == "heal":
+        sys.exit(_executer_heal(args))
 
     fichiers = _collecter_fichiers(args.cible)
     if not fichiers:

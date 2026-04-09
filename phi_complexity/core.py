@@ -3,6 +3,7 @@ phi_complexity — Mesure de la qualité du code par les invariants du nombre d'
 Constantes Souveraines issues du Morphic Phi Framework (Tomy Verreault, 2026).
 """
 import math
+from .impossible import ImpossibleOperator
 
 # ============================================================
 # CONSTANTES SOUVERAINES (Bibliothèque Céleste — φ-Meta)
@@ -35,9 +36,16 @@ SEUIL_RADIANCE_DORMANT: int = 0
 SEQUENCE_FIBONACCI: list[int] = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]
 """Première séquence de Fibonacci. Tailles naturelles d'une fonction harmonieuse."""
 
-VERSION: str = "0.1.3"
+VERSION: str = "0.1.7"
 AUTEUR: str = "Tomy Verreault"
 FRAMEWORK: str = "Morphic Phi Framework (φ-Meta)"
+
+# PHASE 12 — SUTURE PERMANENTE
+ALPHA_STRUCT: float = 1 / 137.035999
+"""Constante de structure fine. CP-005."""
+
+SEUIL_GNOSE_MINIMAL: float = 0.98
+"""Divergence spectrale maximale tolérée pour le sceau gnostique."""
 
 
 def statut_gnostique(score: float) -> str:
@@ -48,6 +56,23 @@ def statut_gnostique(score: float) -> str:
         return "EN ÉVEIL ◈"
     else:
         return "DORMANT ░"
+
+
+def calculer_sync_index(radiance: float, resistance: float, iota: float = 0.0) -> float:
+    """
+    Sync_index = sqrt((R/100)^2 + Ω^2) / φ.
+    Mesure la convergence harmonique globale. Phase 12-13.
+    Applique l'Opérateur de l'Impossible I(s) si iota est fourni.
+    """
+    norm_r = radiance / 100.0
+    index = math.sqrt(norm_r**2 + resistance**2) / PHI
+    
+    if iota != 0.0:
+        op = ImpossibleOperator()
+        radiance_void = float(op.calculate(iota))
+        index = index * (1 + radiance_void)
+        
+    return float(index)
 
 
 def fibonacci_plus_proche(n: int) -> int:

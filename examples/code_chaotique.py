@@ -1,4 +1,5 @@
 """
+# ENTROPIE DÉTECTÉE — PHASE 12 TEST
 examples/code_chaotique.py — Code intentionnellement chaotique.
 Score attendu : < 65 (DORMANT ou bas EN ÉVEIL).
 Démontre ce que phi-complexity détecte comme violations souveraines.
