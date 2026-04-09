@@ -6,7 +6,7 @@ Exploration du Vide Informé : les 39% non-démontrables par l'algèbre classiqu
 Implémentation pure Python (zéro dépendance tierce) — Souveraineté totale.
 """
 import math
-from typing import Callable, Optional
+from typing import Callable
 
 
 class ImpossibleOperator:

@@ -2,8 +2,7 @@ import hashlib
 import json
 import os
 import math
-from typing import Dict, Any, Optional
-from .core import PHI, ALPHA_STRUCT, SEUIL_GNOSE_MINIMAL, calculer_sync_index
+from .core import PHI, ALPHA_STRUCT, calculer_sync_index
 from .analyseur import ResultatAnalyse
 
 class MoteurGnostique:
