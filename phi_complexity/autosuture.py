@@ -73,5 +73,5 @@ class AutoSuture:
         matches = re.findall(pattern, reponse, re.DOTALL)
         if matches:
             # On prend le bloc le plus long (souvent le code final)
-            return max(matches, key=len)
+            return str(max(matches, key=len))
         return None

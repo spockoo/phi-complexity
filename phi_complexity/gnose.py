@@ -51,7 +51,7 @@ class MoteurGnostique:
         if resultat.fichier not in registre:
             return False
             
-        sceau_enregistre = registre[resultat.fichier]["sceau"]
+        sceau_enregistre = str(registre[resultat.fichier]["sceau"])
         sceau_actuel = self.calculer_sceau(resultat)
         
         return sceau_enregistre == sceau_actuel
