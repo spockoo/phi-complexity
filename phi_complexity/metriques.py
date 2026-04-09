@@ -57,6 +57,11 @@ class CalculateurRadiance:
     def _assembler_resultat(self, brutes: Dict[str, Any], radiance: float) -> Dict[str, Any]:
         """Construit le dictionnaire final à partir des mesures et du score."""
         phi_ratio = brutes["phi_ratio"]
+        from .bmad import OrchestrateurBMAD
+        orchestrateur = OrchestrateurBMAD()
+        complexite_totale = sum(brutes["complexites"])
+        self.r.resistance = orchestrateur.calculer_omega_resistance(radiance, complexite_totale)
+
         return {
             "fichier": self.r.fichier,
             "radiance": round(radiance, 2),
@@ -67,6 +72,10 @@ class CalculateurRadiance:
             "phi_ratio_delta": round(abs(phi_ratio - PHI), 3),
             "fibonacci_distance": round(brutes["fibonacci_distance"], 3),
             "zeta_score": round(brutes["zeta_score"], 4),
+            "resistance": round(self.r.resistance, 4),
+            "pole_alpha": self.r.pole_alpha,
+            "pole_omega": self.r.pole_omega,
+            "signature": f"v{brutes['lilith_variance']:.2f}_e{brutes['shannon_entropy']:.2f}_p{phi_ratio:.2f}",
             "nb_fonctions": len(self.r.fonctions),
             "nb_classes": self.r.nb_classes,
             "nb_imports": self.r.nb_imports,

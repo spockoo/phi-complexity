@@ -33,7 +33,8 @@ jobs:
 
     - name: Radiant Auto-Audit
       run: |
-        python -m phi_complexity check . --min-radiance 50
+        python -m phi_complexity.cli check . --min-radiance 50
+        python -m phi_complexity.cli memory
     
     - name: Formal Type Verification (MyPy)
       run: |

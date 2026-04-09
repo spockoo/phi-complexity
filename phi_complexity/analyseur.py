@@ -48,6 +48,9 @@ class ResultatAnalyse:
     nb_lignes_total: int = 0
     nb_commentaires: int = 0
     oudjat: Optional[MetriqueFonction] = None
+    pole_alpha: Optional[int] = None      # Ligne du Pôle Alpha (Source)
+    pole_omega: Optional[int] = None      # Ligne du Pôle Omega (Oudjat)
+    resistance: float = 0.0               # Résistance Ω (Phase 10)
 
 
 # ────────────────────────────────────────────────────────
@@ -111,7 +114,23 @@ class AnalyseurPythonInternal:
         self._analyser_fonctions()
         self._appliquer_regles_souveraines()
         self._identifier_oudjat()
+        self._detecter_poles()
         return self.resultat
+
+    def _detecter_poles(self) -> None:
+        """Identifie les pôles magnétiques de Penrose (Alpha et Omega)."""
+        if self.tree is None:
+            return
+        
+        # Pôle Alpha : Première définition ou instruction significative après les imports
+        for node in self.tree.body:
+            if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                self.resultat.pole_alpha = node.lineno
+                break
+        
+        # Pôle Omega : La ligne de l'Oudjat (déjà identifiée)
+        if self.resultat.oudjat:
+            self.resultat.pole_omega = self.resultat.oudjat.ligne
 
     # ────────────────────────────────────────────────────────
     # PRÉPARATION DE L'ARBRE AST

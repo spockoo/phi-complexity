@@ -50,6 +50,8 @@ Exemples :
     suture_parser.add_argument("path", help="Fichier à suturer")
     suture_parser.add_argument("--url", help="URL de l'API LLM locale")
 
+    subparsers.add_parser("memory", help="Consulter les annales akashiques (Phase 11)")
+
     return parser
 
 
@@ -101,6 +103,14 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
             print(rapport_console(fichier))
             if getattr(args, "bmad", False):
                 _afficher_bmad(fichier)
+            
+            # Phase 11 : Enregistrement Akashique automatique
+            try:
+                from .akasha import RegistreAkashique
+                akasha = RegistreAkashique()
+                akasha.enregistrer(auditer(fichier))
+            except Exception:
+                pass
             print()
 
         if args.min_radiance > 0:
@@ -133,9 +143,16 @@ def _afficher_bmad(fichier: str) -> None:
     resonance = orchestrateur.calculer_resonance_dirichlet(scores_bruts)
     
     print("  ◈ RÉSONANCE DES AGENTS BMAD :")
-    for nom, score in list(resonance.items())[:6]:  # On affiche les 6 premiers
+    for nom, score in list(resonance.items())[:6]:
         barre = "█" * int(score * 10)
         print(f"    - {nom:<20} : {barre:<10} {score*100:>5.1f}%")
+    
+    print("\n  ⚛ SUPRACONDUCTIVITÉ (PHASE 10) :")
+    omega = metrics["resistance"]
+    res_barre = "░" * int(min(10, omega * 10))
+    print(f"    - Résistance Ω       : {res_barre:<10} {omega:.4f} (friction)")
+    print(f"    - Pôle Alpha         : Ligne {metrics['pole_alpha']}")
+    print(f"    - Pôle Omega         : Ligne {metrics['pole_omega']}")
 
 
 def _executer_report(args: argparse.Namespace, fichiers: List[str]) -> int:
@@ -173,6 +190,36 @@ def _executer_suture(args: argparse.Namespace) -> int:
         return 1
 
 
+def _executer_memory() -> int:
+    """Exécute la commande Phase 11 : Affiche l'historique Akashique."""
+    import time
+    try:
+        from .akasha import RegistreAkashique
+        akasha = RegistreAkashique()
+        annales = akasha.consulter_historique(10)
+        
+        print("\n" + "═" * 60)
+        print(" 𓂀  ANNALES AKASHIQUES (PHIDÉLIA)")
+        print("═" * 60)
+        
+        if not annales:
+            print("  Le grand livre est encore vierge. Lancez 'phi check' pour l'éveiller.")
+            return 0
+            
+        for entry in annales:
+            date = time.strftime('%Y-%m-%d %H:%M', time.localtime(entry['timestamp']))
+            rad = entry['radiance']
+            res = entry['resistance']
+            f = os.path.basename(entry['fichier'])
+            print(f"  [{date}] {f:<25} | Rad: {rad:>6.2f} | Ω: {res:.4f}")
+            
+        print("═" * 60)
+        return 0
+    except Exception as e:
+        print(f"⚠ Erreur de lecture Akashique : {e}")
+        return 1
+
+
 def _executer_fund() -> None:
     """Affiche le message de soutien à la recherche souveraine."""
     print("""
@@ -207,6 +254,9 @@ def main() -> None:
     if not args.commande:
         parser.print_help()
         sys.exit(0)
+
+    if args.commande == "memory":
+        sys.exit(_executer_memory())
 
     if args.commande == "fund":
         _executer_fund()

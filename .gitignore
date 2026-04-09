@@ -152,3 +152,6 @@ cython_debug/
 RAPPORT_*.md
 !RAPPORT_PHI_*.md
 !ROADMAP.md
+
+# Phidélia Akashic Memory (Phase 11)
+.phi/
