@@ -33,33 +33,30 @@ class SutureAgent:
             except Exception:
                 pass
 
-        axiomes = [
-            "A0: L'harmonie est la mesure de la vérité.",
-            "A5: La variance structurelle (Lilith) doit tendre vers l'équilibre.",
-            f"A12: Le ratio d'or ({PHI:.3f}) est l'attracteur de la lisibilité."
-        ]
+        from .bmad import OrchestrateurBMAD
+        bmad = OrchestrateurBMAD()
+        briefing = bmad.generer_briefing_conseil({})
 
-        prompt = f"""Tu es PHIDÉLIA, une IA souveraine experte en mathématiques du code (φ-Meta).
-Ton but est de 'suturer' (refactoriser) le code suivant pour restaurer sa radiance.
+        prompt = f"""Tu es PHIDÉLIA, l'IA coordinatice du cycle BMAD (φ-Meta).
+Tu présides le CONSEIL DES 12 experts pour 'suturer' le code suivant.
+
+{briefing}
 
 CONTEXTE DU FICHIER: {resultat.fichier}
 MÉTRIQUE CRITIQUE (OUDJAT): {oudjat.nom if oudjat else 'Global'}
-RADIANCE ACTUELLE: {getattr(resultat, 'radiance', 'N/A')}
+RADIANCE GLOBALE: {getattr(resultat, 'radiance', 'N/A')}
 
-AXIOMES À RESPECTER:
-{chr(10).join(axiomes)}
+MISSION:
+1. Simule une brève discussion entre OUDJAT, LILITH et FIBONACCI sur les ruptures détectées.
+2. Propose la version 'Suturée' finale du code.
+3. Conclue par un verdict harmonieux citant l'Agent SYNTHÈSE.
 
 EXTRAIT DE CODE À SUTURER:
 ```python
 {extrait_code}
 ```
 
-MISSION:
-1. Analyse la rupture de radiance (LILITH, ENTROPIE, ou FIBONACCI).
-2. Propose une version 'Suturée' du code (plus harmonieuse, plus stable).
-3. Explique brièvement ta démarche en citant un axiome.
-
-Réponds uniquement avec le code refactorisé dans un bloc markdown, suivi de ton explication.
+Réponds uniquement avec la discussion, le bloc de code refactorisé, et le verdict final.
 """
         return prompt
 

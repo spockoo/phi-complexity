@@ -36,6 +36,8 @@ Exemples :
                        help="Score minimum (exit code 1 si en-dessous)")
     check.add_argument("--format", choices=["console", "json"], default="console",
                        help="Format de sortie")
+    check.add_argument("--bmad", action="store_true",
+                       help="Afficher la résonance des 12 agents BMAD")
 
     report = subparsers.add_parser("report", help="Générer un rapport Markdown")
     report.add_argument("cible", help="Fichier .py à analyser")
@@ -97,6 +99,8 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
             print(rapport_json(fichier))
         else:
             print(rapport_console(fichier))
+            if getattr(args, "bmad", False):
+                _afficher_bmad(fichier)
             print()
 
         if args.min_radiance > 0:
@@ -110,6 +114,28 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
         print(f"⚠ Erreur lors de l'analyse de {fichier}: {e}")
         return 1
     return 0
+
+
+def _afficher_bmad(fichier: str) -> None:
+    """Affiche la répartition de la radiance entre les agents BMAD."""
+    from .bmad import OrchestrateurBMAD
+    from . import auditer as phi_auditer
+    
+    metrics = phi_auditer(fichier)
+    orchestrateur = OrchestrateurBMAD()
+    
+    # Simulation de répartition basée sur les métriques réelles
+    scores_bruts = {
+        "AG-01": metrics["radiance"] / 100,
+        "AG-02": 1.0 - (metrics["lilith_variance"] / 1000) if metrics["lilith_variance"] < 1000 else 0.1,
+        "AG-03": 0.9 if metrics["oudjat"] else 0.5,
+    }
+    resonance = orchestrateur.calculer_resonance_dirichlet(scores_bruts)
+    
+    print("  ◈ RÉSONANCE DES AGENTS BMAD :")
+    for nom, score in list(resonance.items())[:6]:  # On affiche les 6 premiers
+        barre = "█" * int(score * 10)
+        print(f"    - {nom:<20} : {barre:<10} {score*100:>5.1f}%")
 
 
 def _executer_report(args: argparse.Namespace, fichiers: List[str]) -> int:
