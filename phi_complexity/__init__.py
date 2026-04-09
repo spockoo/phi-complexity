@@ -4,6 +4,7 @@ from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, VERSION, AUTEUR
 from .analyseur import AnalyseurPhi
 from .metriques import CalculateurRadiance
 from .rapport import GenerateurRapport
+from .suture import SutureAgent
 
 
 def auditer(fichier: str) -> Dict[str, Any]:
@@ -47,6 +48,26 @@ def rapport_json(fichier: str) -> str:
     return GenerateurRapport(metriques).json()
 
 
+def suture(fichier: str, api_url: Optional[str] = None) -> str:
+    """
+    Invoque Phidélia pour proposer une suture du fichier.
+    Retourne la suggestion de l'IA (Markdown).
+    """
+    from .analyseur import AnalyseurPhi
+    from .metriques import CalculateurRadiance
+    
+    analyseur = AnalyseurPhi(fichier)
+    resultat = analyseur.analyser()
+    
+    # On injecte les métriques de radiance dans le résultat pour Phidélia
+    calculateur = CalculateurRadiance(resultat)
+    metriques = calculateur.calculer()
+    resultat.radiance = metriques["radiance"]
+    
+    agent = SutureAgent(api_url) if api_url else SutureAgent()
+    return agent.suturer(resultat)
+
+
 __version__ = VERSION
 __author__ = AUTEUR
 __all__ = [
@@ -60,4 +81,6 @@ __all__ = [
     "AnalyseurPhi",
     "CalculateurRadiance",
     "GenerateurRapport",
+    "SutureAgent",
+    "suture",
 ]

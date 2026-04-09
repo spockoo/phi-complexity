@@ -43,6 +43,11 @@ Exemples :
                         help="Fichier de sortie (ex: rapport.md)")
 
     subparsers.add_parser("fund", help="Soutenir la recherche sur le framework φ-Meta")
+
+    suture_parser = subparsers.add_parser("suture", help="Invoque Phidélia pour une suture intelligente.")
+    suture_parser.add_argument("path", help="Fichier à suturer")
+    suture_parser.add_argument("--url", help="URL de l'API LLM locale")
+
     return parser
 
 
@@ -128,6 +133,20 @@ def _nom_rapport(fichier: str, sortie_demandee: Optional[str]) -> str:
     return f"RAPPORT_PHI_{base}.md"
 
 
+def _executer_suture(args: argparse.Namespace) -> int:
+    """Exécute la commande de suture via Phidélia."""
+    from . import suture as phi_suture
+    
+    print(f"  ◈  Inspiration de Phidélia pour {args.path}...")
+    try:
+        suggestion = phi_suture(args.path, api_url=args.url)
+        print("\n" + suggestion)
+        return 0
+    except Exception as e:
+        print(f"  ❌ Erreur lors de la suture : {e}")
+        return 1
+
+
 def _executer_fund() -> None:
     """Affiche le message de soutien à la recherche souveraine."""
     print("""
@@ -166,6 +185,9 @@ def main() -> None:
     if args.commande == "fund":
         _executer_fund()
         sys.exit(0)
+
+    if args.commande == "suture":
+        sys.exit(_executer_suture(args))
 
     fichiers = _collecter_fichiers(args.cible)
     if not fichiers:

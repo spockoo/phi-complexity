@@ -40,6 +40,7 @@ class Annotation:
 class ResultatAnalyse:
     """Contient tous les résultats bruts d'une analyse de fichier."""
     fichier: str
+    radiance: float = 0.0 # Ajouté pour Phidélia (Phase 8)
     fonctions: List[MetriqueFonction] = field(default_factory=list)
     annotations: List[Annotation] = field(default_factory=list)
     nb_classes: int = 0
