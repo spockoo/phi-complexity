@@ -1,7 +1,6 @@
-import os
 import re
 from typing import Optional
-from .analyseur import AnalyseurPhi, ResultatAnalyse
+from .analyseur import AnalyseurPhi
 from .suture import SutureAgent
 from .backup import SecuriteMaat
 from .core import calculer_sync_index
@@ -29,7 +28,7 @@ class AutoSuture:
              return f"RÉSONANCE STABLE ({r_avant.radiance:.1f}) : Aucune guérison requise."
 
         # 2. Sécurité Maât (Backup)
-        backup_path = self.securite.sauvegarder(fichier)
+        self.securite.sauvegarder(fichier)
         
         # 3. Invocation du Conseil des 12
         reponse_ia = self.agent.suturer(r_avant)
@@ -64,7 +63,7 @@ class AutoSuture:
         else:
             # Si le code n'est pas meilleur, on restaure pour ne pas dégrader la radiance
             self.securite.restaurer_dernier(fichier)
-            return f"SUTURE REJETÉE : La proposition n'améliore pas la synchronicité. Restauration du backup."
+            return "SUTURE REJETÉE : La proposition n'améliore pas la synchronicité. Restauration du backup."
 
     def _extraire_code(self, reponse: str) -> Optional[str]:
         """Extrait le bloc de code markdown de la réponse de l'IA."""

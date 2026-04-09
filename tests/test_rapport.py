@@ -5,7 +5,7 @@ import json
 import os
 import textwrap
 import tempfile
-from phi_complexity import auditer, rapport_console, rapport_markdown, rapport_json
+from phi_complexity import rapport_console, rapport_markdown, rapport_json
 from phi_complexity.rapport import GenerateurRapport
 
 

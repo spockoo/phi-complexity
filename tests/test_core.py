@@ -1,7 +1,6 @@
 """
 tests/test_core.py — Tests unitaires des constantes et fonctions core.
 """
-import pytest
 import math
 from phi_complexity.core import (
     PHI, PHI_INV, TAXE_SUTURE, ETA_GOLDEN, ZETA_PLANCHER,
