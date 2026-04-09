@@ -2,8 +2,7 @@ import hashlib
 import json
 import os
 import math
-from typing import Dict, Any, Optional
-from .core import PHI, ALPHA_STRUCT, SEUIL_GNOSE_MINIMAL, calculer_sync_index
+from .core import PHI, ALPHA_STRUCT, calculer_sync_index
 from .analyseur import ResultatAnalyse
 
 class MoteurGnostique:
@@ -54,7 +53,7 @@ class MoteurGnostique:
         sceau_enregistre = registre[resultat.fichier]["sceau"]
         sceau_actuel = self.calculer_sceau(resultat)
         
-        return sceau_enregistre == sceau_actuel
+        return bool(sceau_enregistre == sceau_actuel)
 
     def calculer_sceau(self, r: ResultatAnalyse) -> str:
         """

@@ -4,9 +4,7 @@ tests/test_analyseur.py — Tests d'intégration sur le moteur d'analyse AST.
 import os
 import textwrap
 import tempfile
-import pytest
 from phi_complexity.analyseur import AnalyseurPhi
-from phi_complexity.metriques import CalculateurRadiance
 from phi_complexity import auditer
 
 
