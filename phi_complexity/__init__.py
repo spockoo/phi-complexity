@@ -1,14 +1,12 @@
-"""
-__init__.py — API publique de phi-complexity.
-Expose les fonctions de haut niveau pour une utilisation simple.
-"""
-from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, VERSION, AUTEUR, FRAMEWORK
+from __future__ import annotations
+from typing import Dict, Any, Optional
+from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, VERSION, AUTEUR
 from .analyseur import AnalyseurPhi
 from .metriques import CalculateurRadiance
 from .rapport import GenerateurRapport
 
 
-def auditer(fichier: str) -> dict:
+def auditer(fichier: str) -> Dict[str, Any]:
     """
     Lance un audit complet sur un fichier Python.
     Retourne un dictionnaire de métriques.
@@ -18,9 +16,9 @@ def auditer(fichier: str) -> dict:
         result = auditer("mon_script.py")
         print(result["radiance"])  # → 82.4
     """
-    analyseur = AnalyseurPhi(fichier)
+    analyseur: AnalyseurPhi = AnalyseurPhi(fichier)
     resultat = analyseur.analyser()
-    calculateur = CalculateurRadiance(resultat)
+    calculateur: CalculateurRadiance = CalculateurRadiance(resultat)
     return calculateur.calculer()
 
 
@@ -30,14 +28,14 @@ def rapport_console(fichier: str) -> str:
     return GenerateurRapport(metriques).console()
 
 
-def rapport_markdown(fichier: str, sortie: str = None) -> str:
+def rapport_markdown(fichier: str, sortie: Optional[str] = None) -> str:
     """
     Génère un rapport Markdown.
     Si `sortie` est spécifié, sauvegarde dans ce fichier.
     Retourne le contenu Markdown.
     """
-    metriques = auditer(fichier)
-    gen = GenerateurRapport(metriques)
+    metriques: Dict[str, Any] = auditer(fichier)
+    gen: GenerateurRapport = GenerateurRapport(metriques)
     if sortie:
         gen.sauvegarder_markdown(sortie)
     return gen.markdown()

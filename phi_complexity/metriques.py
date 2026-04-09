@@ -1,11 +1,6 @@
-"""
-metriques.py — Calcul de l'Indice de Radiance et des métriques φ-Meta.
-Suturée selon les recommandations de phi-complexity v0.1.0 (Protocole BMAD).
-'calculer()' décomposée en fonctions hermétiques — Règle I + Règle IV (Fibonacci).
-Formule fondatrice : Radiance = 100 - f(Var_Lilith) - g(Entropie) - h(Anomalies) - i(Fibonacci)
-"""
+from __future__ import annotations
 import math
-from typing import List
+from typing import List, Dict, Any, Optional
 
 from .core import (
     PHI, TAXE_SUTURE, ETA_GOLDEN,
@@ -27,7 +22,7 @@ class CalculateurRadiance:
     # API PUBLIQUE
     # ────────────────────────────────────────────────────────
 
-    def calculer(self) -> dict:
+    def calculer(self) -> Dict[str, Any]:
         """Orchestre le calcul — délègue tout aux fonctions spécialisées."""
         if not self.r.fonctions:
             return self._resultat_vide()
@@ -39,9 +34,9 @@ class CalculateurRadiance:
     # EXTRACTION DES MESURES BRUTES (hermétique)
     # ────────────────────────────────────────────────────────
 
-    def _extraire_mesures(self) -> dict:
+    def _extraire_mesures(self) -> Dict[str, Any]:
         """Extrait toutes les mesures brutes depuis le résultat d'analyse."""
-        complexites = [f.complexite for f in self.r.fonctions]
+        complexites: List[int] = [f.complexite for f in self.r.fonctions]
         return {
             "complexites": complexites,
             "lilith_variance": self._variance(complexites),
@@ -59,7 +54,7 @@ class CalculateurRadiance:
     # ASSEMBLAGE DU RÉSULTAT (hermétique)
     # ────────────────────────────────────────────────────────
 
-    def _assembler_resultat(self, brutes: dict, radiance: float) -> dict:
+    def _assembler_resultat(self, brutes: Dict[str, Any], radiance: float) -> Dict[str, Any]:
         """Construit le dictionnaire final à partir des mesures et du score."""
         phi_ratio = brutes["phi_ratio"]
         return {
@@ -83,7 +78,7 @@ class CalculateurRadiance:
             "annotations": self._serialiser_annotations(),
         }
 
-    def _serialiser_oudjat(self) -> dict:
+    def _serialiser_oudjat(self) -> Optional[Dict[str, Any]]:
         """Sérialise la fonction Oudjat (la plus complexe) en dictionnaire."""
         if not self.r.oudjat:
             return None
@@ -96,7 +91,7 @@ class CalculateurRadiance:
             "phi_ratio": round(o.phi_ratio, 3),
         }
 
-    def _serialiser_annotations(self) -> list:
+    def _serialiser_annotations(self) -> List[Dict[str, Any]]:
         """Sérialise la liste des annotations en dictionnaires."""
         return [
             {
@@ -113,7 +108,7 @@ class CalculateurRadiance:
     # FORMULE FONDATRICE — INDICE DE RADIANCE
     # ────────────────────────────────────────────────────────
 
-    def _indice_radiance(self, brutes: dict) -> float:
+    def _indice_radiance(self, brutes: Dict[str, Any]) -> float:
         """
         R = 100 - f(Lilith) - g(Shannon) - h(Anomalies) - i(Fibonacci)
         Chaque déduction est plafonnée (Loi d'Indulgence).
@@ -148,14 +143,14 @@ class CalculateurRadiance:
     # FORMULES MATHÉMATIQUES SOUVERAINES (atomiques)
     # ────────────────────────────────────────────────────────
 
-    def _variance(self, valeurs: List[float]) -> float:
+    def _variance(self, valeurs: List[int]) -> float:
         """σ²_L = (1/n) · Σ(κᵢ - μ)². Variance de Lilith."""
         if not valeurs:
             return 0.0
         mean = sum(valeurs) / len(valeurs)
         return sum((v - mean) ** 2 for v in valeurs) / len(valeurs)
 
-    def _entropie_shannon(self, valeurs: List[float]) -> float:
+    def _entropie_shannon(self, valeurs: List[int]) -> float:
         """H = -Σ pᵢ · log₂(pᵢ). Entropie de Shannon normalisée."""
         if not valeurs:
             return 0.0
@@ -165,26 +160,27 @@ class CalculateurRadiance:
         probas = [v / total for v in valeurs]
         return -sum(p * math.log2(p) for p in probas if p > 0)
 
-    def _phi_ratio(self, valeurs: List[float]) -> float:
+    def _phi_ratio(self, valeurs: List[int]) -> float:
         """φ-ratio = max(κ) / μ. Doit tendre vers φ = 1.618."""
         if not valeurs or len(valeurs) < 2:
             return 1.0
         mean = sum(valeurs) / len(valeurs)
         return (max(valeurs) / mean) if mean else 1.0
 
-    def _zeta_score(self, valeurs: List[float]) -> float:
+    def _zeta_score(self, valeurs: List[int]) -> float:
         """ζ_meta = min(1, [Σ 1/(i+1)^φ / n] × φ). Résonance globale."""
         if not valeurs:
             return 0.0
-        n = len(valeurs)
-        zeta = sum(1.0 / ((i + 1) ** PHI) for i in range(n)) / n
-        return min(1.0, zeta * PHI)
+        n: int = len(valeurs)
+        zeta: float = sum(1.0 / ((i + 1) ** PHI) for i in range(n)) / n
+        resultat: float = min(1.0, zeta * PHI)
+        return float(resultat)
 
     # ────────────────────────────────────────────────────────
     # RÉSULTAT NEUTRE (fichiers sans fonctions)
     # ────────────────────────────────────────────────────────
 
-    def _resultat_vide(self) -> dict:
+    def _resultat_vide(self) -> Dict[str, Any]:
         """Score neutre (60) pour les fichiers de constantes ou de configuration."""
         return {
             "fichier": self.r.fichier,

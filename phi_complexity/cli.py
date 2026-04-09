@@ -1,11 +1,8 @@
-"""
-cli.py — Interface en ligne de commande souveraine.
-Suturée selon les recommandations de phi-complexity v0.1.0 (Protocole BMAD).
-main() décomposée en 5 fonctions hermétiques — Règle I : Herméticité de la Portée.
-"""
+from __future__ import annotations
 import sys
 import os
 import argparse
+from typing import List, Optional
 
 from . import auditer, rapport_console, rapport_markdown, rapport_json
 from .core import VERSION
@@ -53,9 +50,9 @@ Exemples :
 # COLLECTE DES FICHIERS (Suture des boucles LILITH)
 # ────────────────────────────────────────────────────────
 
-def _fichiers_depuis_dossier(dossier: str) -> list:
+def _fichiers_depuis_dossier(dossier: str) -> List[str]:
     """Collecte récursivement les .py d'un dossier (boucles isolées)."""
-    fichiers = []
+    fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
             os.path.join(racine, nom)
@@ -65,7 +62,7 @@ def _fichiers_depuis_dossier(dossier: str) -> list:
     return sorted(fichiers)
 
 
-def _collecter_fichiers(cible: str) -> list:
+def _collecter_fichiers(cible: str) -> List[str]:
     """Retourne la liste des fichiers Python à auditer depuis un chemin."""
     if os.path.isfile(cible):
         return [cible] if cible.endswith(".py") else []
@@ -78,7 +75,7 @@ def _collecter_fichiers(cible: str) -> list:
 # EXÉCUTION DES SOUS-COMMANDES (une fonction par rôle)
 # ────────────────────────────────────────────────────────
 
-def _executer_check(args: argparse.Namespace, fichiers: list) -> int:
+def _executer_check(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Exécute la sous-commande 'check'. Retourne le code de sortie."""
     exit_code = 0
     for fichier in fichiers:
@@ -108,7 +105,7 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
     return 0
 
 
-def _executer_report(args: argparse.Namespace, fichiers: list) -> int:
+def _executer_report(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Exécute la sous-commande 'report'. Retourne le code de sortie."""
     for fichier in fichiers:
         sortie = _nom_rapport(fichier, args.output)
@@ -121,7 +118,7 @@ def _executer_report(args: argparse.Namespace, fichiers: list) -> int:
     return 0
 
 
-def _nom_rapport(fichier: str, sortie_demandee: str) -> str:
+def _nom_rapport(fichier: str, sortie_demandee: Optional[str]) -> str:
     """Calcule le nom du fichier rapport de sortie."""
     if sortie_demandee:
         return sortie_demandee
@@ -129,7 +126,7 @@ def _nom_rapport(fichier: str, sortie_demandee: str) -> str:
     return f"RAPPORT_PHI_{base}.md"
 
 
-def _executer_fund():
+def _executer_fund() -> None:
     """Affiche le message de soutien à la recherche souveraine."""
     print("""
 ╔══════════════════════════════════════════════════╗
@@ -155,7 +152,7 @@ def _executer_fund():
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
 
-def main():
+def main() -> None:
     """Point d'entrée principal. Délègue à des fonctions spécialisées."""
     parser = _construire_parseur()
     args = parser.parse_args()

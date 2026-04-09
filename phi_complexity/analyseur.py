@@ -1,11 +1,7 @@
-"""
-analyseur.py — Dissection fractale du code Python via AST.
-Suturée selon les recommandations de phi-complexity v0.1.0 (Protocole BMAD).
-_analyser_micro() décomposée en 4 règles hermétiques — Cycles 13:20 → 33:33.
-"""
+from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from .core import fibonacci_plus_proche, distance_fibonacci
 
@@ -66,7 +62,7 @@ class AnalyseurPhi:
         self.lignes: List[str] = []
         self.resultat = ResultatAnalyse(fichier=fichier)
 
-    def charger(self) -> "AnalyseurPhi":
+    def charger(self) -> AnalyseurPhi:
         """Charge et parse le fichier Python avec gestionnaire de contexte (Règle II)."""
         with open(self.fichier, "r", encoding="utf-8") as f:
             contenu = f.read()
@@ -90,14 +86,18 @@ class AnalyseurPhi:
     # PRÉPARATION DE L'ARBRE AST
     # ────────────────────────────────────────────────────────
 
-    def _injecter_parents(self):
+    def _injecter_parents(self) -> None:
         """Injecte les références parent dans l'arbre AST pour la remontée."""
+        if self.tree is None:
+            return
         for node in ast.walk(self.tree):
             for child in ast.iter_child_nodes(node):
-                child.parent = node
+                setattr(child, "parent", node)
 
-    def _compter_elements_globaux(self):
+    def _compter_elements_globaux(self) -> None:
         """Compte classes, imports et commentaires (éléments macro)."""
+        if self.tree is None:
+            return
         for node in ast.walk(self.tree):
             if isinstance(node, ast.ClassDef):
                 self.resultat.nb_classes += 1
@@ -111,17 +111,19 @@ class AnalyseurPhi:
     # ANALYSE DES FONCTIONS
     # ────────────────────────────────────────────────────────
 
-    def _analyser_fonctions(self):
+    def _analyser_fonctions(self) -> None:
         """Extrait les métriques de chaque fonction définie dans le fichier."""
+        if self.tree is None:
+            return
         for node in ast.walk(self.tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 metrique = self._mesurer_fonction(node)
                 self.resultat.fonctions.append(metrique)
 
-    def _mesurer_fonction(self, node: ast.AST) -> MetriqueFonction:
+    def _mesurer_fonction(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> MetriqueFonction:
         """Calcule toutes les métriques d'une seule fonction."""
-        end_line = getattr(node, "end_lineno", node.lineno)
-        nb_lignes = end_line - node.lineno + 1
+        end_line: int = getattr(node, "end_lineno", node.lineno)
+        nb_lignes: int = end_line - node.lineno + 1
         return MetriqueFonction(
             nom=node.name,
             ligne=node.lineno,
@@ -133,7 +135,7 @@ class AnalyseurPhi:
             phi_ratio=1.0,  # Calculé après, quand la moyenne est connue
         )
 
-    def _identifier_oudjat(self):
+    def _identifier_oudjat(self) -> None:
         """Identifie la fonction dominante et calcule les φ-ratios."""
         if not self.resultat.fonctions:
             return
@@ -142,9 +144,9 @@ class AnalyseurPhi:
         )
         self._calculer_phi_ratios()
 
-    def _calculer_phi_ratios(self):
+    def _calculer_phi_ratios(self) -> None:
         """Normalise la complexité de chaque fonction par la moyenne."""
-        moyenne = sum(f.complexite for f in self.resultat.fonctions) / len(
+        moyenne: float = sum(f.complexite for f in self.resultat.fonctions) / len(
             self.resultat.fonctions
         )
         if moyenne == 0:
@@ -156,19 +158,21 @@ class AnalyseurPhi:
     # RÈGLES DE CODAGE SOUVERAIN (4 règles hermétiques)
     # ────────────────────────────────────────────────────────
 
-    def _appliquer_regles_souveraines(self):
+    def _appliquer_regles_souveraines(self) -> None:
         """Applique les 4 règles souveraines à chaque nœud de l'AST."""
+        if self.tree is None:
+            return
         for node in ast.walk(self.tree):
             self._regle_lilith(node)
             self._regle_raii(node)
             self._regle_fibonacci(node)
             self._regle_hermeticite(node)
 
-    def _regle_lilith(self, node: ast.AST):
+    def _regle_lilith(self, node: ast.AST) -> None:
         """Règle I — Nœuds d'Entropie : détecte les boucles trop imbriquées."""
         if not isinstance(node, (ast.For, ast.While)):
             return
-        depth = self._profondeur_noeud(node)
+        depth: int = self._profondeur_noeud(node)
         if depth >= 2:
             self._annoter(
                 node.lineno,
@@ -178,14 +182,14 @@ class AnalyseurPhi:
                 "LILITH"
             )
 
-    def _regle_raii(self, node: ast.AST):
+    def _regle_raii(self, node: ast.AST) -> None:
         """Règle II — Intégrité du Cycle de Vie : open() exige un gestionnaire."""
         if not isinstance(node, ast.Call):
             return
         if not self._est_appel_open(node):
             return
-        parent = getattr(node, "parent", None)
-        grand_parent = getattr(parent, "parent", None)
+        parent: Any = getattr(node, "parent", None)
+        grand_parent: Any = getattr(parent, "parent", None) if parent else None
         if isinstance(parent, ast.withitem) or isinstance(grand_parent, ast.With):
             return
         self._annoter(
@@ -196,13 +200,13 @@ class AnalyseurPhi:
             "SUTURE"
         )
 
-    def _regle_fibonacci(self, node: ast.AST):
+    def _regle_fibonacci(self, node: ast.AST) -> None:
         """Règle III — Taille Naturelle : les fonctions suivent Fibonacci."""
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-        end_line = getattr(node, "end_lineno", node.lineno)
-        nb_lignes = end_line - node.lineno + 1
-        fib_proche = fibonacci_plus_proche(nb_lignes)
+        end_line: int = getattr(node, "end_lineno", node.lineno)
+        nb_lignes: int = end_line - node.lineno + 1
+        fib_proche: int = fibonacci_plus_proche(nb_lignes)
         if nb_lignes > 55 and abs(nb_lignes - fib_proche) > 10:
             self._annoter(
                 node.lineno,
@@ -213,11 +217,11 @@ class AnalyseurPhi:
                 "FIBONACCI"
             )
 
-    def _regle_hermeticite(self, node: ast.AST):
+    def _regle_hermeticite(self, node: ast.AST) -> None:
         """Règle IV — Herméticité : une fonction ne reçoit pas plus de 5 args."""
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-        nb_args = len(node.args.args)
+        nb_args: int = len(node.args.args)
         if nb_args > 5:
             self._annoter(
                 node.lineno,
@@ -240,9 +244,9 @@ class AnalyseurPhi:
             return func.attr == "open"
         return False
 
-    def _annoter(self, ligne: int, msg: str, niveau: str, categorie: str):
+    def _annoter(self, ligne: int, msg: str, niveau: str, categorie: str) -> None:
         """Enregistre une annotation chirurgicale sur une ligne de code."""
-        extrait = self.lignes[ligne - 1].strip() if ligne <= len(self.lignes) else ""
+        extrait: str = self.lignes[ligne - 1].strip() if ligne <= len(self.lignes) else ""
         self.resultat.annotations.append(
             Annotation(ligne=ligne, message=msg, niveau=niveau,
                        extrait=extrait, categorie=categorie)
@@ -271,10 +275,10 @@ class AnalyseurPhi:
         ancetres = self._remonter_parents(node)
         return sum(1 for a in ancetres if isinstance(a, _NOEUD_COMPTABLE))
 
-    def _remonter_parents(self, node: ast.AST) -> list:
+    def _remonter_parents(self, node: ast.AST) -> List[ast.AST]:
         """Retourne la liste des nœuds ancêtres en remontant l'arbre."""
-        ancetres = []
-        curr = getattr(node, "parent", None)
+        ancetres: List[ast.AST] = []
+        curr: Any = getattr(node, "parent", None)
         while curr is not None:
             ancetres.append(curr)
             curr = getattr(curr, "parent", None)

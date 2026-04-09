@@ -1,15 +1,13 @@
-"""
-rapport.py — Génération du Rapport de Radiance Premium (Markdown + Console).
-Style "CodeRabbit × Bibliothèque Céleste".
-"""
+from __future__ import annotations
 import datetime
 import json
+from typing import Dict, Any
 
 
 class GenerateurRapport:
     """Transforme un dictionnaire de métriques en rapport premium."""
 
-    def __init__(self, metriques: dict):
+    def __init__(self, metriques: Dict[str, Any]):
         self.m = metriques
 
     # ──────────────────────────────────────────────
@@ -67,7 +65,7 @@ class GenerateurRapport:
 
         lignes.append("")
         lignes.append("  ─────────────────────────────────────────────────")
-        lignes.append(f"  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
+        lignes.append("  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
 
         return "\n".join(lignes)
 
@@ -144,7 +142,7 @@ class GenerateurRapport:
 
     def sauvegarder_markdown(self, chemin: str) -> str:
         """Sauvegarde le rapport Markdown dans un fichier."""
-        contenu = self.markdown()
+        contenu: str = self.markdown()
         with open(chemin, "w", encoding="utf-8") as f:
             f.write(contenu)
         return chemin
