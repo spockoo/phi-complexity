@@ -24,7 +24,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: 🔍 Check ADMIN_TOKEN secret
+        id: check_token
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "⚠️  ADMIN_TOKEN secret is not configured."
+            echo "   Please create a Personal Access Token with 'Administration: Read & write'"
+            echo "   and add it as a repository secret named ADMIN_TOKEN."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "✅ ADMIN_TOKEN is available."
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 🔒 Protect branch — main
+        if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
@@ -62,6 +78,7 @@ jobs:
           EOF
 
       - name: 🔒 Protect branch — develop (if exists)
+        if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
@@ -106,6 +123,7 @@ jobs:
           fi
 
       - name: 📋 Summary
+        if: steps.check_token.outputs.has_token == 'true'
         run: |
           echo "### 🔒 Branch Protection Applied" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
