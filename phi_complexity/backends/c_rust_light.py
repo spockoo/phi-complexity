@@ -13,8 +13,8 @@ class CRustLightBackend(AnalyseurBackend):
     """
 
     def analyser(self) -> ResultatAnalyse:
-        with open(self.fichier, "r", encoding="utf-8") as f:
-            lignes = f.readlines()
+        with open(self.fichier, "r", encoding="utf-8") as handle:
+            lignes = handle.readlines()
         
         resultat = ResultatAnalyse(fichier=self.fichier)
         resultat.nb_lignes_total = len(lignes)
