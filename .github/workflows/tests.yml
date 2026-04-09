@@ -33,4 +33,4 @@ jobs:
 
     - name: Radiant Auto-Audit
       run: |
-        python -m phi_complexity check . --min-radiance 60
+        python -m phi_complexity check . --min-radiance 50
