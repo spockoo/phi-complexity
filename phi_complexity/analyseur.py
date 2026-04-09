@@ -114,7 +114,8 @@ class AnalyseurPythonInternal:
         self._analyser_fonctions()
         self._appliquer_regles_souveraines()
         self._identifier_oudjat()
-        self._detecter_poles()
+        if isinstance(self.tree, ast.Module):
+             self._detecter_poles()
         return self.resultat
 
     def _detecter_poles(self) -> None:
