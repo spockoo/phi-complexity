@@ -114,7 +114,7 @@ class HarvestEngine:
             with open(self.sortie, "a", encoding="utf-8") as f:
                 f.write(json.dumps(vecteur, ensure_ascii=False) + "\n")
         except OSError as e:
-            raise OSError(f"Impossible d'écrire dans {self.sortie}: {e}") from e
+            raise OSError(f"Impossible d'écrire dans {self.sortie}") from e
 
     def collecter_et_exporter(self, fichier: str) -> Dict[str, Any]:
         """Collecte et exporte en une seule opération atomique."""
@@ -138,10 +138,10 @@ class HarvestEngine:
             return []
         try:
             with open(self.sortie, "r", encoding="utf-8") as f:
-                lignes = [line.strip() for line in f if line.strip()]
+                lignes = [line.strip() for line in f]
+            return [json.loads(l) for l in lignes if l][-limite:] if lignes else []
         except OSError:
             return []
-        return [json.loads(l) for l in lignes[-limite:]]
 
     def rapport_harvest(self) -> str:
         """Génère un résumé du corpus de harvest collecté."""

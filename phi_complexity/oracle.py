@@ -53,7 +53,10 @@ class OracleRadiance:
         """
         if not audits:
             return 0.0
-        audits_valides = [a for a in audits if not (float(a.get("radiance", 0.0)) == 0.0 and "erreur" in a)]
+        audits_valides = [
+            a for a in audits
+            if not (max(0.0, float(a.get("radiance", 0.0))) == 0.0 and "erreur" in a)
+        ]
         if not audits_valides:
             return 0.0
         radiancies = [max(0.0, float(a.get("radiance", 0.0))) for a in audits_valides]
