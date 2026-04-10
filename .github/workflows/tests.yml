@@ -37,12 +37,17 @@ jobs:
     - name: Auto-Fix (Ruff)
       # Auto-correct fixable lint issues and commit them back to the branch.
       # This prevents transient E741/F401 style violations from blocking CI.
+      # Exit code 0 = no issues; 1 = issues found (some fixed, some may remain).
+      # We allow both; the following hard-check step will catch anything unfixable.
       run: |
-        ruff check --fix phi_complexity/ tests/ || true
-        if ! git diff --quiet; then
+        ruff check --fix phi_complexity/ tests/; exit_code=$?
+        if [ $exit_code -gt 1 ]; then exit $exit_code; fi
+        if ! git diff --quiet -- phi_complexity/ tests/; then
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "style(auto): ruff --fix applied by CI [skip ci]"
+          git add phi_complexity/ tests/
+          git commit -m "style(auto): ruff --fix applied by CI [skip ci]"
+          git pull --rebase origin "$GITHUB_HEAD_REF" || git pull --rebase origin "$GITHUB_REF_NAME"
           git push
         fi
 
