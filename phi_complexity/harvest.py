@@ -140,7 +140,7 @@ class HarvestEngine:
         try:
             with open(self.sortie, "r", encoding="utf-8") as f:
                 lignes = [line.strip() for line in f if line.strip()]
-            # Utilisation de 'ligne' pour éviter toute ambiguïté
+            # Utilisation de 'ligne' pour éviter toute ambiguïté (Ruff E741)
             return [json.loads(ligne) for ligne in lignes][-limite:] if lignes else []
         except (OSError, json.JSONDecodeError):
             return []
