@@ -403,7 +403,9 @@ class TestCLISubprocess:
     def test_report_genere_fichier(self):
         """phi report <fichier> génère un .md."""
         fichier = creer_fichier(CODE_TEST)
-        sortie = tempfile.mktemp(suffix=".md")
+        fd, sortie = tempfile.mkstemp(suffix=".md")
+        os.close(fd)
+        os.unlink(sortie)  # phi report doit créer le fichier lui-même
         try:
             res = self._phi("report", fichier, "--output", sortie)
             assert res.returncode == 0
@@ -421,7 +423,6 @@ class TestCLISubprocess:
         f2 = creer_fichier(CODE_TEST)
         dossier = tempfile.mkdtemp()
         try:
-            import shutil
             shutil.copy(f1, os.path.join(dossier, "a.py"))
             shutil.copy(f2, os.path.join(dossier, "b.py"))
             res = self._phi("check", dossier, "--format", "json")
@@ -443,7 +444,6 @@ class TestCLISubprocess:
             res = self._phi("check", dossier)
             assert res.returncode == 1
         finally:
-            import shutil
             shutil.rmtree(dossier)
 
     def test_fund_commande(self):
@@ -479,7 +479,8 @@ class TestCLISubprocess:
     def test_harvest_commande(self):
         """phi harvest <fichier> collecte les vecteurs AST."""
         fichier = creer_fichier(CODE_TEST)
-        sortie = tempfile.mktemp(suffix=".jsonl")
+        fd, sortie = tempfile.mkstemp(suffix=".jsonl")
+        os.close(fd)
         try:
             res = self._phi("harvest", fichier, "--output", sortie)
             assert res.returncode == 0
