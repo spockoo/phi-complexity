@@ -67,10 +67,11 @@ class TestHarvestEngine:
             engine, jsonl = self._engine_temp()
             try:
                 vecteur = engine.collecter(code_file)
-                assert vecteur["schema"] == "1.0"
+                assert vecteur["schema"] == "1.1"
                 assert "radiance" in vecteur
                 assert "lilith_variance" in vecteur
                 assert "shannon_entropy" in vecteur
+                assert "fibonacci_entropy" in vecteur
                 assert "phi_ratio" in vecteur
                 assert "labels" in vecteur
                 assert "vecteur_phi" in vecteur
@@ -137,7 +138,7 @@ class TestHarvestEngine:
                 vecteurs = engine.charger_vecteurs()
                 assert len(vecteurs) == 1
                 assert "radiance" in vecteurs[0]
-                assert vecteurs[0]["schema"] == "1.0"
+                assert vecteurs[0]["schema"] == "1.1"
             finally:
                 _safe_unlink(jsonl)
         finally:
@@ -163,6 +164,38 @@ class TestHarvestEngine:
                 _safe_unlink(jsonl)
         finally:
             _safe_unlink(code_file)
+
+    def test_vecteur_phi_utilise_fibonacci_entropy(self):
+        """Le vecteur φ utilise strictement l'entropie Fibonacci (H_F), pas Shannon."""
+        code_file = creer_fichier_temp(CODE_CHAOTIQUE)
+        try:
+            engine, jsonl = self._engine_temp()
+            try:
+                vecteur = engine.collecter(code_file)
+                # La composante [2] du vecteur_phi doit correspondre à fibonacci_entropy
+                fib_ent = vecteur["fibonacci_entropy"]
+                from phi_complexity.harvest import _NORM_ENTROPIE_FIB
+
+                expected = min(1.0, fib_ent / _NORM_ENTROPIE_FIB)
+                assert abs(vecteur["vecteur_phi"][2] - expected) < 1e-9
+            finally:
+                _safe_unlink(jsonl)
+        finally:
+            _safe_unlink(code_file)
+
+    def test_fibonacci_entropy_non_negative(self):
+        """L'entropie Fibonacci est toujours >= 0."""
+        for code in (CODE_HARMONIEUX, CODE_CHAOTIQUE):
+            code_file = creer_fichier_temp(code)
+            try:
+                engine, jsonl = self._engine_temp()
+                try:
+                    vecteur = engine.collecter(code_file)
+                    assert vecteur["fibonacci_entropy"] >= 0.0
+                finally:
+                    _safe_unlink(jsonl)
+            finally:
+                _safe_unlink(code_file)
 
     def test_rapport_harvest_vide(self):
         """Le rapport sur un corpus vide est un message informatif."""
