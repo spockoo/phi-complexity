@@ -215,7 +215,7 @@ class TestFonctionsInternesCLI:
         fichier = creer_fichier(CODE_TEST)
         try:
             args = self._args_oracle(fichier, min_rad=0.0, nb_tests=10)
-            code = _executer_oracle(args, [fichier])
+            _executer_oracle(args, [fichier])
             out = capsys.readouterr().out
             assert "ORACLE" in out or "RADIANCE" in out
         finally:

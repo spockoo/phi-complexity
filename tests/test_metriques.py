@@ -4,7 +4,6 @@ et des formules souveraines du CalculateurRadiance.
 """
 
 import math
-import pytest
 
 from phi_complexity.core import PHI, HBAR_PHI, PHI_INV
 
