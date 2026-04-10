@@ -222,7 +222,7 @@ class TestHarvestEngine:
     def test_assurer_dossier_cree_sous_dossier(self, tmp_path):
         """HarvestEngine crée le dossier de sortie s'il n'existe pas."""
         sous_dossier = tmp_path / "nouveau" / "sous"
-        engine = HarvestEngine(sortie=str(sous_dossier / "out.jsonl"))
+        HarvestEngine(sortie=str(sous_dossier / "out.jsonl"))
         assert sous_dossier.exists()
 
     def test_exporter_leve_oserror(self, tmp_path):
