@@ -213,9 +213,9 @@ class CalculateurRadiance:
           ≈ 1  → état cohérent minimal (optimum golden)
           > 1  → zone d'incertitude naturelle (évolution classique)
         """
-        sigma_max_sq = PHI**2 * 100          # seuil Lilith = φ² × 100 ≈ 261.8
-        h_max = math.log2(PHI**4)            # seuil Shannon = log₂(φ⁴) ≈ 2.88 bits
-        plancher = HBAR_PHI / 2              # ħ_φ / 2 ≈ 0.309
+        sigma_max_sq = PHI**2 * 100  # seuil Lilith = φ² × 100 ≈ 261.8
+        h_max = math.log2(PHI**4)  # seuil Shannon = log₂(φ⁴) ≈ 2.88 bits
+        plancher = HBAR_PHI / 2  # ħ_φ / 2 ≈ 0.309
 
         delta_c = math.sqrt(variance / sigma_max_sq) if variance > 0 else 0.0
         delta_l = entropie / h_max if h_max > 0 else 0.0

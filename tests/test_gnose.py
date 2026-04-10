@@ -37,6 +37,7 @@ class TestMoteurGnostique:
     def test_initialise_gnose_json(self):
         assert os.path.exists(self.gnose.gnose_path)
         import json
+
         with open(self.gnose.gnose_path) as f:
             data = json.load(f)
         assert isinstance(data, dict)
@@ -73,6 +74,7 @@ class TestMoteurGnostique:
 
     def test_sceller_enregistre_dans_registre(self):
         import json
+
         r = _resultat_simple()
         sceau = self.gnose.sceller(r)
         with open(self.gnose.gnose_path) as f:
