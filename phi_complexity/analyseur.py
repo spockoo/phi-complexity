@@ -435,6 +435,7 @@ class AnalyseurPythonInternal:
                 # exactement une fois ; les BoolOp imbriqués (ex. : (a and b) or c)
                 # sont comptés séparément via leurs propres nœuds fils, ce qui
                 # correspond bien au nombre total d'opérateurs logiques (and/or).
+                # Le chemin de base (cc=1) reste géré séparément.
                 cc += len(node.values) - 1
             pile.extend(ast.iter_child_nodes(node))
         return cc
