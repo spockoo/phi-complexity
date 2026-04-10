@@ -17,4 +17,5 @@ def test_main_entrypoint_appelle_cli_main():
 
     with patch("phi_complexity.cli.main") as mock_main:
         import phi_complexity.__main__  # noqa: F401  — exécute main()
+
         mock_main.assert_called_once()
