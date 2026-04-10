@@ -138,9 +138,9 @@ class HarvestEngine:
             return []
         try:
             with open(self.sortie, "r", encoding="utf-8") as f:
-                lignes = [line.strip() for line in f]
-            return [json.loads(l) for l in lignes if l][-limite:] if lignes else []
-        except OSError:
+                lignes = [line.strip() for line in f if line.strip()]
+            return [json.loads(l) for l in lignes][-limite:] if lignes else []
+        except (OSError, json.JSONDecodeError):
             return []
 
     def rapport_harvest(self) -> str:

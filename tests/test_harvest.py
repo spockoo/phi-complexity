@@ -7,7 +7,6 @@ import tempfile
 import textwrap
 
 from phi_complexity.harvest import HarvestEngine
-from phi_complexity.core import PHI
 
 
 def _safe_unlink(path: str) -> None:
