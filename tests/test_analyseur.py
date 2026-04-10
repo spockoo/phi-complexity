@@ -478,3 +478,40 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             assert a._compter_cyclomatique(fn) == 2
         finally:
             os.unlink(fichier)
+
+    def test_compter_cyclomatique_comp_sans_if(self):
+        """Une compréhension sans clause 'if' n'incrémente pas CC."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        code = "def f(xs):\n    return [x for x in xs]\n"
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+            )
+            assert a._compter_cyclomatique(fn) == 1
+        finally:
+            os.unlink(fichier)
+
+    def test_compter_cyclomatique_comp_avec_if(self):
+        """Chaque clause 'if' dans une compréhension incrémente CC de 1."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        # Two 'if' filters → CC = 1 (base) + 2
+        code = "def f(xs):\n    return [x for x in xs if x > 0 if x < 10]\n"
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+            )
+            assert a._compter_cyclomatique(fn) == 3
+        finally:
+            os.unlink(fichier)

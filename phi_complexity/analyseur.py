@@ -404,17 +404,18 @@ class AnalyseurPythonInternal:
             ast.ExceptHandler,
             ast.With,
             ast.Assert,
-            ast.ListComp,
-            ast.SetComp,
-            ast.DictComp,
-            ast.GeneratorExp,
         )
+        _NOEUDS_COMP = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
         cc = 1  # Chemin de base
         for node in ast.walk(fn_node):
             if node is fn_node:
                 continue
             if isinstance(node, _NOEUDS_DECISION):
                 cc += 1
+            elif isinstance(node, _NOEUDS_COMP):
+                # Compte chaque clause 'if' dans les générateurs de la compréhension
+                for gen in node.generators:
+                    cc += len(gen.ifs)
             elif isinstance(node, ast.BoolOp):
                 # Chaque opérande supplémentaire ajoute un chemin
                 cc += len(node.values) - 1
