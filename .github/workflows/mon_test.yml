@@ -50,7 +50,7 @@ jobs:
       - name: 5. Audit de Cohérence (Mypy)
         run: |
           # Validation de l'intégrité des structures de données
-          mypy . --ignore-missing-imports --strict || echo "Alert: Structural inconsistencies detected, proceeding to auto-fix."
+          mypy . --ignore-missing-imports --strict || echo "Alert: Structural inconsistencies detected."
 
       - name: 6. Génération de la Mutation (Auto-PR)
         if: github.ref == 'refs/heads/main'
@@ -83,16 +83,31 @@ jobs:
           # Extrait la version du fichier pyproject.toml
           VERSION=$(grep -m 1 "version =" pyproject.toml | cut -d '"' -f 2)
           echo "VERSION=v$VERSION" >> $GITHUB_ENV
-          echo "V_NUMBER=$VERSION" >> $GITHUB_OUTPUT
 
       - name: 8. Publication de la Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          # On utilise une syntaxe de secours pour calmer l'éditeur GitHub
           tag_name: ${{ env.VERSION }}
           name: "🧬 Cycle d'Évolution ${{ env.VERSION }}"
           generate_release_notes: true
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 9. Purge des branches éphémères
+        if: always()
+        run: |
+          # Supprime les branches de mutation déjà fusionnées pour garder l'organisme propre
+          git fetch --prune
+          for branch in $(git branch -r | grep 'origin/evolution/'); do
+            branch_name=$(echo $branch | sed 's/origin\///')
+            if [ -z "$(git log main..origin/$branch_name)" ]; then
+              echo "Nettoyage de la branche fusionnée : $branch_name"
+              git push origin --delete $branch_name || echo "Déjà supprimée."
+            fi
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
