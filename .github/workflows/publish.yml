@@ -7,6 +7,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for PyPI Trusted Publishers (OIDC)
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -21,8 +24,13 @@ jobs:
       - name: Build package
         run: python -m build
 
-      - name: Publish to PyPI
+      - name: Publish to PyPI (Trusted Publishers / OIDC)
+        if: ${{ vars.USE_OIDC_PUBLISH == 'true' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish to PyPI (token)
+        if: ${{ vars.USE_OIDC_PUBLISH != 'true' }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+        run: twine upload dist/* --verbose
