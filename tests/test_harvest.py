@@ -218,3 +218,38 @@ class TestHarvestEngine:
                 _safe_unlink(jsonl)
         finally:
             _safe_unlink(code_file)
+
+    def test_assurer_dossier_cree_sous_dossier(self, tmp_path):
+        """HarvestEngine crée le dossier de sortie s'il n'existe pas."""
+        sous_dossier = tmp_path / "nouveau" / "sous"
+        engine = HarvestEngine(sortie=str(sous_dossier / "out.jsonl"))
+        assert sous_dossier.exists()
+
+    def test_exporter_leve_oserror(self, tmp_path):
+        """exporter() lève OSError si le fichier est inaccessible."""
+        from unittest.mock import patch
+        engine = HarvestEngine(sortie=str(tmp_path / "out.jsonl"))
+        with patch("builtins.open", side_effect=OSError("disk full")):
+            try:
+                engine.exporter({"test": 1})
+                assert False, "OSError attendue"
+            except OSError as exc:
+                assert "Impossible d'écrire" in str(exc)
+
+    def test_compter_vecteurs_oserror_retourne_zero(self, tmp_path):
+        """compter_vecteurs() retourne 0 en cas d'OSError à la lecture."""
+        from unittest.mock import patch
+        jsonl = tmp_path / "test.jsonl"
+        jsonl.write_text('{"a": 1}\n')
+        engine = HarvestEngine(sortie=str(jsonl))
+        with patch("builtins.open", side_effect=OSError("read error")):
+            assert engine.compter_vecteurs() == 0
+
+    def test_charger_vecteurs_oserror_retourne_liste_vide(self, tmp_path):
+        """charger_vecteurs() retourne [] en cas d'OSError à la lecture."""
+        from unittest.mock import patch
+        jsonl = tmp_path / "test.jsonl"
+        jsonl.write_text('{"a": 1}\n')
+        engine = HarvestEngine(sortie=str(jsonl))
+        with patch("builtins.open", side_effect=OSError("read error")):
+            assert engine.charger_vecteurs() == []
