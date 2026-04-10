@@ -478,3 +478,71 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             assert a._compter_cyclomatique(fn) == 2
         finally:
             os.unlink(fichier)
+
+    def test_compter_cyclomatique_nested_function_excluded(self):
+        """CC d'une fonction externe n'inclut pas les décisions des fonctions imbriquées."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        code = (
+            "def outer(x):\n"
+            "    def inner(y):\n"
+            "        if y > 0:\n"
+            "            return y\n"
+            "        if y < 0:\n"
+            "            return -y\n"
+            "        return 0\n"
+            "    return inner(x)\n"
+        )
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n
+                for n in ast_mod.walk(a.tree)
+                if isinstance(n, ast_mod.FunctionDef) and n.name == "outer"
+            )
+            # outer a un seul chemin de base, sans décision propre → CC = 1
+            assert a._compter_cyclomatique(fn) == 1
+        finally:
+            os.unlink(fichier)
+
+    def test_compter_cyclomatique_comprehension_if(self):
+        """CC d'une fonction avec une compréhension à filtre 'if' = 1 + nb_if."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        # [x for x in lst if x > 0] → 1 filtre if → CC = 1 + 1 = 2
+        code = "def f(lst):\n    return [x for x in lst if x > 0]\n"
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+            )
+            assert a._compter_cyclomatique(fn) == 2
+        finally:
+            os.unlink(fichier)
+
+    def test_compter_cyclomatique_boolop(self):
+        """CC augmente d'un par opérande supplémentaire dans un BoolOp (and/or)."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        # if a and b and c → BoolOp(values=[a, b, c]) → +2 (len-1=2) + 1 (If) = 3
+        code = "def f(a, b, c):\n    if a and b and c:\n        return 1\n    return 0\n"
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+            )
+            assert a._compter_cyclomatique(fn) == 4
+        finally:
+            os.unlink(fichier)
