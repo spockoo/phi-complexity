@@ -8,6 +8,7 @@ le code source ni les noms de fichiers.
 
 Format de sortie : JSONL (une ligne JSON par vecteur).
 """
+
 from __future__ import annotations
 
 import json

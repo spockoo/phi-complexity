@@ -5,8 +5,9 @@ Score attendu : < 65 (DORMANT ou bas EN ÉVEIL).
 Démontre ce que phi-complexity détecte comme violations souveraines.
 """
 
+
 # Violation Fibonacci : monolithe de 80+ lignes
-def tout_faire(a,b,c,d,e,f,g):    # Violation Herméticité (7 args)
+def tout_faire(a, b, c, d, e, f, g):  # Violation Herméticité (7 args)
     """Fait tout. Ne respecte aucune règle souveraine."""
     resultats = []
     totaux = {}
@@ -45,7 +46,7 @@ def calculer_moyenne(liste):
     s = 0
     for x in liste:
         s = s + x
-    return s / len(liste)   # Pas de protection division par zéro
+    return s / len(liste)  # Pas de protection division par zéro
 
 
 def formater(val, precision, prefixe, suffixe, couleur, padding):  # 6 args

@@ -5,6 +5,7 @@ Phase 13.1 — Framework φ-Meta (Tomy Verreault, 2026)
 Exploration du Vide Informé : les 39% non-démontrables par l'algèbre classique.
 Implémentation pure Python (zéro dépendance tierce) — Souveraineté totale.
 """
+
 import math
 from typing import Callable
 

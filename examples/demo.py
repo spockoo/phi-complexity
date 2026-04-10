@@ -2,12 +2,13 @@
 examples/demo.py — Démonstration complète de phi-complexity.
 Lance ce script pour voir phi-complexity en action sur deux exemples contrastés.
 """
+
 import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from phi_complexity import auditer, rapport_console, rapport_markdown
+from phi_complexity import rapport_console, rapport_markdown
 from phi_complexity.core import PHI, TAXE_SUTURE
 
 

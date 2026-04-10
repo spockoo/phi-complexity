@@ -1,6 +1,7 @@
 """
 tests/test_rapport.py — Tests du générateur de rapports Console/Markdown/JSON.
 """
+
 import json
 import os
 import textwrap
@@ -72,12 +73,20 @@ class TestGenerateurConsole:
 
     def test_barre_radiance_ascii(self):
         """La barre ASCII doit contenir des blocs █."""
-        gen = GenerateurRapport({"radiance": 75.0, "fichier": "test.py",
-                                  "statut_gnostique": "EN ÉVEIL ◈",
-                                  "lilith_variance": 100.0, "shannon_entropy": 2.0,
-                                  "phi_ratio": 1.7, "phi_ratio_delta": 0.08,
-                                  "zeta_score": 0.5, "oudjat": None,
-                                  "annotations": []})
+        gen = GenerateurRapport(
+            {
+                "radiance": 75.0,
+                "fichier": "test.py",
+                "statut_gnostique": "EN ÉVEIL ◈",
+                "lilith_variance": 100.0,
+                "shannon_entropy": 2.0,
+                "phi_ratio": 1.7,
+                "phi_ratio_delta": 0.08,
+                "zeta_score": 0.5,
+                "oudjat": None,
+                "annotations": [],
+            }
+        )
         barre = gen._barre(75.0)
         assert "█" in barre
         assert "░" in barre
@@ -137,9 +146,14 @@ class TestGenerateurJSON:
         try:
             data = json.loads(rapport_json(fichier))
             champs = [
-                "radiance", "lilith_variance", "shannon_entropy",
-                "phi_ratio", "zeta_score", "fibonacci_distance",
-                "nb_fonctions", "annotations"
+                "radiance",
+                "lilith_variance",
+                "shannon_entropy",
+                "phi_ratio",
+                "zeta_score",
+                "fibonacci_distance",
+                "nb_fonctions",
+                "annotations",
             ]
             for champ in champs:
                 assert champ in data, f"Champ manquant : {champ}"

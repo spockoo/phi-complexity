@@ -3,6 +3,7 @@ examples/code_harmonieux.py — Code respectant les règles souveraines.
 Score attendu : > 82 (HERMÉTIQUE ou haut EN ÉVEIL).
 Démontre ce que phi-complexity récompense comme architecture saine.
 """
+
 import math
 
 # ── Constantes (taille naturelle : fichier de constantes = score élevé)
@@ -11,6 +12,7 @@ TAU = 2 * math.pi
 
 
 # ── Règle Fibonacci : fonctions de 8 à 21 lignes (taille naturelle)
+
 
 def ratio_phi(a: float, b: float) -> float:
     """Retourne le ratio a/b. Doit tendre vers φ pour un système harmonieux."""
@@ -31,6 +33,7 @@ def est_harmonieux(ratio: float, tolerance: float = 0.1) -> bool:
 
 # ── Règle RAII : toute ressource acquise dans un gestionnaire de contexte
 
+
 def lire_fichier(chemin: str) -> str:
     """Lecture propre — Règle II (RAII) respectée."""
     with open(chemin, encoding="utf-8") as f:
@@ -44,6 +47,7 @@ def sauvegarder(chemin: str, contenu: str) -> None:
 
 
 # ── Règle Herméticité : max 3-5 arguments par fonction
+
 
 def normaliser(valeur: float, mini: float, maxi: float) -> float:
     """Normalise une valeur dans [0, 1]. Pur, sans effet de bord."""

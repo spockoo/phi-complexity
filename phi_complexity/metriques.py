@@ -2,10 +2,7 @@ from __future__ import annotations
 import math
 from typing import List, Dict, Any, Optional
 
-from .core import (
-    PHI, TAXE_SUTURE, ETA_GOLDEN,
-    statut_gnostique
-)
+from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, statut_gnostique
 from .analyseur import ResultatAnalyse
 
 
@@ -44,29 +41,33 @@ class CalculateurRadiance:
             "phi_ratio": self._phi_ratio(complexites),
             "fibonacci_distance": sum(f.distance_fib for f in self.r.fonctions),
             "zeta_score": self._zeta_score(complexites),
-            "nb_anomalies": len([
-                a for a in self.r.annotations
-                if a.niveau in ("WARNING", "CRITICAL")
-            ]),
+            "nb_anomalies": len(
+                [a for a in self.r.annotations if a.niveau in ("WARNING", "CRITICAL")]
+            ),
         }
 
     # ────────────────────────────────────────────────────────
     # ASSEMBLAGE DU RÉSULTAT (hermétique)
     # ────────────────────────────────────────────────────────
 
-    def _assembler_resultat(self, brutes: Dict[str, Any], radiance: float) -> Dict[str, Any]:
+    def _assembler_resultat(
+        self, brutes: Dict[str, Any], radiance: float
+    ) -> Dict[str, Any]:
         """Construit le dictionnaire final à partir des mesures et du score."""
         phi_ratio = brutes["phi_ratio"]
         from .bmad import OrchestrateurBMAD
+
         orchestrateur = OrchestrateurBMAD()
         complexite_totale = sum(brutes["complexites"])
-        
+
         # Phase 11.6 : Alignement Matriciel (Peuplement de la dataclass souveraine)
         self.r.radiance = radiance
         self.r.lilith_variance = float(brutes["lilith_variance"])
         self.r.shannon_entropy = float(brutes["shannon_entropy"])
         self.r.phi_ratio = float(phi_ratio)
-        self.r.resistance = orchestrateur.calculer_omega_resistance(radiance, complexite_totale)
+        self.r.resistance = orchestrateur.calculer_omega_resistance(
+            radiance, complexite_totale
+        )
         self.r.signature = f"v{self.r.lilith_variance:.2f}_e{self.r.shannon_entropy:.2f}_p{self.r.phi_ratio:.2f}"
 
         return {
@@ -139,12 +140,12 @@ class CalculateurRadiance:
 
     def _deduction_lilith(self, variance: float) -> float:
         """f(Lilith) = min(25, (σ²_L / seuil) × 25). Seuil naturel = φ² × 100."""
-        seuil = PHI ** 2 * 100
+        seuil = PHI**2 * 100
         return min(25.0, (variance / seuil) * 25.0)
 
     def _deduction_entropie(self, entropie: float) -> float:
         """g(H) = min(20, max(0, H - H_max) × 5). H_max = log₂(φ⁴) ≈ 2.88 bits."""
-        seuil = math.log2(PHI ** 4)
+        seuil = math.log2(PHI**4)
         return min(20.0, max(0.0, entropie - seuil) * 5.0)
 
     def _deduction_anomalies(self, nb: int) -> float:

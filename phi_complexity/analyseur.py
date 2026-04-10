@@ -8,43 +8,46 @@ if TYPE_CHECKING:
 
 from .core import fibonacci_plus_proche, distance_fibonacci
 
-
 # ────────────────────────────────────────────────────────
 # STRUCTURES DE DONNÉES (dataclasses immuables)
 # ────────────────────────────────────────────────────────
 
+
 @dataclass
 class MetriqueFonction:
     """Représente une fonction analysée avec toutes ses métriques brutes."""
+
     nom: str
     ligne: int
-    complexite: int       # Nombre de nœuds AST (pression morphique)
-    nb_args: int          # Nombre d'arguments
-    nb_lignes: int        # Longueur en lignes
-    profondeur_max: int   # Imbrication maximale
-    distance_fib: float   # Éloignement de la séquence naturelle
-    phi_ratio: float      # Rapport complexité/moyenne (idéal: φ)
+    complexite: int  # Nombre de nœuds AST (pression morphique)
+    nb_args: int  # Nombre d'arguments
+    nb_lignes: int  # Longueur en lignes
+    profondeur_max: int  # Imbrication maximale
+    distance_fib: float  # Éloignement de la séquence naturelle
+    phi_ratio: float  # Rapport complexité/moyenne (idéal: φ)
 
 
 @dataclass
 class Annotation:
     """Une observation chirurgicale sur une ligne spécifique du code."""
+
     ligne: int
     message: str
-    niveau: str           # 'INFO', 'WARNING', 'CRITICAL'
-    extrait: str          # La ligne de code concernée
-    categorie: str        # 'LILITH', 'SUTURE', 'SOUVERAINETE', 'FIBONACCI'
+    niveau: str  # 'INFO', 'WARNING', 'CRITICAL'
+    extrait: str  # La ligne de code concernée
+    categorie: str  # 'LILITH', 'SUTURE', 'SOUVERAINETE', 'FIBONACCI'
 
 
 @dataclass
 class ResultatAnalyse:
     """Contient tous les résultats bruts d'une analyse de fichier."""
+
     fichier: str
     radiance: float = 0.0
-    lilith_variance: float = 0.0      # Règle I (Entropie)
-    shannon_entropy: float = 0.0      # Règle I (Information)
-    phi_ratio: float = 0.0           # Règle III (Harmonique)
-    resistance: float = 0.0          # Résistance Ω (Phase 10)
+    lilith_variance: float = 0.0  # Règle I (Entropie)
+    shannon_entropy: float = 0.0  # Règle I (Information)
+    phi_ratio: float = 0.0  # Règle III (Harmonique)
+    resistance: float = 0.0  # Résistance Ω (Phase 10)
     fonctions: List[MetriqueFonction] = field(default_factory=list)
     annotations: List[Annotation] = field(default_factory=list)
     nb_classes: int = 0
@@ -52,14 +55,15 @@ class ResultatAnalyse:
     nb_lignes_total: int = 0
     nb_commentaires: int = 0
     oudjat: Optional[MetriqueFonction] = None
-    pole_alpha: Optional[int] = None      # Ligne du Pôle Alpha (Source)
-    pole_omega: Optional[int] = None      # Ligne du Pôle Omega (Oudjat)
-    signature: str = ""                   # Signature Gnostique (Phase 11)
+    pole_alpha: Optional[int] = None  # Ligne du Pôle Alpha (Source)
+    pole_omega: Optional[int] = None  # Ligne du Pôle Omega (Oudjat)
+    signature: str = ""  # Signature Gnostique (Phase 11)
 
 
 # ────────────────────────────────────────────────────────
 # ANALYSEUR PRINCIPAL
 # ────────────────────────────────────────────────────────
+
 
 class AnalyseurPhi:
     """
@@ -79,7 +83,7 @@ class AnalyseurPhi:
         ext = self.fichier.split(".")[-1].lower()
         if ext in ("c", "cpp", "h", "hpp", "rs"):
             return CRustLightBackend(self.fichier)
-        
+
         # Défaut: Python
         return PythonBackend(self.fichier)
 
@@ -119,14 +123,14 @@ class AnalyseurPythonInternal:
         self._appliquer_regles_souveraines()
         self._identifier_oudjat()
         if isinstance(self.tree, ast.Module):
-             self._detecter_poles()
+            self._detecter_poles()
         return self.resultat
 
     def _detecter_poles(self) -> None:
         """Identifie les pôles magnétiques de Penrose (Alpha et Omega)."""
         if self.tree is None:
             return
-        
+
         # Pôle Alpha : Première définition ou instruction significative après les imports
         # On utilise une variable locale pour garantir le type à MyPy
         root = self.tree
@@ -135,7 +139,7 @@ class AnalyseurPythonInternal:
                 if not isinstance(node, (ast.Import, ast.ImportFrom)):
                     self.resultat.pole_alpha = node.lineno
                     break
-        
+
         # Pôle Omega : La ligne de l'Oudjat (déjà identifiée)
         if self.resultat.oudjat:
             self.resultat.pole_omega = self.resultat.oudjat.ligne
@@ -178,7 +182,9 @@ class AnalyseurPythonInternal:
                 metrique = self._mesurer_fonction(node)
                 self.resultat.fonctions.append(metrique)
 
-    def _mesurer_fonction(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> MetriqueFonction:
+    def _mesurer_fonction(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> MetriqueFonction:
         """Calcule toutes les métriques d'une seule fonction."""
         end_line: int = getattr(node, "end_lineno", node.lineno)
         nb_lignes: int = end_line - node.lineno + 1
@@ -197,9 +203,7 @@ class AnalyseurPythonInternal:
         """Identifie la fonction dominante et calcule les φ-ratios."""
         if not self.resultat.fonctions:
             return
-        self.resultat.oudjat = max(
-            self.resultat.fonctions, key=lambda f: f.complexite
-        )
+        self.resultat.oudjat = max(self.resultat.fonctions, key=lambda f: f.complexite)
         self._calculer_phi_ratios()
 
     def _calculer_phi_ratios(self) -> None:
@@ -237,7 +241,7 @@ class AnalyseurPythonInternal:
                 f"LILITH : Boucle imbriquée (profondeur {depth}). "
                 "La variance s'accumule — envisagez une fonction auxiliaire.",
                 "CRITICAL" if depth >= 3 else "WARNING",
-                "LILITH"
+                "LILITH",
             )
 
     def _regle_raii(self, node: ast.AST) -> None:
@@ -255,7 +259,7 @@ class AnalyseurPythonInternal:
             "SUTURE : 'open()' sans gestionnaire de contexte (with). "
             "Risque de traînée d'entropie (fuite de ressource).",
             "WARNING",
-            "SUTURE"
+            "SUTURE",
         )
 
     def _regle_fibonacci(self, node: ast.AST) -> None:
@@ -272,7 +276,7 @@ class AnalyseurPythonInternal:
                 f"de la séquence naturelle (idéal: {fib_proche}). "
                 "Scinder pour réduire la pression morphique.",
                 "WARNING",
-                "FIBONACCI"
+                "FIBONACCI",
             )
 
     def _regle_hermeticite(self, node: ast.AST) -> None:
@@ -286,7 +290,7 @@ class AnalyseurPythonInternal:
                 f"SOUVERAINETÉ : '{node.name}' reçoit {nb_args} arguments. "
                 "Encapsuler dans un objet (max: 5 / idéal φ: 3).",
                 "INFO",
-                "SOUVERAINETE"
+                "SOUVERAINETE",
             )
 
     # ────────────────────────────────────────────────────────
@@ -304,10 +308,17 @@ class AnalyseurPythonInternal:
 
     def _annoter(self, ligne: int, msg: str, niveau: str, categorie: str) -> None:
         """Enregistre une annotation chirurgicale sur une ligne de code."""
-        extrait: str = self.lignes[ligne - 1].strip() if ligne <= len(self.lignes) else ""
+        extrait: str = (
+            self.lignes[ligne - 1].strip() if ligne <= len(self.lignes) else ""
+        )
         self.resultat.annotations.append(
-            Annotation(ligne=ligne, message=msg, niveau=niveau,
-                       extrait=extrait, categorie=categorie)
+            Annotation(
+                ligne=ligne,
+                message=msg,
+                niveau=niveau,
+                extrait=extrait,
+                categorie=categorie,
+            )
         )
 
     def _profondeur_imbrication(self, fn_node: ast.AST) -> int:

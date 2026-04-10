@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..analyseur import ResultatAnalyse
 
+
 class AnalyseurBackend(ABC):
     """
     Interface abstraite pour tous les backends d'analyse de radiance.
