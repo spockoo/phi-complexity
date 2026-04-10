@@ -228,6 +228,7 @@ class TestHarvestEngine:
     def test_exporter_leve_oserror(self, tmp_path):
         """exporter() lève OSError si le fichier est inaccessible."""
         from unittest.mock import patch
+
         engine = HarvestEngine(sortie=str(tmp_path / "out.jsonl"))
         with patch("builtins.open", side_effect=OSError("disk full")):
             try:
@@ -239,6 +240,7 @@ class TestHarvestEngine:
     def test_compter_vecteurs_oserror_retourne_zero(self, tmp_path):
         """compter_vecteurs() retourne 0 en cas d'OSError à la lecture."""
         from unittest.mock import patch
+
         jsonl = tmp_path / "test.jsonl"
         jsonl.write_text('{"a": 1}\n')
         engine = HarvestEngine(sortie=str(jsonl))
@@ -248,6 +250,7 @@ class TestHarvestEngine:
     def test_charger_vecteurs_oserror_retourne_liste_vide(self, tmp_path):
         """charger_vecteurs() retourne [] en cas d'OSError à la lecture."""
         from unittest.mock import patch
+
         jsonl = tmp_path / "test.jsonl"
         jsonl.write_text('{"a": 1}\n')
         engine = HarvestEngine(sortie=str(jsonl))
