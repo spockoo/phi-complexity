@@ -534,7 +534,9 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
         from phi_complexity.analyseur import AnalyseurPythonInternal
 
         # if a and b and c → BoolOp(values=[a, b, c]) → +2 (len-1=2) + 1 (If) = 3
-        code = "def f(a, b, c):\n    if a and b and c:\n        return 1\n    return 0\n"
+        code = (
+            "def f(a, b, c):\n    if a and b and c:\n        return 1\n    return 0\n"
+        )
         fichier = creer_fichier_temp(code)
         try:
             a = AnalyseurPythonInternal(fichier)
