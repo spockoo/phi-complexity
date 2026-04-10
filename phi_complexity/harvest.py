@@ -131,8 +131,8 @@ class HarvestEngine:
         if not os.path.exists(self.sortie):
             return []
         with open(self.sortie, "r", encoding="utf-8") as f:
-            lignes = [l.strip() for l in f if l.strip()]
-        return [json.loads(l) for l in lignes[-limite:]]
+            lignes = [ligne.strip() for ligne in f if ligne.strip()]
+        return [json.loads(ligne) for ligne in lignes[-limite:]]
 
     def rapport_harvest(self) -> str:
         """Génère un résumé du corpus de harvest collecté."""
