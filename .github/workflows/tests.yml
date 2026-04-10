@@ -57,7 +57,7 @@ jobs:
 
     - name: Run unit tests
       run: |
-        pytest tests/ --cov=phi_complexity --cov-report=xml
+        pytest tests/ --cov=phi_complexity --cov-report=xml --cov-fail-under=89
 
     - name: Radiant Auto-Audit
       run: |

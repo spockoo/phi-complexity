@@ -83,16 +83,18 @@ phi check ./src/ --format json     ✅ Opérationnel
 
 ## 🚀 PHASES FUTURES
 
-### v0.2.0 — Règle 5 + Annotations `phi: ignore`
-- Règle V : Complexité Cyclomatique (nb de chemins d'exécution)
-- `# phi: ignore` pour marquer les faux positifs structurels (ex: AST traversal)
-- Graphique ASCII d'évolution de la radiance dans le rapport
+### v0.2.0 — Règle 5 + Annotations `phi: ignore` ✅ COMPLÉTÉE
+- ✅ Règle V : Complexité Cyclomatique (CC McCabe, seuils Fibonacci 8/13)
+- ✅ `# phi: ignore` — supprime une annotation sur une ligne (global ou ciblé `[CATEGORIE]`)
+- ✅ `# phi: ignore[CAT1,CAT2]` — catégories multiples, insensible à la casse
+- ⬜ Graphique ASCII d'évolution de la radiance dans le rapport
 
 ### v0.3.0 — Intégrations
-- Pre-commit hook (`.pre-commit-config.yaml`)
-- GitHub Action officielle
-- Badge Radiance (img.shields.io)
-- Extension VSCode (webview + score en temps réel)
+- ✅ Pre-commit hook (`.pre-commit-config.yaml`) — gardiens souverains locaux
+- ✅ Coverage gate enforced (`--cov-fail-under=89` dans `pyproject.toml`)
+- ⬜ GitHub Action officielle
+- ⬜ Badge Radiance (img.shields.io)
+- ⬜ Extension VSCode (webview + score en temps réel)
 
 ### v1.0.0 — API REST Phidélia Genesis
 - Endpoint `/api/audit` dans `server_phidelia.py`
