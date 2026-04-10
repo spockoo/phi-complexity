@@ -6,7 +6,6 @@ import json
 import tempfile
 import os
 from unittest.mock import patch, MagicMock
-from io import BytesIO
 
 from phi_complexity.suture import SutureAgent
 from phi_complexity.analyseur import ResultatAnalyse, MetriqueFonction

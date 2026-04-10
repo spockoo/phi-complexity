@@ -6,8 +6,6 @@ import os
 import tempfile
 
 from phi_complexity.backends.c_rust_light import CRustLightBackend
-from phi_complexity.backends.python import PythonBackend
-from phi_complexity.backends.base import AnalyseurBackend
 
 
 CODE_C_SIMPLE = """\

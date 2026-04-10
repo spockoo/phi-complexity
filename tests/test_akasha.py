@@ -6,10 +6,8 @@ import json
 import os
 import tempfile
 import shutil
-import math
 
 from phi_complexity.akasha import MatriceHolographique, RegistreAkashique
-from phi_complexity.core import PHI
 
 
 # ──────────────────────────────────────────────

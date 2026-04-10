@@ -7,7 +7,7 @@ import shutil
 import tempfile
 
 from phi_complexity.gnose import MoteurGnostique
-from phi_complexity.analyseur import ResultatAnalyse, MetriqueFonction
+from phi_complexity.analyseur import ResultatAnalyse
 
 
 def _resultat_simple(fichier: str = "test.py") -> ResultatAnalyse:
