@@ -5,6 +5,7 @@ Gardien du Versionnement Souverain : bloque une release si la radiance chute.
 Loi de version Phi : v{floor(radiance)}.{nb_tests}
 Ancrage : EQ-AFR-BMAD (Loi Antifragile) + AX-A39 (Attracteur Doré).
 """
+
 from __future__ import annotations
 
 import math
@@ -37,11 +38,13 @@ class OracleRadiance:
             try:
                 resultats.append(phi_auditer(f))
             except Exception as e:
-                resultats.append({
-                    "fichier": f,
-                    "radiance": 0.0,
-                    "erreur": str(e),
-                })
+                resultats.append(
+                    {
+                        "fichier": f,
+                        "radiance": 0.0,
+                        "erreur": str(e),
+                    }
+                )
         return resultats
 
     def calculer_radiance_globale(self, audits: List[Dict[str, Any]]) -> float:
@@ -54,7 +57,8 @@ class OracleRadiance:
         if not audits:
             return 0.0
         audits_valides = [
-            a for a in audits
+            a
+            for a in audits
             if not (max(0.0, float(a.get("radiance", 0.0))) == 0.0 and "erreur" in a)
         ]
         if not audits_valides:

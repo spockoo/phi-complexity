@@ -1,6 +1,7 @@
 """
 tests/test_cli.py — Tests de la CLI via subprocess et fonctions internes.
 """
+
 import os
 import sys
 import json
@@ -8,7 +9,6 @@ import tempfile
 import textwrap
 import subprocess
 from phi_complexity.cli import _collecter_fichiers, _nom_rapport
-
 
 CODE_TEST = """
 def ajouter(a: float, b: float) -> float:
@@ -73,6 +73,7 @@ class TestCollecterFichiers:
             assert f2 not in resultat
         finally:
             import shutil
+
             shutil.rmtree(dossier)
 
 
@@ -100,7 +101,10 @@ class TestCLISubprocess:
         env["PYTHONIOENCODING"] = "utf-8"
         return subprocess.run(
             [sys.executable, "-m", "phi_complexity"] + list(args),
-            capture_output=True, text=True, encoding="utf-8", env=env
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
 
     def test_version(self):

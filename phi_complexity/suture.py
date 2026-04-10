@@ -8,7 +8,6 @@ if TYPE_CHECKING:
     from .analyseur import ResultatAnalyse
 
 
-
 class SutureAgent:
     """
     Phidélia — Agent de Suture Souverain.
@@ -22,25 +21,25 @@ class SutureAgent:
         """Construit le prompt Morphic-Phi pour l'IA."""
         oudjat = resultat.oudjat
         extrait_code = "Aucun extrait disponible."
-        
+
         # Tentative de récupération du code de la fonction problématique
         if oudjat:
             try:
                 with open(resultat.fichier, "r", encoding="utf-8") as f:
                     lignes = f.readlines()
                     fin = min(len(lignes), oudjat.ligne + oudjat.nb_lignes)
-                    extrait_code = "".join(lignes[oudjat.ligne-1:fin])
+                    extrait_code = "".join(lignes[oudjat.ligne - 1 : fin])
             except Exception:
                 pass
 
         from .bmad import OrchestrateurBMAD
         from .akasha import RegistreAkashique
-        
+
         bmad = OrchestrateurBMAD()
         akasha = RegistreAkashique()
-        
+
         briefing = bmad.generer_briefing_conseil({})
-        
+
         # Phase 11.6 : Conversion en dictionnaire holographique (Suture simplifiée)
         metriques_brutes = {
             "fichier": resultat.fichier,
@@ -49,10 +48,10 @@ class SutureAgent:
             "lilith_variance": resultat.lilith_variance,
             "shannon_entropy": resultat.shannon_entropy,
             "phi_ratio": resultat.phi_ratio,
-            "signature": resultat.signature
+            "signature": resultat.signature,
         }
         pattern_similaire = akasha.trouver_similitude(metriques_brutes)
-        
+
         memo_akashique = ""
         if pattern_similaire:
             memo_akashique = f"\n MÉMOIRE AKASHIQUE : Un pattern similaire a été détecté dans {pattern_similaire['fichier']} (Radiance: {pattern_similaire['radiance']}). Utilise cette expérience."
@@ -87,12 +86,15 @@ Réponds uniquement avec la discussion, le bloc de code refactorisé, et le verd
         payload = {
             "model": "phidelia-complex-coder",
             "messages": [
-                {"role": "system", "content": "Tu es Phidélia, l'IA souveraine du Morphic Phi Framework."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "Tu es Phidélia, l'IA souveraine du Morphic Phi Framework.",
+                },
+                {"role": "user", "content": prompt},
             ],
-            "temperature": 0.2
+            "temperature": 0.2,
         }
-        
+
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(self.api_url, data=data, method="POST")
         req.add_header("Content-Type", "application/json")
@@ -111,6 +113,6 @@ Réponds uniquement avec la discussion, le bloc de code refactorisé, et le verd
         """Processus complet de suture."""
         if not resultat.fonctions and not resultat.annotations:
             return "RADIANCE PARFAITE : Aucune suture nécessaire pour ce fichier."
-        
+
         prompt = self.generer_prompt(resultat)
         return self.invoquer_phidelia(prompt)

@@ -1,11 +1,18 @@
 """
 tests/test_core.py — Tests unitaires des constantes et fonctions core.
 """
+
 import math
 from phi_complexity.core import (
-    PHI, PHI_INV, TAXE_SUTURE, ETA_GOLDEN, ZETA_PLANCHER,
-    SEQUENCE_FIBONACCI, statut_gnostique,
-    fibonacci_plus_proche, distance_fibonacci
+    PHI,
+    PHI_INV,
+    TAXE_SUTURE,
+    ETA_GOLDEN,
+    ZETA_PLANCHER,
+    SEQUENCE_FIBONACCI,
+    statut_gnostique,
+    fibonacci_plus_proche,
+    distance_fibonacci,
 )
 
 
@@ -18,7 +25,7 @@ class TestConstantesSouveraines:
 
     def test_phi_propriete_auto_similaire(self):
         """La propriété fondamentale : φ² = φ + 1"""
-        assert abs(PHI ** 2 - (PHI + 1)) < 1e-10
+        assert abs(PHI**2 - (PHI + 1)) < 1e-10
 
     def test_phi_inv_propriete(self):
         """1/φ = φ - 1"""
@@ -36,7 +43,7 @@ class TestConstantesSouveraines:
 
     def test_zeta_plancher(self):
         """Plancher Zeta = 1/φ² ≈ 0.38196"""
-        attendu = PHI_INV ** 2
+        attendu = PHI_INV**2
         assert abs(ZETA_PLANCHER - attendu) < 1e-10
 
     def test_fibonacci_sequence_debut(self):
@@ -49,7 +56,9 @@ class TestConstantesSouveraines:
         # On vérifie uniquement à partir de l'indice 8 (après 21) où la convergence est établie
         for i in range(8, len(fib) - 1):
             ratio = fib[i + 1] / fib[i]
-            assert abs(ratio - PHI) < 0.001, f"Ratio {fib[i+1]}/{fib[i]} = {ratio} trop éloigné de φ"
+            assert (
+                abs(ratio - PHI) < 0.001
+            ), f"Ratio {fib[i+1]}/{fib[i]} = {ratio} trop éloigné de φ"
 
 
 class TestStatutGnostique:

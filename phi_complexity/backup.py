@@ -3,6 +3,7 @@ import shutil
 import time
 from typing import List
 
+
 class SecuriteMaat:
     """
     Système de Sécurité et de Backup de Phidélia.
@@ -24,12 +25,12 @@ class SecuriteMaat:
         """Crée une sauvegarde horodatée du fichier."""
         if not os.path.exists(chemin_fichier):
             return ""
-            
+
         nom_base = os.path.basename(chemin_fichier)
         ts = int(time.time())
         nom_backup = f"{nom_base}.{ts}.bak"
         chemin_backup = os.path.join(self.backup_dir, nom_backup)
-        
+
         shutil.copy2(chemin_fichier, chemin_backup)
         self._purger_anciens_backups(nom_base)
         return chemin_backup
@@ -40,7 +41,7 @@ class SecuriteMaat:
         backups = self._lister_backups(nom_base)
         if not backups:
             return False
-            
+
         dernier = os.path.join(self.backup_dir, backups[-1])
         shutil.copy2(dernier, chemin_fichier)
         return True

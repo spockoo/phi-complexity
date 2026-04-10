@@ -1,6 +1,7 @@
 """
 tests/test_harvest.py — Tests du moteur phi-harvest (Phase 14).
 """
+
 import json
 import os
 import tempfile
@@ -54,9 +55,7 @@ class TestHarvestEngine:
 
     def _engine_temp(self) -> tuple:
         """Crée un engine avec un fichier JSONL temporaire. Retourne (engine, path)."""
-        tmp = tempfile.NamedTemporaryFile(
-            suffix=".jsonl", delete=False
-        )
+        tmp = tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False)
         tmp.close()
         engine = HarvestEngine(sortie=tmp.name)
         return engine, tmp.name

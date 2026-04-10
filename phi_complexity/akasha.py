@@ -10,14 +10,21 @@ from .core import PHI
 # MOTEUR DE MATRICE HOLOGRAPHIQUE BINAIRE (Phidélia v11.6)
 # ────────────────────────────────────────────────────────
 
+
 class MatriceHolographique:
     """
     Transforme un dictionnaire de métriques en résonances harmoniques
     dans l'anneau Z[φ]. (Inspiré de EQ-BIN-010 et EQ-CIA-023).
     """
-    
+
     def __init__(self, donnees: Dict[str, Any]) -> None:
-        self.axes = ["radiance", "resistance", "lilith_variance", "shannon_entropy", "phi_ratio"]
+        self.axes = [
+            "radiance",
+            "resistance",
+            "lilith_variance",
+            "shannon_entropy",
+            "phi_ratio",
+        ]
         self.valeurs = [float(donnees.get(axe, 0.0)) for axe in self.axes]
         self.vecteur = self._encoder(donnees)
 
@@ -42,10 +49,7 @@ class MatriceHolographique:
         for val in self.valeurs:
             a = math.floor(val * 1000)
             b = math.floor(val * 1370)
-            coords.append({
-                "a": float(b),
-                "b": float(a + b)
-            })
+            coords.append({"a": float(b), "b": float(a + b)})
         return coords
 
     def calculer_masse_harmonique(self) -> float:
@@ -61,8 +65,8 @@ class MatriceHolographique:
     def calculer_similitude(self, autre: MatriceHolographique) -> float:
         """Calcule la similitude cosinus entre deux architectures holographiques."""
         dot = sum(a * b for a, b in zip(self.vecteur, autre.vecteur))
-        norm_a = math.sqrt(sum(a*a for a in self.vecteur))
-        norm_b = math.sqrt(sum(b*b for b in autre.vecteur))
+        norm_a = math.sqrt(sum(a * a for a in self.vecteur))
+        norm_b = math.sqrt(sum(b * b for b in autre.vecteur))
         if norm_a == 0 or norm_b == 0:
             return 0.0
         return dot / (norm_a * norm_b)
@@ -82,7 +86,7 @@ class RegistreAkashique:
     Gestionnaire souverain des Annales Akashiques.
     Utilise le moteur de Matrice Holographique pour la navigation temporelle.
     """
-    
+
     def __init__(self, workspace_root: str = ".") -> None:
         self.phi_dir = os.path.join(workspace_root, ".phi")
         self.db_path = os.path.join(self.phi_dir, "akasha.json")
@@ -100,7 +104,7 @@ class RegistreAkashique:
         try:
             with open(self.db_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            
+
             mat = MatriceHolographique(resultat)
             evenement = {
                 "timestamp": time.time(),
@@ -110,13 +114,13 @@ class RegistreAkashique:
                 "coherence_c_bit": round(mat.calculer_coherence(), 2),
                 "coords_maat": mat.transmuter(),
                 "vecteur": mat.vecteur,
-                "signature": resultat.get("signature", "")
+                "signature": resultat.get("signature", ""),
             }
-            
+
             data["annales"].append(evenement)
             if len(data["annales"]) > 1000:
                 data["annales"] = data["annales"][-1000:]
-                
+
             with open(self.db_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
         except Exception:
@@ -131,28 +135,32 @@ class RegistreAkashique:
         except Exception:
             return []
 
-    def trouver_similitude(self, dictionnaire_cible: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def trouver_similitude(
+        self, dictionnaire_cible: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Recherche par proximité holographique (> 0.98 de gnose)."""
         cible_mat = MatriceHolographique(dictionnaire_cible)
         annales = self.consulter_historique(500)
-        
+
         meilleure_entree = None
         max_sim = 0.98
-        
+
         for entry in annales:
             if "vecteur" not in entry:
                 continue
             if entry["fichier"] == dictionnaire_cible.get("fichier"):
                 continue
-            
+
             # Reconstruction de la matrice pour comparaison
-            pseudo_dict = {axe: val for axe, val in zip(cible_mat.axes, entry["vecteur"])}
+            pseudo_dict = {
+                axe: val for axe, val in zip(cible_mat.axes, entry["vecteur"])
+            }
             mat_compare = MatriceHolographique(pseudo_dict)
             mat_compare.vecteur = entry["vecteur"]
-            
+
             sim = cible_mat.calculer_similitude(mat_compare)
             if sim > max_sim:
                 max_sim = sim
                 meilleure_entree = entry
-                
+
         return meilleure_entree

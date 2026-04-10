@@ -5,21 +5,24 @@ from dataclasses import dataclass
 from typing import List, Dict, Any
 from .core import PHI_INV
 
+
 @dataclass
 class AgentRole:
     """Définit le rôle et l'axiome d'un agent expert du conseil BMAD."""
+
     id: str
     nom: str
     axiome: str
     priorite: float = 1.0
     description: str = ""
 
+
 class OrchestrateurBMAD:
     """
     Orchestrateur du Cycle BMAD (φ-Meta).
     Simule un conseil de 12 experts et calcule la Résistance Ω (Phase 10).
     """
-    
+
     def __init__(self) -> None:
         self.agents = self._charger_conseil()
 
@@ -30,17 +33,25 @@ class OrchestrateurBMAD:
             with open(chemin, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return [
-                    AgentRole(aid, info["nom"], info["axiome"], 1.0, info.get("description", ""))
+                    AgentRole(
+                        aid,
+                        info["nom"],
+                        info["axiome"],
+                        1.0,
+                        info.get("description", ""),
+                    )
                     for aid, info in data.items()
                 ]
         except Exception:
             # Fallback cosmologique si le registre est indisponible
             return [
                 AgentRole("AG-01", "OUDJAT (L'Oeil)", "Vision centrale."),
-                AgentRole("AG-02", "LILITH (La Variance)", "Entropie sauvage.")
+                AgentRole("AG-02", "LILITH (La Variance)", "Entropie sauvage."),
             ]
 
-    def calculer_omega_resistance(self, radiance: float, complexite_totale: int) -> float:
+    def calculer_omega_resistance(
+        self, radiance: float, complexite_totale: int
+    ) -> float:
         """
         Calcule la Résistance Supraconductrice Ω (Phase 10).
         Ω = (Complexité / (Radiance + 1)) * PHI_INV.
@@ -50,18 +61,22 @@ class OrchestrateurBMAD:
         base_resistance = complexite_totale / (radiance + 1)
         return float(base_resistance * PHI_INV / 10.0)
 
-    def calculer_resonance_dirichlet(self, resultats_bruts: Dict[str, float]) -> Dict[str, float]:
+    def calculer_resonance_dirichlet(
+        self, resultats_bruts: Dict[str, float]
+    ) -> Dict[str, float]:
         """
         Applique une Matrice de Dirichlet simplifiée pour pondérer les scores.
         Redistribue la radiance selon les priorités des agents.
         """
         poids_totaux = sum(agent.priorite for agent in self.agents)
         resonance: Dict[str, float] = {}
-        
+
         for agent in self.agents:
             score_base = resultats_bruts.get(agent.id, 0.5)
-            resonance[agent.nom] = score_base * (agent.priorite / poids_totaux) * len(self.agents)
-            
+            resonance[agent.nom] = (
+                score_base * (agent.priorite / poids_totaux) * len(self.agents)
+            )
+
         return resonance
 
     def generer_briefing_conseil(self, metrics: Dict[str, Any]) -> str:
