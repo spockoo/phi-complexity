@@ -431,10 +431,10 @@ class AnalyseurPythonInternal:
                 cc += 1
             elif isinstance(node, ast.BoolOp):
                 # Chaque opérande supplémentaire ajoute un chemin.
-                # La traversée DFS personnalisée visite chaque nœud BoolOp
-                # exactement une fois ; les BoolOp imbriqués (ex. : (a and b) or c)
-                # sont comptés séparément via leurs propres nœuds fils, ce qui
-                # correspond bien au nombre total d'opérateurs logiques (and/or).
+                # La traversée par pile (ordre LIFO, style DFS) visite chaque nœud BoolOp
+                # exactement une fois ; les BoolOp imbriqués (ex. : a and (b or c))
+                # contribuent séparément car chaque nœud BoolOp rencontré ajoute
+                # len(values)-1, ce qui correspond au total des opérateurs and/or.
                 cc += len(node.values) - 1
             pile.extend(ast.iter_child_nodes(node))
         return cc

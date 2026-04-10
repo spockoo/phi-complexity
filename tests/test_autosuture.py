@@ -188,7 +188,7 @@ class TestAutoSuture:
                 patch(
                     "phi_complexity.autosuture.calculer_sync_index",
                     side_effect=[0.6, 0.5],
-                ),
+                ) as MockSync,
             ):
                 avant = MagicMock()
                 avant.radiance = 40.0
@@ -223,7 +223,9 @@ class TestAutoSuture:
                 contenu_final = f.read()
             assert "SUTURE REJETÉE" in verdict
             assert contenu_final == contenu_initial
-            mock_sec.restaurer_dernier.assert_called_once_with(fichier)
+            mock_sec.restaurer_dernier.assert_not_called()
+            assert MockAnalyseur.return_value.analyser.call_count == 2
+            assert MockSync.call_count == 2
         finally:
             os.unlink(fichier)
 
@@ -238,7 +240,7 @@ class TestAutoSuture:
                 patch(
                     "phi_complexity.autosuture.calculer_sync_index",
                     side_effect=[0.4, 0.7, 0.8],
-                ),
+                ) as MockSync,
             ):
                 avant = MagicMock()
                 avant.radiance = 40.0
@@ -277,6 +279,8 @@ class TestAutoSuture:
 
             assert "GUÉRISON RÉUSSIE" in verdict
             mock_sec.restaurer_dernier.assert_not_called()
+            assert MockAnalyseur.return_value.analyser.call_count == 3
+            assert MockSync.call_count == 3
             with open(fichier, encoding="utf-8") as f:
                 contenu_final = f.read()
             assert "Version guérie" in contenu_final

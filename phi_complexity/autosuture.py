@@ -1,6 +1,7 @@
 import re
 import os
 import tempfile
+from pathlib import Path
 from typing import Optional
 from .analyseur import AnalyseurPhi
 from .suture import SutureAgent
@@ -44,9 +45,9 @@ class AutoSuture:
 
         # 4. Injection transactionnelle (style assembleur/noyau):
         #    écriture vers tampon local, validation, puis remplacement atomique.
+        dossier = os.path.dirname(os.path.abspath(fichier)) or "."
         candidat_tmp = ""
         try:
-            dossier = os.path.dirname(os.path.abspath(fichier)) or "."
             fd, candidat_tmp = tempfile.mkstemp(
                 prefix=".phi-heal-", suffix=".py", dir=dossier
             )
@@ -61,8 +62,7 @@ class AutoSuture:
             gain_candidat = sync_candidat - sync_avant
 
             if gain_candidat <= 0 and not force:
-                self.securite.restaurer_dernier(fichier)
-                return "SUTURE REJETÉE : La proposition n'améliore pas la synchronicité. Restauration du backup."
+                return "SUTURE REJETÉE : La proposition n'améliore pas la synchronicité."
 
             os.replace(candidat_tmp, fichier)
             candidat_tmp = ""
@@ -71,7 +71,16 @@ class AutoSuture:
             return f"ERREUR D'INJECTION : {e}"
         finally:
             if candidat_tmp and os.path.exists(candidat_tmp):
-                os.remove(candidat_tmp)
+                tmp_path = Path(candidat_tmp).resolve()
+                dossier_path = Path(dossier).resolve()
+                if (
+                    tmp_path.parent == dossier_path
+                    and tmp_path.name.startswith(".phi-heal-")
+                ):
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
 
         # 6. Validation finale (après remplacement atomique)
         try:
