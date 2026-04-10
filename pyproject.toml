@@ -9,7 +9,7 @@ description = "Code quality metrics based on Golden Ratio (φ) mathematical inva
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Tomy Verreault", email = "contact@phidelia.dev"}
+    {name = "Tomy Verreault", email = "Tiloup777@outlook.fr"}
 ]
 keywords = [
     "code-quality", "complexity", "golden-ratio", "fibonacci",
