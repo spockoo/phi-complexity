@@ -100,7 +100,7 @@ class TestHeisenbergPhi:
         """La tension ne peut jamais être négative."""
         calc = self._build_calculateur()
         for variance in [0.0, 10.0, 100.0, 500.0]:
-            for entropie in [0.0, 0.5, 2.0, 5.0]:
+            for entropie in [0.0, 0.5, 2.0, 5.0]:  # phi: ignore[LILITH]
                 result = calc._heisenberg_phi(variance, entropie)
                 assert result["tension_quantique"] >= 0.0
 
