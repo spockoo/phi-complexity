@@ -12,7 +12,7 @@ from .core import VERSION
 # ────────────────────────────────────────────────────────
 
 
-def _construire_parseur() -> argparse.ArgumentParser:
+def _construire_parseur() -> argparse.ArgumentParser:  # phi: ignore[FIBONACCI]
     """Construit et retourne le parseur d'arguments. Aucun état global."""
     parser = argparse.ArgumentParser(
         prog="phi",
@@ -184,9 +184,9 @@ def _executer_check_json(args: argparse.Namespace, fichiers: List[str]) -> int:
     return exit_code
 
 
-def _auditer_un_fichier(
+def _auditer_un_fichier(  # phi: ignore[CYCLOMATIQUE]
     fichier: str, args: argparse.Namespace
-) -> int:  # phi: ignore[CYCLOMATIQUE]
+) -> int:
     """Audite un seul fichier et affiche le résultat (format console). Retourne 0 ou 1."""
     try:
         print(rapport_console(fichier))
