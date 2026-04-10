@@ -2,7 +2,14 @@ from __future__ import annotations
 import math
 from typing import List, Dict, Any, Optional
 
-from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, HBAR_PHI, SEQUENCE_FIBONACCI, statut_gnostique
+from .core import (
+    PHI,
+    TAXE_SUTURE,
+    ETA_GOLDEN,
+    HBAR_PHI,
+    SEQUENCE_FIBONACCI,
+    statut_gnostique,
+)
 from .analyseur import ResultatAnalyse
 
 

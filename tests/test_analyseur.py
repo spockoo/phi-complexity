@@ -361,7 +361,9 @@ def traiter(a, b, c, d, e):
         try:
             analyseur = AnalyseurPhi(fichier)
             resultat = analyseur.analyser()
-            annotations_cc = [a for a in resultat.annotations if a.categorie == "CYCLOMATIQUE"]
+            annotations_cc = [
+                a for a in resultat.annotations if a.categorie == "CYCLOMATIQUE"
+            ]
             assert len(annotations_cc) > 0
         finally:
             os.unlink(fichier)
@@ -402,7 +404,9 @@ def monstre(a, b, c, d, e):
         try:
             analyseur = AnalyseurPhi(fichier)
             resultat = analyseur.analyser()
-            annotations_cc = [a for a in resultat.annotations if a.categorie == "CYCLOMATIQUE"]
+            annotations_cc = [
+                a for a in resultat.annotations if a.categorie == "CYCLOMATIQUE"
+            ]
             niveaux = [a.niveau for a in annotations_cc]
             assert "CRITICAL" in niveaux
         finally:
@@ -451,8 +455,7 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree)
-                if isinstance(n, ast_mod.FunctionDef)
+                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
             )
             assert a._compter_cyclomatique(fn) == 1
         finally:
@@ -470,8 +473,7 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree)
-                if isinstance(n, ast_mod.FunctionDef)
+                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
             )
             assert a._compter_cyclomatique(fn) == 2
         finally:

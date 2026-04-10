@@ -353,7 +353,9 @@ class AnalyseurPythonInternal:
         source = self.lignes[ligne - 1]
         import re
 
-        match = re.search(r"#\s*phi\s*:\s*ignore(?:\[([^\]]*)\])?", source, re.IGNORECASE)
+        match = re.search(
+            r"#\s*phi\s*:\s*ignore(?:\[([^\]]*)\])?", source, re.IGNORECASE
+        )
         if match is None:
             return False
         categories_str = match.group(1)
