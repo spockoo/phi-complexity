@@ -5,6 +5,7 @@ from .suture import SutureAgent
 from .backup import SecuriteMaat
 from .core import calculer_sync_index
 
+
 class AutoSuture:
     """
     Le Guérisseur de Phidélia (Phase 12).
@@ -23,22 +24,24 @@ class AutoSuture:
         analyseur = AnalyseurPhi(fichier)
         r_avant = analyseur.analyser()
         sync_avant = calculer_sync_index(r_avant.radiance, r_avant.resistance)
-        
+
         if r_avant.radiance >= 85 and not force:
-             return f"RÉSONANCE STABLE ({r_avant.radiance:.1f}) : Aucune guérison requise."
+            return (
+                f"RÉSONANCE STABLE ({r_avant.radiance:.1f}) : Aucune guérison requise."
+            )
 
         # 2. Sécurité Maât (Backup)
         self.securite.sauvegarder(fichier)
-        
+
         # 3. Invocation du Conseil des 12
         reponse_ia = self.agent.suturer(r_avant)
         nouveau_code = self._extraire_code(reponse_ia)
-        
+
         if not nouveau_code:
             return "ÉCHEC DE SUTURE : Phidélia n'a pas renvoyé de code valide."
 
         # 4. Injection (Suture Physique)
-        # Pour cette version, on remplace tout le fichier si Phidélia a renvoyé 
+        # Pour cette version, on remplace tout le fichier si Phidélia a renvoyé
         # une version complète, ou on tente une injection ciblée.
         # Ici on privilégie le remplacement prudent.
         try:

@@ -2,6 +2,7 @@
 phi_complexity — Mesure de la qualité du code par les invariants du nombre d'or.
 Constantes Souveraines issues du Morphic Phi Framework (Tomy Verreault, 2026).
 """
+
 import math
 
 # ============================================================
@@ -20,7 +21,7 @@ TAXE_SUTURE: float = 3 / math.sqrt(7)
 ETA_GOLDEN: float = 1 - PHI_INV
 """Facteur η doré. Seuil de tolérance: si phi_ratio < ETA, le code est fragmenté."""
 
-ZETA_PLANCHER: float = PHI_INV ** 2
+ZETA_PLANCHER: float = PHI_INV**2
 """Plancher Zeta. En-dessous, le système perd sa résonance."""
 
 SEUIL_RADIANCE_HARMONIEUX: int = 85
@@ -69,6 +70,7 @@ def calculer_sync_index(radiance: float, resistance: float, iota: float = 0.0) -
     if iota != 0.0:
         # Import paresseux : évite toute dépendance circulaire au chargement du module
         from .impossible import ImpossibleOperator  # noqa: PLC0415
+
         radiance_void = float(ImpossibleOperator().calculate(iota))
         index = index * (1 + radiance_void)
 

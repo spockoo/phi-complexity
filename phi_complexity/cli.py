@@ -7,10 +7,10 @@ from typing import List, Optional
 from . import auditer, rapport_console, rapport_markdown, rapport_json
 from .core import VERSION
 
-
 # ────────────────────────────────────────────────────────
 # CONSTRUCTION DU PARSEUR (hermétique, sans effets de bord)
 # ────────────────────────────────────────────────────────
+
 
 def _construire_parseur() -> argparse.ArgumentParser:
     """Construit et retourne le parseur d'arguments. Aucun état global."""
@@ -24,40 +24,62 @@ Exemples :
   phi check ./src/ --min-radiance 75
   phi report mon_script.py --output rapport.md
   phi check mon_script.py --format json
-        """
+        """,
     )
-    parser.add_argument("--version", action="version", version=f"phi-complexity {VERSION}")
+    parser.add_argument(
+        "--version", action="version", version=f"phi-complexity {VERSION}"
+    )
 
     subparsers = parser.add_subparsers(dest="commande")
 
     check = subparsers.add_parser("check", help="Auditer un fichier ou un dossier")
     check.add_argument("cible", help="Fichier .py ou dossier à auditer")
-    check.add_argument("--min-radiance", type=float, default=0,
-                       help="Score minimum (exit code 1 si en-dessous)")
-    check.add_argument("--format", choices=["console", "json"], default="console",
-                       help="Format de sortie")
-    check.add_argument("--bmad", action="store_true",
-                       help="Afficher la résonance des 12 agents BMAD")
+    check.add_argument(
+        "--min-radiance",
+        type=float,
+        default=0,
+        help="Score minimum (exit code 1 si en-dessous)",
+    )
+    check.add_argument(
+        "--format",
+        choices=["console", "json"],
+        default="console",
+        help="Format de sortie",
+    )
+    check.add_argument(
+        "--bmad", action="store_true", help="Afficher la résonance des 12 agents BMAD"
+    )
 
     report = subparsers.add_parser("report", help="Générer un rapport Markdown")
     report.add_argument("cible", help="Fichier .py à analyser")
-    report.add_argument("--output", "-o", default=None,
-                        help="Fichier de sortie (ex: rapport.md)")
+    report.add_argument(
+        "--output", "-o", default=None, help="Fichier de sortie (ex: rapport.md)"
+    )
 
     subparsers.add_parser("fund", help="Soutenir la recherche sur le framework φ-Meta")
 
-    suture_parser = subparsers.add_parser("suture", help="Invoque Phidélia pour une suture intelligente.")
+    suture_parser = subparsers.add_parser(
+        "suture", help="Invoque Phidélia pour une suture intelligente."
+    )
     suture_parser.add_argument("path", help="Fichier à suturer")
     suture_parser.add_argument("--url", help="URL de l'API LLM locale")
 
     subparsers.add_parser("memory", help="Consulter les annales akashiques (Phase 11)")
 
-    seal_parser = subparsers.add_parser("seal", help="Apposer un sceau gnostique permanent (Phase 12).")
+    seal_parser = subparsers.add_parser(
+        "seal", help="Apposer un sceau gnostique permanent (Phase 12)."
+    )
     seal_parser.add_argument("cible", help="Fichier à sceller")
 
-    heal_parser = subparsers.add_parser("heal", help="Lancer une guérison autonome (Auto-Suture Phase 12).")
+    heal_parser = subparsers.add_parser(
+        "heal", help="Lancer une guérison autonome (Auto-Suture Phase 12)."
+    )
     heal_parser.add_argument("cible", help="Fichier à guérir")
-    heal_parser.add_argument("--force", action="store_true", help="Forcer la guérison même si la radiance est élevée")
+    heal_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Forcer la guérison même si la radiance est élevée",
+    )
     heal_parser.add_argument("--url", help="URL de l'API LLM locale")
 
     oracle_parser = subparsers.add_parser(
@@ -65,12 +87,16 @@ Exemples :
     )
     oracle_parser.add_argument("cible", help="Fichier ou dossier à auditer")
     oracle_parser.add_argument(
-        "--min-radiance", type=float, default=70.0,
-        help="Seuil de radiance requis pour autoriser la release (défaut: 70)"
+        "--min-radiance",
+        type=float,
+        default=70.0,
+        help="Seuil de radiance requis pour autoriser la release (défaut: 70)",
     )
     oracle_parser.add_argument(
-        "--nb-tests", type=int, default=0,
-        help="Nombre de tests passés (intégré dans la version Phi)"
+        "--nb-tests",
+        type=int,
+        default=0,
+        help="Nombre de tests passés (intégré dans la version Phi)",
     )
 
     harvest_parser = subparsers.add_parser(
@@ -78,8 +104,10 @@ Exemples :
     )
     harvest_parser.add_argument("cible", help="Fichier ou dossier à collecter")
     harvest_parser.add_argument(
-        "--output", "-o", default=".phi/harvest.jsonl",
-        help="Fichier JSONL de sortie (défaut: .phi/harvest.jsonl)"
+        "--output",
+        "-o",
+        default=".phi/harvest.jsonl",
+        help="Fichier JSONL de sortie (défaut: .phi/harvest.jsonl)",
     )
 
     spiral_parser = subparsers.add_parser(
@@ -93,6 +121,7 @@ Exemples :
 # ────────────────────────────────────────────────────────
 # COLLECTE DES FICHIERS (Suture des boucles LILITH)
 # ────────────────────────────────────────────────────────
+
 
 def _fichiers_depuis_dossier(dossier: str) -> List[str]:
     """Collecte récursivement les fichiers supportés d'un dossier."""
@@ -121,6 +150,7 @@ def _collecter_fichiers(cible: str) -> List[str]:
 # EXÉCUTION DES SOUS-COMMANDES (une fonction par rôle)
 # ────────────────────────────────────────────────────────
 
+
 def _executer_check(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Exécute la sous-commande 'check'. Retourne le code de sortie."""
     exit_code = 0
@@ -138,11 +168,12 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
             print(rapport_console(fichier))
             if getattr(args, "bmad", False):
                 _afficher_bmad(fichier)
-            
+
             # Phase 12 : Vérification du Sceau Gnostique
             try:
                 from .gnose import MoteurGnostique
                 from .analyseur import AnalyseurPhi
+
                 gnose = MoteurGnostique()
                 analyseur = AnalyseurPhi(fichier)
                 resultat = analyseur.analyser()
@@ -151,16 +182,20 @@ def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
                 else:
                     # On vérifie si un sceau existe pour ce fichier
                     import json
+
                     if os.path.exists(gnose.gnose_path):
                         with open(gnose.gnose_path, "r") as f:
                             if resultat.fichier in json.load(f):
-                                print("  ⚠  SCEAU BRISÉ : Divergence spectrale détectée ! ░")
+                                print(
+                                    "  ⚠  SCEAU BRISÉ : Divergence spectrale détectée ! ░"
+                                )
             except Exception:
                 pass
 
             # Phase 11 : Enregistrement Akashique automatique
             try:
                 from .akasha import RegistreAkashique
+
                 akasha = RegistreAkashique()
                 akasha.enregistrer(auditer(fichier))
             except Exception:
@@ -184,23 +219,27 @@ def _afficher_bmad(fichier: str) -> None:
     """Affiche la répartition de la radiance entre les agents BMAD."""
     from .bmad import OrchestrateurBMAD
     from . import auditer as phi_auditer
-    
+
     metrics = phi_auditer(fichier)
     orchestrateur = OrchestrateurBMAD()
-    
+
     # Simulation de répartition basée sur les métriques réelles
     scores_bruts = {
         "AG-01": metrics["radiance"] / 100,
-        "AG-02": 1.0 - (metrics["lilith_variance"] / 1000) if metrics["lilith_variance"] < 1000 else 0.1,
+        "AG-02": (
+            1.0 - (metrics["lilith_variance"] / 1000)
+            if metrics["lilith_variance"] < 1000
+            else 0.1
+        ),
         "AG-03": 0.9 if metrics["oudjat"] else 0.5,
     }
     resonance = orchestrateur.calculer_resonance_dirichlet(scores_bruts)
-    
+
     print("  ◈ RÉSONANCE DES AGENTS BMAD :")
     for nom, score in list(resonance.items())[:6]:
         barre = "█" * int(score * 10)
         print(f"    - {nom:<20} : {barre:<10} {score*100:>5.1f}%")
-    
+
     print("\n  ⚛ SUPRACONDUCTIVITÉ (PHASE 10) :")
     omega = metrics["resistance"]
     res_barre = "░" * int(min(10, omega * 10))
@@ -233,7 +272,7 @@ def _nom_rapport(fichier: str, sortie_demandee: Optional[str]) -> str:
 def _executer_suture(args: argparse.Namespace) -> int:
     """Exécute la commande de suture via Phidélia."""
     from . import suture as phi_suture
-    
+
     print(f"  ◈  Inspiration de Phidélia pour {args.path}...")
     try:
         suggestion = phi_suture(args.path, api_url=args.url)
@@ -248,7 +287,7 @@ def _executer_seal(args: argparse.Namespace) -> int:
     """Phase 12 : Appose un sceau gnostique permanent sur un fichier."""
     from .gnose import MoteurGnostique
     from .analyseur import AnalyseurPhi
-    
+
     print(f"  🛡  Scellement gnostique de {args.cible}...")
     try:
         analyseur = AnalyseurPhi(args.cible)
@@ -327,24 +366,27 @@ def _executer_memory() -> int:
     """Affiche les annales akashiques avec le moteur holographique."""
     from .akasha import RegistreAkashique, MatriceHolographique
     import time
+
     akasha = RegistreAkashique()
     annales = akasha.consulter_historique(10)
-    
+
     print("\n  𓂀  ANNALES AKASHIQUES — MÉMOIRE HOLOGRAPHIQUE")
     print("  " + "─" * 45)
-    
+
     if not annales:
         print("      L'Akasha est encore vierge. Lancez un audit pour l'élever.")
         return 0
 
     for i, entry in enumerate(annales):
         timestamp = entry.get("timestamp", time.time())
-        date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(timestamp))
-        f = os.path.basename(entry['fichier'])
+        date_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(timestamp))
+        f = os.path.basename(entry["fichier"])
         print(f"\n  [{i+1}] {f} — {date_str}")
-        print(f"      Radiance: {entry['radiance']:.1f} | Masse Harmonique: {entry.get('masse_harmonique', 'N/A')}")
+        print(
+            f"      Radiance: {entry['radiance']:.1f} | Masse Harmonique: {entry.get('masse_harmonique', 'N/A')}"
+        )
         print(f"      Cohérence C_bit: {entry.get('coherence_c_bit', 'N/A')}%")
-        
+
         # Affichage du dôme de résonance si le vecteur est présent
         if "vecteur" in entry:
             # Reconstruction de la matrice pour affichage
@@ -353,7 +395,7 @@ def _executer_memory() -> int:
                 "resistance": entry.get("resistance", 0),
                 "lilith_variance": entry.get("lilith_variance", 0),
                 "shannon_entropy": entry.get("shannon_entropy", 0),
-                "phi_ratio": entry.get("phi_ratio", 0)
+                "phi_ratio": entry.get("phi_ratio", 0),
             }
             mat = MatriceHolographique(donnees_simulees)
             mat.vecteur = entry["vecteur"]
@@ -388,6 +430,7 @@ def _executer_fund() -> None:
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
+
 
 def main() -> None:
     """Point d'entrée principal. Délègue à des fonctions spécialisées."""

@@ -1,6 +1,7 @@
 """
 tests/test_analyseur.py — Tests d'intégration sur le moteur d'analyse AST.
 """
+
 import os
 import textwrap
 import tempfile
@@ -143,9 +144,9 @@ class TestCalculateurRadiance:
         fichier = creer_fichier_temp(code)
         try:
             metriques = auditer(fichier)
-            assert metriques["radiance"] >= 70, (
-                f"Code harmonieux devrait scorer >= 70, obtenu: {metriques['radiance']}"
-            )
+            assert (
+                metriques["radiance"] >= 70
+            ), f"Code harmonieux devrait scorer >= 70, obtenu: {metriques['radiance']}"
         finally:
             os.unlink(fichier)
 

@@ -5,8 +5,10 @@ import math
 from typing import Dict, Any, List
 
 # Constantes de la Spirale Dorée
-_TERMINAL_ASPECT_RATIO: float = 2.0   # Les caractères terminaux sont ~2× plus hauts que larges
-_SPIRAL_EPSILON: float = 0.001        # Garde-fou anti-division par zéro
+_TERMINAL_ASPECT_RATIO: float = (
+    2.0  # Les caractères terminaux sont ~2× plus hauts que larges
+)
+_SPIRAL_EPSILON: float = 0.001  # Garde-fou anti-division par zéro
 
 
 class GenerateurRapport:
@@ -62,8 +64,14 @@ class GenerateurRapport:
         if annotations:
             lignes.append(f"  ⚠  SUTURES IDENTIFIÉES ({len(annotations)}) :")
             for ann in annotations:
-                icon = "🔴" if ann["niveau"] == "CRITICAL" else "🟡" if ann["niveau"] == "WARNING" else "🔵"
-                lignes.append(f"  {icon} Ligne {ann['ligne']} [{ann['categorie']}] : {ann['message']}")
+                icon = (
+                    "🔴"
+                    if ann["niveau"] == "CRITICAL"
+                    else "🟡" if ann["niveau"] == "WARNING" else "🔵"
+                )
+                lignes.append(
+                    f"  {icon} Ligne {ann['ligne']} [{ann['categorie']}] : {ann['message']}"
+                )
                 lignes.append(f"     >> {ann['extrait']}")
         else:
             lignes.append("  ✦  Aucune rupture de radiance majeure détectée.")
@@ -119,14 +127,16 @@ class GenerateurRapport:
         rapport += "## 4. REVUE DE DÉTAIL (AUDIT FRACTAL)\n\n"
         annotations = m.get("annotations", [])
         if not annotations:
-            rapport += "☼ Aucune rupture de radiance majeure détectée au niveau micro.\n\n"
+            rapport += (
+                "☼ Aucune rupture de radiance majeure détectée au niveau micro.\n\n"
+            )
         else:
             rapport += f"Phidélia a identifié **{len(annotations)}** zones nécessitant une suture :\n\n"
             for ann in annotations:
                 niveau_md = (
-                    "CAUTION" if ann["niveau"] == "CRITICAL"
-                    else "WARNING" if ann["niveau"] == "WARNING"
-                    else "NOTE"
+                    "CAUTION"
+                    if ann["niveau"] == "CRITICAL"
+                    else "WARNING" if ann["niveau"] == "WARNING" else "NOTE"
                 )
                 rapport += f"> [!{niveau_md}]\n"
                 rapport += f"> **Ligne {ann['ligne']}** `[{ann['categorie']}]` : {ann['message']}\n"
@@ -134,7 +144,9 @@ class GenerateurRapport:
 
         # Pied de page
         rapport += "---\n"
-        rapport += "*phi-complexity — Morphic Phi Framework (φ-Meta) — Tomy Verreault, 2026*\n"
+        rapport += (
+            "*phi-complexity — Morphic Phi Framework (φ-Meta) — Tomy Verreault, 2026*\n"
+        )
         return rapport
 
     # ──────────────────────────────────────────────
@@ -180,9 +192,11 @@ class GenerateurRapport:
         """
         score = float(self.m.get("radiance", 50.0))
         largeur, hauteur = 41, 17
-        grille: List[List[str]] = [[' '] * largeur for _ in range(hauteur)]
+        grille: List[List[str]] = [[" "] * largeur for _ in range(hauteur)]
         cx, cy = largeur // 2, hauteur // 2
-        golden_angle = math.pi * (3 - math.sqrt(5))  # ≈ 2.39996 rad ≈ 137.508° (angle doré)
+        golden_angle = math.pi * (
+            3 - math.sqrt(5)
+        )  # ≈ 2.39996 rad ≈ 137.508° (angle doré)
         n_points = min(100, max(5, int(score)))
         denom = math.sqrt(max(n_points - 1, 1))
         scale = min(cx, cy * _TERMINAL_ASPECT_RATIO) / denom
@@ -195,18 +209,18 @@ class GenerateurRapport:
             if 0 <= x < largeur and 0 <= y < hauteur:
                 ratio = r / (scale * denom + _SPIRAL_EPSILON)
                 if i == 0:
-                    grille[y][x] = '☼'
+                    grille[y][x] = "☼"
                 elif ratio < 0.3:
-                    grille[y][x] = '✦'
+                    grille[y][x] = "✦"
                 elif ratio < 0.65:
-                    grille[y][x] = '◈'
+                    grille[y][x] = "◈"
                 else:
-                    grille[y][x] = '░'
+                    grille[y][x] = "░"
 
         phi_r = float(self.m.get("phi_ratio", 1.0))
         delta = float(self.m.get("phi_ratio_delta", 0.0))
         harmonie = "harmonie ✦" if delta < 0.5 else "divergence ░"
-        lignes_grille = ['  ' + ''.join(row) for row in grille]
+        lignes_grille = ["  " + "".join(row) for row in grille]
         lignes = [
             "  ☼  φ-SPIRALE DE RADIANCE (Motif Fibonacci / Angle Doré 137.5°)",
             f"     Score: {score:.1f} / 100  |  φ-Ratio: {phi_r:.3f}  |  {harmonie}",

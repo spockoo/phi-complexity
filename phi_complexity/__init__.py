@@ -57,15 +57,15 @@ def suture(fichier: str, api_url: Optional[str] = None) -> str:
     """
     from .analyseur import AnalyseurPhi
     from .metriques import CalculateurRadiance
-    
+
     analyseur = AnalyseurPhi(fichier)
     resultat = analyseur.analyser()
-    
+
     # On injecte les métriques de radiance dans le résultat pour Phidélia
     calculateur = CalculateurRadiance(resultat)
     metriques = calculateur.calculer()
     resultat.radiance = metriques["radiance"]
-    
+
     agent = SutureAgent(api_url) if api_url else SutureAgent()
     return agent.suturer(resultat)
 

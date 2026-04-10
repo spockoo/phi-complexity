@@ -1,6 +1,7 @@
 """
 tests/test_oracle.py — Tests de l'Oracle de Radiance (Phase 14).
 """
+
 import os
 import tempfile
 import textwrap
@@ -148,7 +149,10 @@ class TestOracleRadiance:
     def test_auditer_fichiers_erreur(self):
         """Un fichier inexistant produit radiance=0 sans lever d'exception."""
         import tempfile
-        inexistant = os.path.join(tempfile.gettempdir(), "phi_oracle_n_existe_pas_test.py")
+
+        inexistant = os.path.join(
+            tempfile.gettempdir(), "phi_oracle_n_existe_pas_test.py"
+        )
         oracle = OracleRadiance()
         resultats = oracle.auditer_fichiers([inexistant])
         assert len(resultats) == 1

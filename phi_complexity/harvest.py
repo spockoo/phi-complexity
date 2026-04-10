@@ -8,6 +8,7 @@ le code source ni les noms de fichiers.
 
 Format de sortie : JSONL (une ligne JSON par vecteur).
 """
+
 from __future__ import annotations
 
 import json
@@ -139,7 +140,8 @@ class HarvestEngine:
         try:
             with open(self.sortie, "r", encoding="utf-8") as f:
                 lignes = [line.strip() for line in f if line.strip()]
-            return [json.loads(l) for l in lignes][-limite:] if lignes else []
+            # Utilisation de 'ligne' pour éviter toute ambiguïté (Ruff E741)
+            return [json.loads(ligne) for ligne in lignes][-limite:] if lignes else []
         except (OSError, json.JSONDecodeError):
             return []
 
