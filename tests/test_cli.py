@@ -5,10 +5,25 @@ tests/test_cli.py — Tests de la CLI via subprocess et fonctions internes.
 import os
 import sys
 import json
+import shutil
 import tempfile
 import textwrap
 import subprocess
-from phi_complexity.cli import _collecter_fichiers, _nom_rapport
+from phi_complexity.cli import (
+    _collecter_fichiers,
+    _nom_rapport,
+    _executer_check_json,
+    _executer_check,
+    _executer_report,
+    _executer_oracle,
+    _executer_harvest,
+    _executer_spiral,
+    _executer_memory,
+    _executer_fund,
+    _afficher_bmad,
+    _auditer_un_fichier,
+    _construire_parseur,
+)
 
 CODE_TEST = """
 def ajouter(a: float, b: float) -> float:
@@ -75,6 +90,240 @@ class TestCollecterFichiers:
             import shutil
 
             shutil.rmtree(dossier)
+
+
+class TestFonctionsInternesCLI:
+    """Tests des fonctions CLI internes (sans subprocess) pour maximiser la couverture."""
+
+    def _args_check(self, fichier: str = "/dummy.py", fmt: str = "console",
+                    min_rad: float = 0.0, bmad: bool = False):
+        parser = _construire_parseur()
+        a = parser.parse_args(["check", fichier, "--format", fmt,
+                                "--min-radiance", str(min_rad)])
+        a.bmad = bmad
+        return a
+
+    def _args_report(self, fichier: str = "/dummy.py", output=None):
+        parser = _construire_parseur()
+        args = parser.parse_args(["report", fichier])
+        args.output = output
+        return args
+
+    def _args_oracle(self, fichier: str = "/dummy.py", min_rad: float = 70.0, nb_tests: int = 0):
+        parser = _construire_parseur()
+        return parser.parse_args(["oracle", fichier, "--min-radiance", str(min_rad),
+                                   "--nb-tests", str(nb_tests)])
+
+    def _args_harvest(self, fichier: str = "/dummy.py", output: str = "/tmp/test.jsonl"):
+        parser = _construire_parseur()
+        return parser.parse_args(["harvest", fichier, "--output", output])
+
+    # ──────────────── _auditer_un_fichier() ────────────────
+
+    def test_auditer_un_fichier_console(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args_check(fichier)
+            code = _auditer_un_fichier(fichier, args)
+            out = capsys.readouterr().out
+            assert "RADIANCE" in out
+            assert code == 0
+        finally:
+            os.unlink(fichier)
+
+    def test_auditer_un_fichier_min_radiance_echec(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args_check(fichier, min_rad=101.0)
+            code = _auditer_un_fichier(fichier, args)
+            assert code == 1
+        finally:
+            os.unlink(fichier)
+
+    def test_auditer_un_fichier_inexistant(self, capsys):
+        args = self._args_check("/inexistant/file.py")
+        code = _auditer_un_fichier("/inexistant/file.py", args)
+        out = capsys.readouterr().out
+        assert code == 1
+        assert "Erreur" in out
+
+    def test_auditer_un_fichier_bmad(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args_check(fichier, bmad=True)
+            code = _auditer_un_fichier(fichier, args)
+            out = capsys.readouterr().out
+            assert code == 0
+            assert "BMAD" in out or "RADIANCE" in out
+        finally:
+            os.unlink(fichier)
+
+    # ──────────────── _executer_check() ────────────────
+
+    def test_executer_check_console(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args_check(fichier)
+            code = _executer_check(args, [fichier])
+            assert code == 0
+        finally:
+            os.unlink(fichier)
+
+    def test_executer_check_json_route(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args_check(fichier, fmt="json")
+            code = _executer_check(args, [fichier])
+            out = capsys.readouterr().out
+            assert code == 0
+            assert "radiance" in json.loads(out)
+        finally:
+            os.unlink(fichier)
+
+    # ──────────────── _afficher_bmad() ────────────────
+
+    def test_afficher_bmad(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            _afficher_bmad(fichier)
+            out = capsys.readouterr().out
+            assert "BMAD" in out or "RÉSISTANCE" in out or "SUPRACONDUCTIVITÉ" in out
+        finally:
+            os.unlink(fichier)
+
+    # ──────────────── _executer_report() ────────────────
+
+    def test_executer_report(self, capsys, tmp_path):
+        fichier = creer_fichier(CODE_TEST)
+        sortie = str(tmp_path / "rapport.md")
+        try:
+            args = self._args_report(fichier, output=sortie)
+            code = _executer_report(args, [fichier])
+            assert code == 0
+            assert os.path.exists(sortie)
+        finally:
+            os.unlink(fichier)
+
+    def test_executer_report_erreur(self, capsys):
+        args = self._args_report("/inexistant.py", output="/tmp/r.md")
+        code = _executer_report(args, ["/inexistant.py"])
+        assert code == 1
+
+    # ──────────────── _executer_oracle() ────────────────
+
+    def test_executer_oracle(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args_oracle(fichier, min_rad=0.0, nb_tests=10)
+            code = _executer_oracle(args, [fichier])
+            out = capsys.readouterr().out
+            assert "ORACLE" in out or "RADIANCE" in out
+        finally:
+            os.unlink(fichier)
+
+    # ──────────────── _executer_harvest() ────────────────
+
+    def test_executer_harvest(self, capsys, tmp_path):
+        fichier = creer_fichier(CODE_TEST)
+        sortie = str(tmp_path / "harvest.jsonl")
+        try:
+            args = self._args_harvest(fichier, output=sortie)
+            code = _executer_harvest(args, [fichier])
+            assert code == 0
+        finally:
+            os.unlink(fichier)
+
+    def test_executer_harvest_fichier_invalide(self, capsys, tmp_path):
+        sortie = str(tmp_path / "harvest.jsonl")
+        args = self._args_harvest("/inexistant.py", output=sortie)
+        code = _executer_harvest(args, ["/inexistant.py"])
+        assert code == 1
+
+    # ──────────────── _executer_spiral() ────────────────
+
+    def test_executer_spiral(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            code = _executer_spiral([fichier])
+            out = capsys.readouterr().out
+            assert code == 0
+            assert "SPIRALE" in out or "radiance" in out.lower()
+        finally:
+            os.unlink(fichier)
+
+    def test_executer_spiral_fichier_invalide(self, capsys):
+        code = _executer_spiral(["/inexistant.py"])
+        assert code == 1
+
+    # ──────────────── _executer_memory() ────────────────
+
+    def test_executer_memory(self, capsys):
+        code = _executer_memory()
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "AKASHIQUE" in out or "Akasha" in out
+
+    # ──────────────── _executer_fund() ────────────────
+
+    def test_executer_fund(self, capsys):
+        _executer_fund()
+        out = capsys.readouterr().out
+        assert "SOUVERAINE" in out or "SOUTENIR" in out
+
+
+class TestExecuterCheckJson:
+    """Tests unitaires de _executer_check_json (sans subprocess)."""
+
+    def _args(self, min_radiance: float = 0.0):
+        parser = _construire_parseur()
+        return parser.parse_args(["check", __file__, "--format", "json",
+                                   "--min-radiance", str(min_radiance)])
+
+    def test_un_fichier_retourne_objet(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args()
+            code = _executer_check_json(args, [fichier])
+            out = capsys.readouterr().out
+            data = json.loads(out)
+            assert isinstance(data, dict)
+            assert "radiance" in data
+            assert code == 0
+        finally:
+            os.unlink(fichier)
+
+    def test_plusieurs_fichiers_retourne_liste(self, capsys):
+        f1 = creer_fichier(CODE_TEST)
+        f2 = creer_fichier(CODE_TEST)
+        try:
+            args = self._args()
+            code = _executer_check_json(args, [f1, f2])
+            out = capsys.readouterr().out
+            data = json.loads(out)
+            assert isinstance(data, list)
+            assert len(data) == 2
+            assert code == 0
+        finally:
+            os.unlink(f1)
+            os.unlink(f2)
+
+    def test_min_radiance_trop_haute_exit1(self, capsys):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = self._args(min_radiance=101.0)
+            code = _executer_check_json(args, [fichier])
+            assert code == 1
+        finally:
+            os.unlink(fichier)
+
+    def test_fichier_invalide_json_contient_erreur(self, capsys):
+        """Un fichier non-Python renvoie un objet avec 'erreur' dans le JSON."""
+        args = self._args()
+        code = _executer_check_json(args, ["/fichier/inexistant.py"])
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert "erreur" in data or (isinstance(data, dict) and data.get("erreur"))
+        assert code == 1
 
 
 class TestNomRapport:
@@ -165,3 +414,110 @@ class TestCLISubprocess:
             os.unlink(fichier)
             if os.path.exists(sortie):
                 os.unlink(sortie)
+
+    def test_check_format_json_multifichiers(self):
+        """phi check --format json sur plusieurs fichiers → tableau JSON."""
+        f1 = creer_fichier(CODE_TEST)
+        f2 = creer_fichier(CODE_TEST)
+        dossier = tempfile.mkdtemp()
+        try:
+            import shutil
+            shutil.copy(f1, os.path.join(dossier, "a.py"))
+            shutil.copy(f2, os.path.join(dossier, "b.py"))
+            res = self._phi("check", dossier, "--format", "json")
+            assert res.returncode == 0
+            data = json.loads(res.stdout)
+            assert isinstance(data, list)
+            assert len(data) == 2
+            assert all("radiance" in item for item in data)
+        finally:
+            os.unlink(f1)
+            os.unlink(f2)
+            shutil.rmtree(dossier)
+
+    def test_check_aucun_fichier_supporte(self):
+        """phi check sur un dossier vide → exit 1."""
+        dossier = tempfile.mkdtemp()
+        try:
+            # Dossier sans fichiers .py
+            res = self._phi("check", dossier)
+            assert res.returncode == 1
+        finally:
+            import shutil
+            shutil.rmtree(dossier)
+
+    def test_fund_commande(self):
+        """phi fund affiche le message de soutien."""
+        res = self._phi("fund")
+        assert res.returncode == 0
+        assert "SOUVERAINE" in res.stdout or "SOUTENIR" in res.stdout
+
+    def test_spiral_commande(self):
+        """phi spiral <fichier> affiche la spirale dorée."""
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            res = self._phi("spiral", fichier)
+            assert res.returncode == 0
+            assert "SPIRALE" in res.stdout or "radiance" in res.stdout.lower()
+        finally:
+            os.unlink(fichier)
+
+    def test_spiral_aucun_fichier(self):
+        """phi spiral sur un chemin inexistant → exit 1."""
+        res = self._phi("spiral", "/chemin/inexistant.py")
+        assert res.returncode == 1
+
+    def test_oracle_commande(self):
+        """phi oracle <fichier> retourne un rapport d'oracle."""
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            res = self._phi("oracle", fichier)
+            assert "ORACLE" in res.stdout or "RADIANCE" in res.stdout
+        finally:
+            os.unlink(fichier)
+
+    def test_harvest_commande(self):
+        """phi harvest <fichier> collecte les vecteurs AST."""
+        fichier = creer_fichier(CODE_TEST)
+        sortie = tempfile.mktemp(suffix=".jsonl")
+        try:
+            res = self._phi("harvest", fichier, "--output", sortie)
+            assert res.returncode == 0
+            assert "vecteur" in res.stdout.lower() or "collecté" in res.stdout
+        finally:
+            os.unlink(fichier)
+            if os.path.exists(sortie):
+                os.unlink(sortie)
+
+    def test_memory_commande(self):
+        """phi memory n'échoue pas (annales vides ou non)."""
+        res = self._phi("memory")
+        assert res.returncode == 0
+        assert "AKASHIQUE" in res.stdout or "Akasha" in res.stdout
+
+    def test_check_bmad(self):
+        """phi check --bmad affiche la résonance des agents."""
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            res = self._phi("check", fichier, "--bmad")
+            assert res.returncode == 0
+            assert "BMAD" in res.stdout or "RADIANCE" in res.stdout
+        finally:
+            os.unlink(fichier)
+
+    def test_sans_commande_affiche_aide(self):
+        """phi sans argument affiche l'aide et retourne exit 0."""
+        res = self._phi()
+        assert res.returncode == 0
+        assert "phi" in res.stdout.lower() or "phi" in res.stderr.lower()
+
+    def test_check_min_radiance_json(self):
+        """phi check --format json --min-radiance 101 → exit 1."""
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            res = self._phi("check", fichier, "--format", "json", "--min-radiance", "101")
+            assert res.returncode == 1
+            data = json.loads(res.stdout)
+            assert "radiance" in data
+        finally:
+            os.unlink(fichier)

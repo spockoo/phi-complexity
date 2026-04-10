@@ -153,54 +153,76 @@ def _collecter_fichiers(cible: str) -> List[str]:
 
 def _executer_check(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Exécute la sous-commande 'check'. Retourne le code de sortie."""
+    if args.format == "json":
+        return _executer_check_json(args, fichiers)
     exit_code = 0
     for fichier in fichiers:
         exit_code = max(exit_code, _auditer_un_fichier(fichier, args))
     return exit_code
 
 
+def _executer_check_json(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Exécute 'check --format json' : collecte tous les résultats et émet un tableau JSON unique."""
+    import json as _json
+
+    resultats = []
+    exit_code = 0
+    for fichier in fichiers:
+        try:
+            data = _json.loads(rapport_json(fichier))
+            resultats.append(data)
+            if args.min_radiance > 0 and data.get("radiance", 0) < args.min_radiance:
+                exit_code = 1
+        except SyntaxError as e:
+            resultats.append({"fichier": fichier, "erreur": str(e)})
+            exit_code = 1
+        except Exception as e:
+            resultats.append({"fichier": fichier, "erreur": str(e)})
+            exit_code = 1
+    sortie = resultats[0] if len(resultats) == 1 else resultats
+    print(_json.dumps(sortie, ensure_ascii=False))
+    return exit_code
+
+
 def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
-    """Audite un seul fichier et affiche le résultat. Retourne 0 ou 1."""
+    """Audite un seul fichier et affiche le résultat (format console). Retourne 0 ou 1."""
     try:
-        if args.format == "json":
-            print(rapport_json(fichier))
-        else:
-            print(rapport_console(fichier))
-            if getattr(args, "bmad", False):
-                _afficher_bmad(fichier)
+        print(rapport_console(fichier))
+        if getattr(args, "bmad", False):
+            _afficher_bmad(fichier)
 
-            # Phase 12 : Vérification du Sceau Gnostique
-            try:
-                from .gnose import MoteurGnostique
-                from .analyseur import AnalyseurPhi
+        # Phase 12 : Vérification du Sceau Gnostique
+        try:
+            from .gnose import MoteurGnostique
+            from .analyseur import AnalyseurPhi
 
-                gnose = MoteurGnostique()
-                analyseur = AnalyseurPhi(fichier)
-                resultat = analyseur.analyser()
-                if gnose.verifier(resultat):
-                    print("  🛡  SCEAU GNOSTIQUE : Vérifié (Résonance Intacte) ✦")
-                else:
-                    # On vérifie si un sceau existe pour ce fichier
-                    import json
+            gnose = MoteurGnostique()
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            if gnose.verifier(resultat):
+                print("  🛡  SCEAU GNOSTIQUE : Vérifié (Résonance Intacte) ✦")
+            else:
+                # On vérifie si un sceau existe pour ce fichier
+                import json
 
-                    if os.path.exists(gnose.gnose_path):
-                        with open(gnose.gnose_path, "r") as f:
-                            if resultat.fichier in json.load(f):
-                                print(
-                                    "  ⚠  SCEAU BRISÉ : Divergence spectrale détectée ! ░"
-                                )
-            except Exception:
-                pass
+                if os.path.exists(gnose.gnose_path):
+                    with open(gnose.gnose_path, "r") as f:
+                        if resultat.fichier in json.load(f):
+                            print(
+                                "  ⚠  SCEAU BRISÉ : Divergence spectrale détectée ! ░"
+                            )
+        except Exception:
+            pass
 
-            # Phase 11 : Enregistrement Akashique automatique
-            try:
-                from .akasha import RegistreAkashique
+        # Phase 11 : Enregistrement Akashique automatique
+        try:
+            from .akasha import RegistreAkashique
 
-                akasha = RegistreAkashique()
-                akasha.enregistrer(auditer(fichier))
-            except Exception:
-                pass
-            print()
+            akasha = RegistreAkashique()
+            akasha.enregistrer(auditer(fichier))
+        except Exception:
+            pass
+        print()
 
         if args.min_radiance > 0:
             metriques = auditer(fichier)
