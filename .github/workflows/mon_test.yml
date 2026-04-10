@@ -83,9 +83,15 @@ jobs:
           # Extrait la version du fichier pyproject.toml
           VERSION=$(grep -m 1 "version =" pyproject.toml | cut -d '"' -f 2)
           echo "VERSION=v$VERSION" >> $GITHUB_ENV
+          # Vérifie si le tag existe déjà sur le remote pour éviter une release dupliquée
+          if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "v$VERSION"; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: 8. Publication de la Release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.get_version.outputs.tag_exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           # On utilise une syntaxe de secours pour calmer l'éditeur GitHub
@@ -98,7 +104,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 9. Purge des branches éphémères
-        if: always()
+        if: github.ref == 'refs/heads/main'
         run: |
           # Supprime les branches de mutation déjà fusionnées pour garder l'organisme propre
           git fetch --prune
