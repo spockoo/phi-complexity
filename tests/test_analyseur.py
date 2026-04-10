@@ -455,8 +455,10 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+                (n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)),
+                None,
             )
+            assert fn is not None
             assert a._compter_cyclomatique(fn) == 1
         finally:
             os.unlink(fichier)
@@ -473,8 +475,10 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+                (n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)),
+                None,
             )
+            assert fn is not None
             assert a._compter_cyclomatique(fn) == 2
         finally:
             os.unlink(fichier)
@@ -500,10 +504,14 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n
-                for n in ast_mod.walk(a.tree)
-                if isinstance(n, ast_mod.FunctionDef) and n.name == "outer"
+                (
+                    n
+                    for n in ast_mod.walk(a.tree)
+                    if isinstance(n, ast_mod.FunctionDef) and n.name == "outer"
+                ),
+                None,
             )
+            assert fn is not None
             # outer a un seul chemin de base, sans décision propre → CC = 1
             assert a._compter_cyclomatique(fn) == 1
         finally:
@@ -522,8 +530,10 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+                (n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)),
+                None,
             )
+            assert fn is not None
             assert a._compter_cyclomatique(fn) == 2
         finally:
             os.unlink(fichier)
@@ -543,8 +553,10 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+                (n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)),
+                None,
             )
+            assert fn is not None
             assert a._compter_cyclomatique(fn) == 4
         finally:
             os.unlink(fichier)
@@ -561,8 +573,10 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+                (n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)),
+                None,
             )
+            assert fn is not None
             assert a._compter_cyclomatique(fn) == 1
         finally:
             os.unlink(fichier)
@@ -580,8 +594,10 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
             a.charger()
             assert a.tree is not None
             fn = next(
-                n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)
+                (n for n in ast_mod.walk(a.tree) if isinstance(n, ast_mod.FunctionDef)),
+                None,
             )
+            assert fn is not None
             assert a._compter_cyclomatique(fn) == 3
         finally:
             os.unlink(fichier)
