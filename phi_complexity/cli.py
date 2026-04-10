@@ -293,15 +293,17 @@ def _executer_harvest(args: argparse.Namespace, fichiers: List[str]) -> int:
 
     engine = HarvestEngine(sortie=args.output)
     nb_collectes = 0
+    nb_erreurs = 0
     for fichier in fichiers:
         try:
             engine.collecter_et_exporter(fichier)
             nb_collectes += 1
         except Exception as e:
             print(f"  ⚠  {fichier} : {e}")
+            nb_erreurs += 1
     print(f"\n  ✦  {nb_collectes} vecteur(s) collecté(s) → {args.output}")
     print(engine.rapport_harvest())
-    return 0
+    return 1 if nb_erreurs > 0 else 0
 
 
 def _executer_spiral(fichiers: List[str]) -> int:
@@ -422,7 +424,7 @@ def main() -> None:
 
     fichiers = _collecter_fichiers(args.cible)
     if not fichiers:
-        print(f"❌ Aucun fichier Python trouvé dans : {args.cible}")
+        print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
         sys.exit(1)
 
     if args.commande == "check":

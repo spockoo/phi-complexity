@@ -110,8 +110,11 @@ class HarvestEngine:
 
     def exporter(self, vecteur: Dict[str, Any]) -> None:
         """Ajoute le vecteur au fichier JSONL de harvest (append)."""
-        with open(self.sortie, "a", encoding="utf-8") as f:
-            f.write(json.dumps(vecteur, ensure_ascii=False) + "\n")
+        try:
+            with open(self.sortie, "a", encoding="utf-8") as f:
+                f.write(json.dumps(vecteur, ensure_ascii=False) + "\n")
+        except OSError as e:
+            raise OSError(f"Impossible d'écrire dans {self.sortie}") from e
 
     def collecter_et_exporter(self, fichier: str) -> Dict[str, Any]:
         """Collecte et exporte en une seule opération atomique."""
@@ -123,16 +126,22 @@ class HarvestEngine:
         """Retourne le nombre de vecteurs actuellement collectés."""
         if not os.path.exists(self.sortie):
             return 0
-        with open(self.sortie, "r", encoding="utf-8") as f:
-            return sum(1 for ligne in f if ligne.strip())
+        try:
+            with open(self.sortie, "r", encoding="utf-8") as f:
+                return sum(1 for ligne in f if ligne.strip())
+        except OSError:
+            return 0
 
     def charger_vecteurs(self, limite: int = 100) -> List[Dict[str, Any]]:
         """Charge les derniers vecteurs depuis le fichier JSONL."""
         if not os.path.exists(self.sortie):
             return []
-        with open(self.sortie, "r", encoding="utf-8") as f:
-            lignes = [ligne.strip() for ligne in f if ligne.strip()]
-        return [json.loads(ligne) for ligne in lignes[-limite:]]
+        try:
+            with open(self.sortie, "r", encoding="utf-8") as f:
+                lignes = [line.strip() for line in f if line.strip()]
+            return [json.loads(l) for l in lignes][-limite:] if lignes else []
+        except (OSError, json.JSONDecodeError):
+            return []
 
     def rapport_harvest(self) -> str:
         """Génère un résumé du corpus de harvest collecté."""

@@ -9,6 +9,14 @@ import textwrap
 from phi_complexity.harvest import HarvestEngine
 
 
+def _safe_unlink(path: str) -> None:
+    """Supprime un fichier sans lever d'exception s'il n'existe pas."""
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+
 CODE_HARMONIEUX = """
 def ratio(a: float, b: float) -> float:
     if b == 0:
@@ -69,9 +77,9 @@ class TestHarvestEngine:
                 assert "vecteur_phi" in vecteur
                 assert len(vecteur["vecteur_phi"]) == 5
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
 
     def test_anonymisation_sans_identifiant(self):
         """Le vecteur ne contient pas le nom du fichier source."""
@@ -84,9 +92,9 @@ class TestHarvestEngine:
                 assert "fichier" not in vecteur
                 assert code_file not in json.dumps(vecteur)
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
 
     def test_labels_chaotique_detecte_violations(self):
         """Le code chaotique génère des labels de violation non nuls."""
@@ -100,9 +108,9 @@ class TestHarvestEngine:
                 total = sum(labels.values())
                 assert total > 0
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
 
     def test_exporter_et_compter(self):
         """L'export JSONL incrémente correctement le compteur."""
@@ -116,9 +124,9 @@ class TestHarvestEngine:
                 engine.collecter_et_exporter(code_file)
                 assert engine.compter_vecteurs() == 2
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
 
     def test_charger_vecteurs(self):
         """Les vecteurs exportés sont rechargés correctement."""
@@ -132,13 +140,14 @@ class TestHarvestEngine:
                 assert "radiance" in vecteurs[0]
                 assert vecteurs[0]["schema"] == "1.0"
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
 
     def test_charger_vecteurs_vide(self):
         """Le chargement d'un fichier inexistant retourne une liste vide."""
-        engine = HarvestEngine(sortie="/tmp/n_existe_pas_harvest.jsonl")
+        chemin = os.path.join(tempfile.gettempdir(), "phi_n_existe_pas_harvest.jsonl")
+        engine = HarvestEngine(sortie=chemin)
         assert engine.charger_vecteurs() == []
         assert engine.compter_vecteurs() == 0
 
@@ -152,13 +161,14 @@ class TestHarvestEngine:
                 for val in vecteur["vecteur_phi"]:
                     assert 0.0 <= val <= 1.0
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
 
     def test_rapport_harvest_vide(self):
         """Le rapport sur un corpus vide est un message informatif."""
-        engine = HarvestEngine(sortie="/tmp/n_existe_pas_harvest2.jsonl")
+        chemin = os.path.join(tempfile.gettempdir(), "phi_n_existe_pas_harvest2.jsonl")
+        engine = HarvestEngine(sortie=chemin)
         rapport = engine.rapport_harvest()
         assert "vide" in rapport.lower() or "harvest" in rapport.lower()
 
@@ -173,6 +183,6 @@ class TestHarvestEngine:
                 assert "1" in rapport  # 1 vecteur collecté
                 assert "HARVEST" in rapport
             finally:
-                os.unlink(jsonl)
+                _safe_unlink(jsonl)
         finally:
-            os.unlink(code_file)
+            _safe_unlink(code_file)
