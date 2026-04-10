@@ -75,3 +75,24 @@ jobs:
             auto-evolution
             automated-pr
             phi-optimized
+
+      - name: 7. Extraction de la Version Souveraine
+        if: github.ref == 'refs/heads/main'
+        id: get_version
+        run: |
+          # Extrait la version du fichier pyproject.toml
+          VERSION=$(grep -m 1 "version =" pyproject.toml | cut -d '"' -f 2)
+          echo "VERSION=v$VERSION" >> $GITHUB_ENV
+          echo "V_NUMBER=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: 8. Publication de la Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: "🧬 Cycle d'Évolution ${{ env.VERSION }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
