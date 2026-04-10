@@ -57,3 +57,6 @@ no_implicit_reexport = true
 [[tool.mypy.overrides]]
 module = "tests"
 ignore_errors = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=phi_complexity --cov-fail-under=89"

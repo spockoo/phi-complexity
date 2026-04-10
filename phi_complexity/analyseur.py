@@ -221,7 +221,7 @@ class AnalyseurPythonInternal:
     # ────────────────────────────────────────────────────────
 
     def _appliquer_regles_souveraines(self) -> None:
-        """Applique les 4 règles souveraines à chaque nœud de l'AST."""
+        """Applique les 5 règles souveraines à chaque nœud de l'AST."""
         if self.tree is None:
             return
         for node in ast.walk(self.tree):
@@ -229,6 +229,7 @@ class AnalyseurPythonInternal:
             self._regle_raii(node)
             self._regle_fibonacci(node)
             self._regle_hermeticite(node)
+            self._regle_cyclomatique(node)
 
     def _regle_lilith(self, node: ast.AST) -> None:
         """Règle I — Nœuds d'Entropie : détecte les boucles trop imbriquées."""
@@ -293,6 +294,36 @@ class AnalyseurPythonInternal:
                 "SOUVERAINETE",
             )
 
+    def _regle_cyclomatique(self, node: ast.AST) -> None:
+        """
+        Règle V — Complexité Cyclomatique : les fonctions restent sous le seuil Fibonacci.
+
+        La complexité cyclomatique (McCabe) compte les chemins d'exécution indépendants.
+        Seuils ancrés dans la suite de Fibonacci :
+          CC ≤ 8   → HARMONIEUX (en-deçà du 6e terme Fibonacci)
+          9 ≤ CC ≤ 13 → WARNING (zone d'entropie croissante)
+          CC > 13  → CRITICAL  (au-delà du 7e terme, fragmentation certaine)
+        """
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return
+        cc = self._compter_cyclomatique(node)
+        if cc > 13:
+            self._annoter(
+                node.lineno,
+                f"CYCLOMATIQUE : '{node.name}' atteint CC={cc} (seuil critique > 13). "
+                "La fonction fracture la cohérence — décomposez-la en sous-fonctions.",
+                "CRITICAL",
+                "CYCLOMATIQUE",
+            )
+        elif cc > 8:
+            self._annoter(
+                node.lineno,
+                f"CYCLOMATIQUE : '{node.name}' atteint CC={cc} (seuil d'alerte > 8). "
+                "L'entropie cyclomatique monte — simplifiez les chemins de décision.",
+                "WARNING",
+                "CYCLOMATIQUE",
+            )
+
     # ────────────────────────────────────────────────────────
     # UTILITAIRES (fonctions pures, sans effets de bord)
     # ────────────────────────────────────────────────────────
@@ -306,8 +337,41 @@ class AnalyseurPythonInternal:
             return func.attr == "open"
         return False
 
+    def _est_ignore(self, ligne: int, categorie: str) -> bool:
+        """
+        Retourne True si la ligne source porte une directive `# phi: ignore`.
+
+        Syntaxe acceptée :
+          - `# phi: ignore`           → supprime toutes les annotations de la ligne
+          - `# phi: ignore[LILITH]`   → supprime uniquement la catégorie LILITH
+          - `# phi: ignore[CYCLOMATIQUE,SUTURE]` → catégories multiples
+
+        La directive est insensible à la casse et tolère les espaces.
+        """
+        if ligne < 1 or ligne > len(self.lignes):
+            return False
+        source = self.lignes[ligne - 1]
+        import re
+
+        match = re.search(r"#\s*phi\s*:\s*ignore(?:\[([^\]]*)\])?", source, re.IGNORECASE)
+        if match is None:
+            return False
+        categories_str = match.group(1)
+        if categories_str is None:
+            # Ignore global — supprime tout
+            return True
+        categories_listees = [c.strip().upper() for c in categories_str.split(",")]
+        return categorie.upper() in categories_listees
+
     def _annoter(self, ligne: int, msg: str, niveau: str, categorie: str) -> None:
-        """Enregistre une annotation chirurgicale sur une ligne de code."""
+        """Enregistre une annotation chirurgicale sur une ligne de code.
+
+        Respecte les directives `# phi: ignore` inline : si la ligne source
+        porte cette directive (globale ou ciblée), l'annotation est silencieusement
+        supprimée sans affecter les métriques de radiance.
+        """
+        if self._est_ignore(ligne, categorie):
+            return
         extrait: str = (
             self.lignes[ligne - 1].strip() if ligne <= len(self.lignes) else ""
         )
@@ -320,6 +384,39 @@ class AnalyseurPythonInternal:
                 categorie=categorie,
             )
         )
+
+    def _compter_cyclomatique(self, fn_node: ast.AST) -> int:
+        """
+        Mesure la complexité cyclomatique de McCabe d'une fonction.
+
+        CC = 1 + nombre de points de décision.
+        Points de décision comptés :
+          If, For, While, ExceptHandler, With, Assert,
+          ListComp / SetComp / DictComp / GeneratorExp (chaque 'if' interne),
+          BoolOp (and / or introduit un chemin supplémentaire).
+        """
+        _NOEUDS_DECISION = (
+            ast.If,
+            ast.For,
+            ast.While,
+            ast.ExceptHandler,
+            ast.With,
+            ast.Assert,
+            ast.ListComp,
+            ast.SetComp,
+            ast.DictComp,
+            ast.GeneratorExp,
+        )
+        cc = 1  # Chemin de base
+        for node in ast.walk(fn_node):
+            if node is fn_node:
+                continue
+            if isinstance(node, _NOEUDS_DECISION):
+                cc += 1
+            elif isinstance(node, ast.BoolOp):
+                # Chaque opérande supplémentaire ajoute un chemin
+                cc += len(node.values) - 1
+        return cc
 
     def _profondeur_imbrication(self, fn_node: ast.AST) -> int:
         """

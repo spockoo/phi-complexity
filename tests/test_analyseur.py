@@ -201,3 +201,278 @@ class TestCalculateurRadiance:
             assert 0 <= metriques["zeta_score"] <= 1.0
         finally:
             os.unlink(fichier)
+
+
+class TestPhiIgnore:
+    """Tests pour la directive inline `# phi: ignore`."""
+
+    def test_ignore_global_supprime_annotation_lilith(self):
+        """# phi: ignore sur la ligne de la boucle intérieure supprime l'annotation LILITH."""
+        code = """\
+def f():
+    for i in range(10):
+        for j in range(10):  # phi: ignore
+            pass
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "LILITH" not in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_ignore_global_supprime_annotation_suture(self):
+        """# phi: ignore sur un open() supprime l'annotation SUTURE."""
+        code = """\
+def lire():
+    f = open("x.txt")  # phi: ignore
+    return f.read()
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "SUTURE" not in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_ignore_cible_supprime_uniquement_categorie_ciblee(self):
+        """# phi: ignore[SUTURE] supprime SUTURE mais laisse LILITH."""
+        code = """\
+def f():
+    for i in range(10):
+        for j in range(10):
+            pass
+    fic = open("out.txt", "w")  # phi: ignore[SUTURE]
+    fic.write("x")
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "SUTURE" not in categories
+            assert "LILITH" in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_ignore_multiple_categories(self):
+        """# phi: ignore[LILITH,SUTURE] supprime les deux catégories."""
+        code = """\
+def f():
+    for i in range(10):
+        for j in range(10):  # phi: ignore[LILITH,SUTURE]
+            pass
+    fic = open("out.txt")  # phi: ignore[LILITH,SUTURE]
+    fic.write("x")
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "LILITH" not in categories
+            assert "SUTURE" not in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_ignore_insensible_casse(self):
+        """La directive est insensible à la casse."""
+        code = """\
+def f():
+    for i in range(10):
+        for j in range(10):  # PHI: IGNORE
+            pass
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "LILITH" not in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_sans_ignore_annote_normalement(self):
+        """Sans directive, les annotations apparaissent normalement."""
+        code = """\
+def f():
+    for i in range(10):
+        for j in range(10):
+            pass
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "LILITH" in categories
+        finally:
+            os.unlink(fichier)
+
+
+class TestRegleV_Cyclomatique:
+    """Tests pour la Règle V — Complexité Cyclomatique."""
+
+    def test_complexite_harmonieuse_pas_d_annotation(self):
+        """Une fonction simple (CC ≤ 8) ne génère pas d'annotation CYCLOMATIQUE."""
+        code = """\
+def f(x):
+    if x > 0:
+        return x
+    return -x
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "CYCLOMATIQUE" not in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_complexite_elevee_genere_warning(self):
+        """Une fonction avec CC entre 9 et 13 génère un WARNING CYCLOMATIQUE."""
+        # Génère CC > 8 avec des if/elif/for
+        code = """\
+def traiter(a, b, c, d, e):
+    if a > 0:
+        pass
+    if b > 0:
+        pass
+    if c > 0:
+        pass
+    if d > 0:
+        pass
+    if e > 0:
+        pass
+    for i in range(a):
+        pass
+    for j in range(b):
+        pass
+    for k in range(c):
+        pass
+    return a + b
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            annotations_cc = [a for a in resultat.annotations if a.categorie == "CYCLOMATIQUE"]
+            assert len(annotations_cc) > 0
+        finally:
+            os.unlink(fichier)
+
+    def test_complexite_critique_genere_critical(self):
+        """Une fonction avec CC > 13 génère une annotation CRITICAL."""
+        code = """\
+def monstre(a, b, c, d, e):
+    if a > 0:
+        pass
+    elif a < 0:
+        pass
+    if b > 0:
+        pass
+    elif b < 0:
+        pass
+    if c > 0:
+        pass
+    elif c < 0:
+        pass
+    if d > 0:
+        pass
+    elif d < 0:
+        pass
+    if e > 0:
+        pass
+    elif e < 0:
+        pass
+    for i in range(a):
+        pass
+    for j in range(b):
+        pass
+    for k in range(c):
+        pass
+    return a
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            annotations_cc = [a for a in resultat.annotations if a.categorie == "CYCLOMATIQUE"]
+            niveaux = [a.niveau for a in annotations_cc]
+            assert "CRITICAL" in niveaux
+        finally:
+            os.unlink(fichier)
+
+    def test_ignore_cyclomatique_supprime_annotation(self):
+        """# phi: ignore[CYCLOMATIQUE] supprime l'annotation Règle V."""
+        code = """\
+def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
+    if a > 0:
+        pass
+    if b > 0:
+        pass
+    if c > 0:
+        pass
+    if d > 0:
+        pass
+    if e > 0:
+        pass
+    for i in range(a):
+        pass
+    for j in range(b):
+        pass
+    for k in range(c):
+        pass
+    return a + b
+"""
+        fichier = creer_fichier_temp(code)
+        try:
+            analyseur = AnalyseurPhi(fichier)
+            resultat = analyseur.analyser()
+            categories = [a.categorie for a in resultat.annotations]
+            assert "CYCLOMATIQUE" not in categories
+        finally:
+            os.unlink(fichier)
+
+    def test_compter_cyclomatique_base(self):
+        """_compter_cyclomatique retourne au moins 1 (chemin de base)."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        code = "def f(): return 1\n"
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n for n in ast_mod.walk(a.tree)
+                if isinstance(n, ast_mod.FunctionDef)
+            )
+            assert a._compter_cyclomatique(fn) == 1
+        finally:
+            os.unlink(fichier)
+
+    def test_compter_cyclomatique_with_if(self):
+        """CC d'une fonction avec un if = 2."""
+        import ast as ast_mod
+        from phi_complexity.analyseur import AnalyseurPythonInternal
+
+        code = "def f(x):\n    if x:\n        return 1\n    return 0\n"
+        fichier = creer_fichier_temp(code)
+        try:
+            a = AnalyseurPythonInternal(fichier)
+            a.charger()
+            assert a.tree is not None
+            fn = next(
+                n for n in ast_mod.walk(a.tree)
+                if isinstance(n, ast_mod.FunctionDef)
+            )
+            assert a._compter_cyclomatique(fn) == 2
+        finally:
+            os.unlink(fichier)
