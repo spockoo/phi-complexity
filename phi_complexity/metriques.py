@@ -247,9 +247,15 @@ class CalculateurRadiance:
 
         Où :
           ΔC = sqrt(σ²_L / σ²_max)    — incertitude de complexité normalisée [0, 1]
-          ΔL = H_S / H_max            — incertitude de lisibilité normalisée [0, 1]
+          ΔL = H_F / H_max            — incertitude de lisibilité normalisée [0, 1]
+                                        H_F = entropie Fibonacci-pondérée (Phase 14)
+                                        H_max = log₂(φ⁴) ≈ 2.88 bits (référence naturelle)
           ħ_φ = 1/φ ≈ 0.618          — constante d'action réduite dorée
           plancher = ħ_φ / 2 ≈ 0.309 — minimum d'incertitude quantique
+
+        Note (Phase 14) : ΔL utilise désormais l'entropie Fibonacci-pondérée H_F
+        à la place de l'entropie de Shannon brute, pour ancrer la mesure d'incertitude
+        dans la grammaire naturelle du code (SEQUENCE_FIBONACCI).
 
         tension_quantique = (ΔC · ΔL) / plancher :
           < 1  → état super-cohérent (code élégamment focalisé)

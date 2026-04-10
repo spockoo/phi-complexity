@@ -196,9 +196,9 @@ class TestEntropieFibonacci:
         """)
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(code)
-            path = f.name
+        ) as temp_file:
+            temp_file.write(code)
+            path = temp_file.name
         try:
             analyseur = AnalyseurPhi(path)
             resultat = analyseur.analyser()
