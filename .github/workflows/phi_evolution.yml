@@ -24,7 +24,7 @@ jobs:
         id: evolve
         run: |
           # On lance le moteur et on capture si une modification a eu lieu
-          python phi_complexity/engine.py
+          python engine.py
           echo "changed=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Commit & Push Changes
