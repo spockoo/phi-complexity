@@ -228,3 +228,45 @@ class TestEntropieFibonacci:
         result = calc._entropie_fibonacci(valeurs)
         assert isinstance(result, float)
         assert result >= 0.0
+
+
+class TestFormulesBrutesEdgeCases:
+    """
+    Couverture des branches 'liste vide' dans les formules atomiques.
+    Ces branches ne sont jamais atteintes via calculer() (qui retourne
+    _resultat_vide() avant d'appeler les formules), donc on les appelle
+    directement pour garantir la couverture.
+    """
+
+    def _build_calculateur(self):
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="test.py")
+        return CalculateurRadiance(r)
+
+    def test_variance_liste_vide(self):
+        """_variance([]) retourne 0.0."""
+        calc = self._build_calculateur()
+        assert calc._variance([]) == 0.0
+
+    def test_entropie_shannon_liste_vide(self):
+        """_entropie_shannon([]) retourne 0.0."""
+        calc = self._build_calculateur()
+        assert calc._entropie_shannon([]) == 0.0
+
+    def test_entropie_shannon_somme_nulle(self):
+        """_entropie_shannon([0, 0]) retourne 0.0 (total == 0)."""
+        calc = self._build_calculateur()
+        assert calc._entropie_shannon([0, 0]) == 0.0
+
+    def test_zeta_score_liste_vide(self):
+        """_zeta_score([]) retourne 0.0."""
+        calc = self._build_calculateur()
+        assert calc._zeta_score([]) == 0.0
+
+    def test_serialiser_oudjat_none_quand_pas_de_oudjat(self):
+        """_serialiser_oudjat() retourne None si self.r.oudjat est None."""
+        calc = self._build_calculateur()
+        # Par défaut, ResultatAnalyse.oudjat est None
+        assert calc._serialiser_oudjat() is None
