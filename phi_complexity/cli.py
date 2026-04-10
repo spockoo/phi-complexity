@@ -12,7 +12,7 @@ from .core import VERSION
 # ────────────────────────────────────────────────────────
 
 
-def _construire_parseur() -> argparse.ArgumentParser:
+def _construire_parseur() -> argparse.ArgumentParser:  # phi: ignore[FIBONACCI]
     """Construit et retourne le parseur d'arguments. Aucun état global."""
     parser = argparse.ArgumentParser(
         prog="phi",
