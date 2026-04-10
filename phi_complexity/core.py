@@ -47,6 +47,12 @@ ALPHA_STRUCT: float = 1 / 137.035999
 SEUIL_GNOSE_MINIMAL: float = 0.98
 """Divergence spectrale maximale tolérée pour le sceau gnostique."""
 
+HBAR_PHI: float = PHI_INV
+"""Constante d'action réduite dorée ħ_φ = 1/φ ≈ 0.6180.
+Relation d'incertitude de Heisenberg-Phi (CM-HUP) :
+ΔC · ΔL ≥ ħ_φ / 2 ≈ 0.309.
+Traduit le compromis irréductible entre complexité et lisibilité d'un code."""
+
 
 def statut_gnostique(score: float) -> str:
     """Retourne le verdict gnostique basé sur le score de radiance."""

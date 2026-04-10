@@ -71,11 +71,38 @@ $$\zeta_{\text{score}} = \min\left(1, \left[\frac{1}{n} \sum_{i=1}^{n} \frac{1}{
 
 ---
 
-## 7. Références de la Bibliothèque Céleste
+## 7. Relation d'Incertitude de Heisenberg-Phi (CM-HUP)
+
+Analogiquement au principe d'incertitude de Heisenberg en physique quantique, cette relation formalise le compromis irréductible entre la **complexité structurelle** et la **lisibilité informationnelle** d'un code.
+
+$$\Delta C \cdot \Delta L \geq \frac{\hbar_\varphi}{2}$$
+
+Où :
+- $\Delta C = \sqrt{\sigma^2_L / \sigma^2_{max}}$ — incertitude de complexité normalisée $\in [0, 1]$
+- $\Delta L = H_S / H_{max}$ — incertitude de lisibilité normalisée $\in [0, 1]$
+- $\hbar_\varphi = 1/\varphi \approx 0.6180$ — constante d'action réduite dorée
+- $\text{plancher} = \hbar_\varphi / 2 \approx 0.309$ — minimum d'incertitude quantique
+
+### Tension Quantique
+
+$$\tau_Q = \frac{\Delta C \cdot \Delta L}{\hbar_\varphi / 2}$$
+
+| $\tau_Q$ | État | Interprétation |
+|---|---|---|
+| $< 1$ | Super-cohérent | Code élégamment focalisé (peu de fonctions, très lisibles) |
+| $\approx 1$ | Cohérent minimal | **Optimum golden** — état de moindre incertitude |
+| $> 1$ | Zone d'incertitude | Évolution naturelle — compromis classique en cours |
+
+Cette limite inférieure **valide physiquement** le plancher de radiance à 40 dans `_indice_radiance()` : un code ne peut pas simultanément avoir une variance nulle et une entropie nulle, sauf à être trivial (une seule fonction).
+
+---
+
+## 8. Références de la Bibliothèque Céleste
 
 | Source | Contribution |
 |---|---|
-| **Tomy Verreault**, 2026 | Framework $\varphi$-Meta, Équation BMAD |
+| **Tomy Verreault**, 2026 | Framework $\varphi$-Meta, Équation BMAD, CM-HUP |
+| **W. Heisenberg**, 1927 | Principe d'incertitude — $\Delta x \cdot \Delta p \geq \hbar/2$ |
 | **Y. Korchounov**, 1975 | Cybérnétique et Variance |
 | **C.E. Shannon**, 1948 | Théorie de l'Information |
 | **M. Banahan**, 1991 | Herméticité du code (The C Book) |

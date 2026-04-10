@@ -1,0 +1,149 @@
+"""
+tests/test_metriques.py — Tests unitaires de la Relation d'Incertitude de Heisenberg-Phi
+et des formules souveraines du CalculateurRadiance.
+"""
+
+import math
+import pytest
+
+from phi_complexity.core import PHI, HBAR_PHI, PHI_INV
+
+
+class TestConstanteHeisenbergPhi:
+    """Vérifie la constante ħ_φ définie dans core.py."""
+
+    def test_hbar_phi_egal_phi_inv(self):
+        """ħ_φ doit être exactement 1/φ."""
+        assert abs(HBAR_PHI - PHI_INV) < 1e-12
+
+    def test_hbar_phi_valeur_approx(self):
+        """ħ_φ ≈ 0.6180."""
+        assert abs(HBAR_PHI - 0.6180339887) < 1e-9
+
+    def test_plancher_heisenberg(self):
+        """plancher = ħ_φ / 2 ≈ 0.309."""
+        plancher = HBAR_PHI / 2
+        assert abs(plancher - 0.309016994) < 1e-9
+
+
+class TestHeisenbergPhi:
+    """Tests unitaires pour CalculateurRadiance._heisenberg_phi()."""
+
+    def _build_calculateur(self):
+        """Instancie un CalculateurRadiance avec un ResultatAnalyse minimal."""
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="test.py")
+        return CalculateurRadiance(r)
+
+    def test_zero_variance_zero_entropie(self):
+        """Quand variance et entropie sont nulles, le produit est 0 et tension = 0."""
+        calc = self._build_calculateur()
+        result = calc._heisenberg_phi(0.0, 0.0)
+        assert result["delta_complexite"] == 0.0
+        assert result["delta_lisibilite"] == 0.0
+        assert result["produit_incertitude"] == 0.0
+        assert result["tension_quantique"] == 0.0
+
+    def test_plancher_hbar_est_hbar_sur_2(self):
+        """Le plancher retourné doit être ħ_φ / 2."""
+        calc = self._build_calculateur()
+        result = calc._heisenberg_phi(0.0, 0.0)
+        assert abs(result["plancher_hbar"] - HBAR_PHI / 2) < 1e-12
+
+    def test_delta_complexite_normalise(self):
+        """ΔC = sqrt(variance / (φ² × 100)). Quand variance = φ²×100, ΔC = 1."""
+        calc = self._build_calculateur()
+        variance_max = PHI**2 * 100
+        result = calc._heisenberg_phi(variance_max, 0.0)
+        assert abs(result["delta_complexite"] - 1.0) < 1e-10
+
+    def test_delta_lisibilite_normalise(self):
+        """ΔL = H_S / log₂(φ⁴). Quand H_S = log₂(φ⁴), ΔL = 1."""
+        calc = self._build_calculateur()
+        h_max = math.log2(PHI**4)
+        result = calc._heisenberg_phi(0.0, h_max)
+        assert abs(result["delta_lisibilite"] - 1.0) < 1e-10
+
+    def test_produit_incertitude_couvre_plancher(self):
+        """Quand ΔC = ΔL = 1 (cas extrême), la tension doit être >> 1."""
+        calc = self._build_calculateur()
+        variance_max = PHI**2 * 100
+        h_max = math.log2(PHI**4)
+        result = calc._heisenberg_phi(variance_max, h_max)
+        assert result["tension_quantique"] > 1.0
+        # produit = 1.0 × 1.0 = 1.0 ; tension = 1.0 / (ħ_φ/2) ≈ 3.24
+        attendu = 1.0 / (HBAR_PHI / 2)
+        assert abs(result["tension_quantique"] - attendu) < 1e-9
+
+    def test_etat_coherent_minimal(self):
+        """Un produit exactement égal au plancher doit donner tension ≈ 1."""
+        calc = self._build_calculateur()
+        plancher = HBAR_PHI / 2
+        # On choisit ΔC = ΔL = sqrt(plancher)
+        sigma_max_sq = PHI**2 * 100
+        h_max = math.log2(PHI**4)
+        delta = math.sqrt(plancher)
+        variance = (delta**2) * sigma_max_sq
+        entropie = delta * h_max
+        result = calc._heisenberg_phi(variance, entropie)
+        assert abs(result["tension_quantique"] - 1.0) < 1e-9
+
+    def test_tension_super_coherent(self):
+        """Un code très simple (faible variance, faible entropie) a tension < 1."""
+        calc = self._build_calculateur()
+        # Très petite variance et très petite entropie
+        result = calc._heisenberg_phi(1.0, 0.1)
+        assert result["tension_quantique"] < 1.0
+
+    def test_tension_toujours_positive(self):
+        """La tension ne peut jamais être négative."""
+        calc = self._build_calculateur()
+        for variance in [0.0, 10.0, 100.0, 500.0]:
+            for entropie in [0.0, 0.5, 2.0, 5.0]:
+                result = calc._heisenberg_phi(variance, entropie)
+                assert result["tension_quantique"] >= 0.0
+
+
+class TestHeisenbergDansResultat:
+    """Vérifie que heisenberg_tension apparaît dans le résultat de calculer()."""
+
+    def test_heisenberg_tension_present_dans_resultat(self, tmp_path):
+        """Le champ heisenberg_tension doit être présent dans le résultat complet."""
+        from phi_complexity.analyseur import AnalyseurPhi
+        from phi_complexity.metriques import CalculateurRadiance
+
+        code = (
+            "def f(x):\n"
+            "    if x > 0:\n"
+            "        return x\n"
+            "    return -x\n"
+            "\n"
+            "def g(y):\n"
+            "    for i in range(y):\n"
+            "        print(i)\n"
+        )
+        fichier = tmp_path / "sample.py"
+        fichier.write_text(code)
+
+        analyseur = AnalyseurPhi(str(fichier))
+        resultat = analyseur.analyser()
+        calc = CalculateurRadiance(resultat)
+        sortie = calc.calculer()
+
+        assert "heisenberg_tension" in sortie
+        assert isinstance(sortie["heisenberg_tension"], float)
+        assert sortie["heisenberg_tension"] >= 0.0
+
+    def test_heisenberg_tension_present_resultat_vide(self):
+        """heisenberg_tension doit apparaître même pour un fichier sans fonctions."""
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="empty.py")
+        calc = CalculateurRadiance(r)
+        sortie = calc.calculer()
+
+        assert "heisenberg_tension" in sortie
+        assert sortie["heisenberg_tension"] == 0.0

@@ -2,7 +2,7 @@ from __future__ import annotations
 import math
 from typing import List, Dict, Any, Optional
 
-from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, statut_gnostique
+from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, HBAR_PHI, statut_gnostique
 from .analyseur import ResultatAnalyse
 
 
@@ -34,16 +34,19 @@ class CalculateurRadiance:
     def _extraire_mesures(self) -> Dict[str, Any]:
         """Extrait toutes les mesures brutes depuis le résultat d'analyse."""
         complexites: List[int] = [f.complexite for f in self.r.fonctions]
+        variance = self._variance(complexites)
+        entropie = self._entropie_shannon(complexites)
         return {
             "complexites": complexites,
-            "lilith_variance": self._variance(complexites),
-            "shannon_entropy": self._entropie_shannon(complexites),
+            "lilith_variance": variance,
+            "shannon_entropy": entropie,
             "phi_ratio": self._phi_ratio(complexites),
             "fibonacci_distance": sum(f.distance_fib for f in self.r.fonctions),
             "zeta_score": self._zeta_score(complexites),
             "nb_anomalies": len(
                 [a for a in self.r.annotations if a.niveau in ("WARNING", "CRITICAL")]
             ),
+            "heisenberg": self._heisenberg_phi(variance, entropie),
         }
 
     # ────────────────────────────────────────────────────────
@@ -80,6 +83,7 @@ class CalculateurRadiance:
             "phi_ratio_delta": round(abs(self.r.phi_ratio - PHI), 3),
             "fibonacci_distance": round(brutes["fibonacci_distance"], 3),
             "zeta_score": round(brutes["zeta_score"], 4),
+            "heisenberg_tension": round(brutes["heisenberg"]["tension_quantique"], 4),
             "resistance": round(self.r.resistance, 4),
             "pole_alpha": self.r.pole_alpha,
             "pole_omega": self.r.pole_omega,
@@ -193,6 +197,40 @@ class CalculateurRadiance:
         resultat: float = min(1.0, zeta * PHI)
         return float(resultat)
 
+    def _heisenberg_phi(self, variance: float, entropie: float) -> Dict[str, float]:
+        """
+        Relation d'incertitude de Heisenberg-Phi (CM-HUP) :
+        ΔC · ΔL ≥ ħ_φ / 2
+
+        Où :
+          ΔC = sqrt(σ²_L / σ²_max)    — incertitude de complexité normalisée [0, 1]
+          ΔL = H_S / H_max            — incertitude de lisibilité normalisée [0, 1]
+          ħ_φ = 1/φ ≈ 0.618          — constante d'action réduite dorée
+          plancher = ħ_φ / 2 ≈ 0.309 — minimum d'incertitude quantique
+
+        tension_quantique = (ΔC · ΔL) / plancher :
+          < 1  → état super-cohérent (code élégamment focalisé)
+          ≈ 1  → état cohérent minimal (optimum golden)
+          > 1  → zone d'incertitude naturelle (évolution classique)
+        """
+        sigma_max_sq = PHI**2 * 100          # seuil Lilith = φ² × 100 ≈ 261.8
+        h_max = math.log2(PHI**4)            # seuil Shannon = log₂(φ⁴) ≈ 2.88 bits
+        plancher = HBAR_PHI / 2              # ħ_φ / 2 ≈ 0.309
+
+        delta_c = math.sqrt(variance / sigma_max_sq) if variance > 0 else 0.0
+        delta_l = entropie / h_max if h_max > 0 else 0.0
+
+        produit = delta_c * delta_l
+        tension = produit / plancher if plancher > 0 else 0.0
+
+        return {
+            "delta_complexite": delta_c,
+            "delta_lisibilite": delta_l,
+            "produit_incertitude": produit,
+            "plancher_hbar": plancher,
+            "tension_quantique": tension,
+        }
+
     # ────────────────────────────────────────────────────────
     # RÉSULTAT NEUTRE (fichiers sans fonctions)
     # ────────────────────────────────────────────────────────
@@ -209,6 +247,7 @@ class CalculateurRadiance:
             "phi_ratio_delta": PHI - 1.0,
             "fibonacci_distance": 0.0,
             "zeta_score": 0.0,
+            "heisenberg_tension": 0.0,
             "nb_fonctions": 0,
             "nb_classes": self.r.nb_classes,
             "nb_imports": self.r.nb_imports,
