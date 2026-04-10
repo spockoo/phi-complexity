@@ -104,6 +104,15 @@ class TestHeisenbergPhi:
                 result = calc._heisenberg_phi(variance, entropie)
                 assert result["tension_quantique"] >= 0.0
 
+    def test_delta_lisibilite_clampe_a_1(self):
+        """ΔL est borné à 1 même quand H_F dépasse H_max."""
+        calc = self._build_calculateur()
+        h_max = math.log2(PHI**4)
+        # Entropie > H_max : sans borne, delta_l > 1 ; avec borne, doit valoir 1
+        result = calc._heisenberg_phi(0.0, h_max * 3.0)
+        assert result["delta_lisibilite"] <= 1.0
+        assert abs(result["delta_lisibilite"] - 1.0) < 1e-10
+
 
 class TestHeisenbergDansResultat:
     """Vérifie que heisenberg_tension apparaît dans le résultat de calculer()."""

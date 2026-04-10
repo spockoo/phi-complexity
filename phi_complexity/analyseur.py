@@ -369,8 +369,9 @@ class AnalyseurPythonInternal:
         """Enregistre une annotation chirurgicale sur une ligne de code.
 
         Respecte les directives `# phi: ignore` inline : si la ligne source
-        porte cette directive (globale ou ciblée), l'annotation est silencieusement
-        supprimée sans affecter les métriques de radiance.
+        porte cette directive (globale ou ciblée), l'annotation n'est pas
+        enregistrée dans `resultat.annotations`. Toute métrique dérivée de
+        cette collection peut donc être affectée.
         """
         if self._est_ignore(ligne, categorie):
             return
@@ -396,28 +397,42 @@ class AnalyseurPythonInternal:
           If, For, While, ExceptHandler, With, Assert,
           ListComp / SetComp / DictComp / GeneratorExp (chaque 'if' interne),
           BoolOp (and / or introduit un chemin supplémentaire).
+
+        Les sous-arbres des fonctions/classes imbriquées (FunctionDef,
+        AsyncFunctionDef, ClassDef, Lambda) sont exclus pour que la mesure
+        reste locale à la fonction analysée.
         """
-        _NOEUDS_DECISION = (
+        _DECISION = (
             ast.If,
             ast.For,
             ast.While,
             ast.ExceptHandler,
             ast.With,
             ast.Assert,
-            ast.ListComp,
-            ast.SetComp,
-            ast.DictComp,
-            ast.GeneratorExp,
+        )
+        _COMP_NODES = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+        _NESTED_SCOPE = (
+            ast.FunctionDef,
+            ast.AsyncFunctionDef,
+            ast.ClassDef,
+            ast.Lambda,
         )
         cc = 1  # Chemin de base
-        for node in ast.walk(fn_node):
-            if node is fn_node:
-                continue
-            if isinstance(node, _NOEUDS_DECISION):
+        # Traversal custom excluant les portées imbriquées
+        pile = list(ast.iter_child_nodes(fn_node))
+        while pile:
+            node = pile.pop()
+            if isinstance(node, _NESTED_SCOPE):
+                continue  # ne pas descendre dans les portées imbriquées
+            if isinstance(node, _COMP_NODES):
+                # Compter chaque filtre 'if' dans les générateurs
+                cc += sum(len(gen.ifs) for gen in node.generators)
+            elif isinstance(node, _DECISION):
                 cc += 1
             elif isinstance(node, ast.BoolOp):
                 # Chaque opérande supplémentaire ajoute un chemin
                 cc += len(node.values) - 1
+            pile.extend(ast.iter_child_nodes(node))
         return cc
 
     def _profondeur_imbrication(self, fn_node: ast.AST) -> int:
