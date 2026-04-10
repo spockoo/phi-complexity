@@ -178,12 +178,12 @@ class GenerateurRapport:
         Utilise le motif de Fibonacci (angle doré ≈ 137.5°) pour placer
         les points : plus la radiance est haute, plus la spirale est dense.
         """
-        score = float(self.m["radiance"])
+        score = float(self.m.get("radiance", 50.0))
         largeur, hauteur = 41, 17
         grille: List[List[str]] = [[' '] * largeur for _ in range(hauteur)]
         cx, cy = largeur // 2, hauteur // 2
         golden_angle = math.pi * (3 - math.sqrt(5))  # ≈ 2.39996 rad ≈ 137.508° (angle doré)
-        n_points = max(5, int(score))
+        n_points = min(100, max(5, int(score)))
         denom = math.sqrt(max(n_points - 1, 1))
         scale = min(cx, cy * _TERMINAL_ASPECT_RATIO) / denom
 

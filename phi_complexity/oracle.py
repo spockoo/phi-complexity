@@ -48,10 +48,15 @@ class OracleRadiance:
         """
         Calcule la radiance globale comme moyenne pondérée par φ.
         Pondération dorée : les fichiers à haute radiance pèsent plus (φ-Weighted Mean).
+        Les fichiers en erreur (radiance == 0 ET clé 'erreur' présente) sont exclus
+        du calcul pour ne pas pénaliser injustement la release.
         """
         if not audits:
             return 0.0
-        radiancies = [float(a.get("radiance", 0.0)) for a in audits]
+        audits_valides = [a for a in audits if not (float(a.get("radiance", 0.0)) == 0.0 and "erreur" in a)]
+        if not audits_valides:
+            return 0.0
+        radiancies = [max(0.0, float(a.get("radiance", 0.0))) for a in audits_valides]
         poids = [r / PHI for r in radiancies]
         total_poids = sum(poids)
         if total_poids == 0.0:

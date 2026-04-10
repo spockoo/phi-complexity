@@ -8,6 +8,14 @@ import textwrap
 from phi_complexity.oracle import OracleRadiance
 
 
+def _safe_unlink(path: str) -> None:
+    """Supprime un fichier sans lever d'exception s'il n'existe pas."""
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+
 def creer_fichier_temp(code: str) -> str:
     """Crée un fichier Python temporaire. Retourne le chemin."""
     with tempfile.NamedTemporaryFile(
@@ -91,7 +99,7 @@ class TestOracleRadiance:
             assert verdict["radiance_globale"] >= 40.0
             assert verdict["acceptee"] is True
         finally:
-            os.unlink(fichier)
+            _safe_unlink(fichier)
 
     def test_valider_release_bloquee(self):
         """Une release est bloquée si la radiance est sous le seuil."""
@@ -102,7 +110,7 @@ class TestOracleRadiance:
             assert verdict["acceptee"] is False
             assert len(verdict["fichiers_sous_seuil"]) == 1
         finally:
-            os.unlink(fichier)
+            _safe_unlink(fichier)
 
     def test_rapport_oracle_accepte(self):
         """Le rapport d'une release acceptée contient les marqueurs visuels."""
