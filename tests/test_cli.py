@@ -95,11 +95,17 @@ class TestCollecterFichiers:
 class TestFonctionsInternesCLI:
     """Tests des fonctions CLI internes (sans subprocess) pour maximiser la couverture."""
 
-    def _args_check(self, fichier: str = "/dummy.py", fmt: str = "console",
-                    min_rad: float = 0.0, bmad: bool = False):
+    def _args_check(
+        self,
+        fichier: str = "/dummy.py",
+        fmt: str = "console",
+        min_rad: float = 0.0,
+        bmad: bool = False,
+    ):
         parser = _construire_parseur()
-        a = parser.parse_args(["check", fichier, "--format", fmt,
-                                "--min-radiance", str(min_rad)])
+        a = parser.parse_args(
+            ["check", fichier, "--format", fmt, "--min-radiance", str(min_rad)]
+        )
         a.bmad = bmad
         return a
 
@@ -109,12 +115,24 @@ class TestFonctionsInternesCLI:
         args.output = output
         return args
 
-    def _args_oracle(self, fichier: str = "/dummy.py", min_rad: float = 70.0, nb_tests: int = 0):
+    def _args_oracle(
+        self, fichier: str = "/dummy.py", min_rad: float = 70.0, nb_tests: int = 0
+    ):
         parser = _construire_parseur()
-        return parser.parse_args(["oracle", fichier, "--min-radiance", str(min_rad),
-                                   "--nb-tests", str(nb_tests)])
+        return parser.parse_args(
+            [
+                "oracle",
+                fichier,
+                "--min-radiance",
+                str(min_rad),
+                "--nb-tests",
+                str(nb_tests),
+            ]
+        )
 
-    def _args_harvest(self, fichier: str = "/dummy.py", output: str = "/tmp/test.jsonl"):
+    def _args_harvest(
+        self, fichier: str = "/dummy.py", output: str = "/tmp/test.jsonl"
+    ):
         parser = _construire_parseur()
         return parser.parse_args(["harvest", fichier, "--output", output])
 
@@ -276,8 +294,9 @@ class TestExecuterCheckJson:
 
     def _args(self, min_radiance: float = 0.0):
         parser = _construire_parseur()
-        return parser.parse_args(["check", __file__, "--format", "json",
-                                   "--min-radiance", str(min_radiance)])
+        return parser.parse_args(
+            ["check", __file__, "--format", "json", "--min-radiance", str(min_radiance)]
+        )
 
     def test_un_fichier_retourne_objet(self, capsys):
         fichier = creer_fichier(CODE_TEST)
@@ -516,7 +535,9 @@ class TestCLISubprocess:
         """phi check --format json --min-radiance 101 → exit 1."""
         fichier = creer_fichier(CODE_TEST)
         try:
-            res = self._phi("check", fichier, "--format", "json", "--min-radiance", "101")
+            res = self._phi(
+                "check", fichier, "--format", "json", "--min-radiance", "101"
+            )
             assert res.returncode == 1
             data = json.loads(res.stdout)
             assert "radiance" in data

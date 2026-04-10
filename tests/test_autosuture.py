@@ -9,7 +9,6 @@ from unittest.mock import patch, MagicMock
 
 from phi_complexity.autosuture import AutoSuture
 
-
 CODE_HARMONIEUX = '''\
 def ajouter(a: float, b: float) -> float:
     """Additionne deux nombres."""
@@ -20,7 +19,7 @@ def multiplier(a: float, b: float) -> float:
     return a * b
 '''
 
-CODE_CHAOTIQUE = '''\
+CODE_CHAOTIQUE = """\
 def f(x,y,z,w,v):
     r=0
     for i in range(x):
@@ -30,7 +29,7 @@ def f(x,y,z,w,v):
                     for m in range(v):
                         r+=i*j*k*l*m
     return r
-'''
+"""
 
 
 def _creer_fichier(contenu: str) -> str:
@@ -85,8 +84,10 @@ class TestAutoSuture:
         """Si la radiance >= 85 et force=False, pas de guérison."""
         fichier = _creer_fichier(CODE_HARMONIEUX)
         try:
-            with patch("phi_complexity.autosuture.SutureAgent") as MockAgent, \
-                 patch("phi_complexity.autosuture.SecuriteMaat") as MockSec:
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+            ):
                 mock_agent = MagicMock()
                 MockAgent.return_value = mock_agent
                 mock_sec = MagicMock()
@@ -112,9 +113,11 @@ class TestAutoSuture:
         """Avec force=True, la guérison est tentée même si la radiance est haute."""
         fichier = _creer_fichier(CODE_HARMONIEUX)
         try:
-            with patch("phi_complexity.autosuture.SutureAgent") as MockAgent, \
-                 patch("phi_complexity.autosuture.SecuriteMaat") as MockSec, \
-                 patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur:
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+                patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur,
+            ):
 
                 mock_res = MagicMock()
                 mock_res.radiance = 90.0
@@ -142,10 +145,14 @@ class TestAutoSuture:
         """Si l'IA ne renvoie pas de code valide, le verdict est ÉCHEC."""
         fichier = _creer_fichier(CODE_CHAOTIQUE)
         try:
-            with patch("phi_complexity.autosuture.SutureAgent") as MockAgent, \
-                 patch("phi_complexity.autosuture.SecuriteMaat") as MockSec, \
-                 patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur, \
-                 patch("phi_complexity.autosuture.calculer_sync_index", return_value=0.5):
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+                patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur,
+                patch(
+                    "phi_complexity.autosuture.calculer_sync_index", return_value=0.5
+                ),
+            ):
 
                 mock_res = MagicMock()
                 mock_res.radiance = 40.0

@@ -86,7 +86,9 @@ class TestSutureAgent:
         import urllib.error
 
         agent = SutureAgent()
-        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
+        with patch(
+            "urllib.request.urlopen", side_effect=urllib.error.URLError("refused")
+        ):
             resultat = agent.invoquer_phidelia("test prompt")
         assert "ERREUR" in resultat
 
@@ -100,9 +102,7 @@ class TestSutureAgent:
     def test_invoquer_phidelia_succes(self):
         """Simule une réponse JSON valide du LLM."""
         agent = SutureAgent()
-        payload = {
-            "choices": [{"message": {"content": "Code suturé avec succès."}}]
-        }
+        payload = {"choices": [{"message": {"content": "Code suturé avec succès."}}]}
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps(payload).encode("utf-8")
         mock_response.__enter__ = lambda s: s
@@ -126,8 +126,12 @@ class TestSutureAgent:
         """suturer() appelle bien invoquer_phidelia() quand il y a des fonctions."""
         agent = SutureAgent()
         r = _resultat_simple()
-        with patch.object(agent, "invoquer_phidelia", return_value="mock response") as mock_inv:
-            with patch.object(agent, "generer_prompt", return_value="mock prompt") as mock_gen:
+        with patch.object(
+            agent, "invoquer_phidelia", return_value="mock response"
+        ) as mock_inv:
+            with patch.object(
+                agent, "generer_prompt", return_value="mock prompt"
+            ) as mock_gen:
                 resultat = agent.suturer(r)
         mock_gen.assert_called_once_with(r)
         mock_inv.assert_called_once_with("mock prompt")

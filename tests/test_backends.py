@@ -7,7 +7,6 @@ import tempfile
 
 from phi_complexity.backends.c_rust_light import CRustLightBackend
 
-
 CODE_C_SIMPLE = """\
 #include <stdio.h>
 
