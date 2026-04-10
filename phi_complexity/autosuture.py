@@ -1,4 +1,7 @@
 import re
+import os
+import tempfile
+from pathlib import Path
 from typing import Optional
 from .analyseur import AnalyseurPhi
 from .suture import SutureAgent
@@ -40,26 +43,54 @@ class AutoSuture:
         if not nouveau_code:
             return "ÉCHEC DE SUTURE : Phidélia n'a pas renvoyé de code valide."
 
-        # 4. Injection (Suture Physique)
-        # Pour cette version, on remplace tout le fichier si Phidélia a renvoyé
-        # une version complète, ou on tente une injection ciblée.
-        # Ici on privilégie le remplacement prudent.
+        # 4. Injection transactionnelle (style assembleur/noyau):
+        #    écriture vers tampon local, validation, puis remplacement atomique.
+        dossier = os.path.dirname(os.path.abspath(fichier)) or "."
+        candidat_tmp = ""
         try:
-            with open(fichier, "w", encoding="utf-8") as f:
+            fd, candidat_tmp = tempfile.mkstemp(
+                prefix=".phi-heal-", suffix=".py", dir=dossier
+            )
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(nouveau_code)
+
+            # 5. Validation sur le candidat avant tout remplacement.
+            r_candidat = AnalyseurPhi(candidat_tmp).analyser()
+            sync_candidat = calculer_sync_index(
+                r_candidat.radiance, r_candidat.resistance
+            )
+            gain_candidat = sync_candidat - sync_avant
+
+            if gain_candidat <= 0 and not force:
+                return "SUTURE REJETÉE : La proposition n'améliore pas la synchronicité."
+
+            os.replace(candidat_tmp, fichier)
+            candidat_tmp = ""
         except Exception as e:
             self.securite.restaurer_dernier(fichier)
             return f"ERREUR D'INJECTION : {e}"
+        finally:
+            if candidat_tmp and os.path.exists(candidat_tmp):
+                tmp_path = Path(candidat_tmp).resolve()
+                dossier_path = Path(dossier).resolve()
+                if (
+                    tmp_path.parent == dossier_path
+                    and tmp_path.name.startswith(".phi-heal-")
+                ):
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
 
-        # 5. Validation (Après)
+        # 6. Validation finale (après remplacement atomique)
         try:
-            r_apres = analyseur.analyser()
+            r_apres = AnalyseurPhi(fichier).analyser()
             sync_apres = calculer_sync_index(r_apres.radiance, r_apres.resistance)
         except Exception:
             self.securite.restaurer_dernier(fichier)
             return "ALERTE ENTROPIE : Le nouveau code est invalide (SyntaxError). Restauration effectuée."
 
-        # 6. Verdict final
+        # 7. Verdict final
         gain = sync_apres - sync_avant
         if gain > 0 or force:
             return f"GUÉRISON RÉUSSIE : Radiance {r_avant.radiance:.1f} ⮕ {r_apres.radiance:.1f} | Sync Index Gain: +{gain:.4f}"
