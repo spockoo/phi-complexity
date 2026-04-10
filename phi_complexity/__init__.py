@@ -5,6 +5,8 @@ from .analyseur import AnalyseurPhi
 from .metriques import CalculateurRadiance
 from .rapport import GenerateurRapport
 from .suture import SutureAgent
+from .oracle import OracleRadiance
+from .harvest import HarvestEngine
 
 
 def auditer(fichier: str) -> Dict[str, Any]:
@@ -82,5 +84,7 @@ __all__ = [
     "CalculateurRadiance",
     "GenerateurRapport",
     "SutureAgent",
+    "OracleRadiance",
+    "HarvestEngine",
     "suture",
 ]

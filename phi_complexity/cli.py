@@ -60,6 +60,33 @@ Exemples :
     heal_parser.add_argument("--force", action="store_true", help="Forcer la guérison même si la radiance est élevée")
     heal_parser.add_argument("--url", help="URL de l'API LLM locale")
 
+    oracle_parser = subparsers.add_parser(
+        "oracle", help="Valider une release selon l'Oracle de Radiance (Phase 14)."
+    )
+    oracle_parser.add_argument("cible", help="Fichier ou dossier à auditer")
+    oracle_parser.add_argument(
+        "--min-radiance", type=float, default=70.0,
+        help="Seuil de radiance requis pour autoriser la release (défaut: 70)"
+    )
+    oracle_parser.add_argument(
+        "--nb-tests", type=int, default=0,
+        help="Nombre de tests passés (intégré dans la version Phi)"
+    )
+
+    harvest_parser = subparsers.add_parser(
+        "harvest", help="Collecter des vecteurs AST anonymisés pour l'IA (Phase 14)."
+    )
+    harvest_parser.add_argument("cible", help="Fichier ou dossier à collecter")
+    harvest_parser.add_argument(
+        "--output", "-o", default=".phi/harvest.jsonl",
+        help="Fichier JSONL de sortie (défaut: .phi/harvest.jsonl)"
+    )
+
+    spiral_parser = subparsers.add_parser(
+        "spiral", help="Afficher la Spirale Dorée de radiance (Phase 14)."
+    )
+    spiral_parser.add_argument("cible", help="Fichier à visualiser")
+
     return parser
 
 
@@ -238,7 +265,7 @@ def _executer_seal(args: argparse.Namespace) -> int:
 def _executer_heal(args: argparse.Namespace) -> int:
     """Phase 12 : Tente une guérison autonome du fichier."""
     from .autosuture import AutoSuture
-    
+
     print(f"  ⚕  Tentative de guérison autonome pour {args.cible}...")
     try:
         medecin = AutoSuture(api_url=args.url)
@@ -248,6 +275,50 @@ def _executer_heal(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"  ❌ Échec de la guérison : {e}")
         return 1
+
+
+def _executer_oracle(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Phase 14 : Valide une release selon l'Oracle de Radiance."""
+    from .oracle import OracleRadiance
+
+    oracle = OracleRadiance()
+    verdict = oracle.valider_release(fichiers, args.min_radiance, args.nb_tests)
+    print(oracle.rapport_oracle(verdict))
+    return 0 if verdict["acceptee"] else 1
+
+
+def _executer_harvest(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Phase 14 : Collecte des vecteurs AST anonymisés (phi-harvest)."""
+    from .harvest import HarvestEngine
+
+    engine = HarvestEngine(sortie=args.output)
+    nb_collectes = 0
+    for fichier in fichiers:
+        try:
+            engine.collecter_et_exporter(fichier)
+            nb_collectes += 1
+        except Exception as e:
+            print(f"  ⚠  {fichier} : {e}")
+    print(f"\n  ✦  {nb_collectes} vecteur(s) collecté(s) → {args.output}")
+    print(engine.rapport_harvest())
+    return 0
+
+
+def _executer_spiral(fichiers: List[str]) -> int:
+    """Phase 14 : Affiche la Spirale Dorée de radiance pour chaque fichier."""
+    from . import auditer as phi_auditer
+    from .rapport import GenerateurRapport
+
+    for fichier in fichiers:
+        try:
+            metriques = phi_auditer(fichier)
+            gen = GenerateurRapport(metriques)
+            print(f"\n  📄 {fichier}")
+            print(gen.spirale_doree())
+        except Exception as e:
+            print(f"  ❌ {fichier} : {e}")
+            return 1
+    return 0
 
 
 def _executer_memory() -> int:
@@ -341,6 +412,14 @@ def main() -> None:
     if args.commande == "heal":
         sys.exit(_executer_heal(args))
 
+    # Phase 14 — commandes sans collecte de fichiers préalable
+    if args.commande == "spiral":
+        fichiers = _collecter_fichiers(args.cible)
+        if not fichiers:
+            print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
+            sys.exit(1)
+        sys.exit(_executer_spiral(fichiers))
+
     fichiers = _collecter_fichiers(args.cible)
     if not fichiers:
         print(f"❌ Aucun fichier Python trouvé dans : {args.cible}")
@@ -350,6 +429,10 @@ def main() -> None:
         sys.exit(_executer_check(args, fichiers))
     elif args.commande == "report":
         sys.exit(_executer_report(args, fichiers))
+    elif args.commande == "oracle":
+        sys.exit(_executer_oracle(args, fichiers))
+    elif args.commande == "harvest":
+        sys.exit(_executer_harvest(args, fichiers))
 
 
 if __name__ == "__main__":

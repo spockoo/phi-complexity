@@ -124,6 +124,25 @@ phi check ./src/ --format json     ✅ Opérationnel
 
 ---
 
+## 🚀 PHASE 14 — ORACLE, HARVEST & SPIRALE DORÉE — COMPLÉTÉE
+
+- ✅ **Oracle de Radiance** (`phi oracle`) : valide une release selon le score géométrique.
+  - Bloque la release si la radiance globale est sous le seuil.
+  - Loi de version Phi : `v{floor(radiance)}.{nb_tests}`.
+  - Pondération φ-Weighted Mean sur l'ensemble des fichiers.
+- ✅ **phi-harvest** (`phi harvest`) : collecte des vecteurs AST anonymisés.
+  - Zéro identifiant, zéro code source exporté — souveraineté totale.
+  - Format JSONL incrémental, prêt pour l'entraînement supervisé.
+  - Labels de vulnérabilités : LILITH (boucles), SUTURE (fuites), FIBONACCI, SOUVERAINETÉ.
+  - Vecteur φ normalisé pour la similitude cosinus (clustering).
+- ✅ **Spirale Dorée** (`phi spiral`) : visualisation ASCII du motif Fibonacci.
+  - Angle doré exact (137.5° = π(3-√5)) — motif naturel des tournesols.
+  - Densité proportionnelle au score de radiance.
+  - Zones symboliques : ☼ noyau · ✦ interne · ◈ médiane · ░ périphérie.
+- ✅ **19 nouveaux tests** (68 total, 68/68 ✅).
+
+---
+
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*
 
 
