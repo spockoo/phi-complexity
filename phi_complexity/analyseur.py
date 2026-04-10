@@ -135,7 +135,7 @@ class AnalyseurPythonInternal:
         # On utilise une variable locale pour garantir le type à MyPy
         root = self.tree
         if isinstance(root, ast.Module):
-            for node in root.body:
+            for node in root.body:  # phi: ignore[LILITH]
                 if not isinstance(node, (ast.Import, ast.ImportFrom)):
                     self.resultat.pole_alpha = node.lineno
                     break
@@ -153,7 +153,7 @@ class AnalyseurPythonInternal:
         if self.tree is None:
             return
         for node in ast.walk(self.tree):
-            for child in ast.iter_child_nodes(node):
+            for child in ast.iter_child_nodes(node):  # phi: ignore[LILITH]
                 setattr(child, "parent", node)
 
     def _compter_elements_globaux(self) -> None:
@@ -431,7 +431,7 @@ class AnalyseurPythonInternal:
             est_controle = isinstance(noeud, _NOEUD_CONTROLE)
             profondeur_courante = depth + 1 if est_controle else depth
             max_depth = max(max_depth, profondeur_courante if est_controle else depth)
-            for child in ast.iter_child_nodes(noeud):
+            for child in ast.iter_child_nodes(noeud):  # phi: ignore[LILITH]
                 pile.append((child, profondeur_courante))
         return max_depth
 

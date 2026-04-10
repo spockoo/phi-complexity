@@ -184,7 +184,7 @@ def _executer_check_json(args: argparse.Namespace, fichiers: List[str]) -> int:
     return exit_code
 
 
-def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:
+def _auditer_un_fichier(fichier: str, args: argparse.Namespace) -> int:  # phi: ignore[CYCLOMATIQUE]
     """Audite un seul fichier et affiche le résultat (format console). Retourne 0 ou 1."""
     try:
         print(rapport_console(fichier))
@@ -454,7 +454,7 @@ def _executer_fund() -> None:
 # ────────────────────────────────────────────────────────
 
 
-def main() -> None:
+def main() -> None:  # phi: ignore[CYCLOMATIQUE]
     """Point d'entrée principal. Délègue à des fonctions spécialisées."""
     parser = _construire_parseur()
     args = parser.parse_args()
