@@ -208,13 +208,15 @@ class CalculateurRadiance:
         H_F = -Σ p̃ᵢ · log₂(p̃ᵢ) — Entropie pondérée par la suite de Fibonacci.
 
         Les complexités sont triées par ordre croissant et reçoivent les poids
-        fib(1), fib(2), …, fib(n) de la séquence naturelle.  Les fonctions les
-        plus simples (plus proches de la grammaire naturelle) pèsent davantage.
+        fib(n), fib(n-1), …, fib(1) de la séquence naturelle (poids décroissants).
+        Les fonctions les plus simples (plus proches de la grammaire naturelle)
+        pèsent davantage grâce à ce couplage inversé poids ↔ complexité.
         Une distribution qui suit la progression Fibonacci minimise H_F ;
         une distribution uniforme non-Fibonacci la maximise.
 
         Formule :
-            wᵢ = SEQUENCE_FIBONACCI[i]   (complété par fib(n-1)+fib(n-2) si n > 14)
+            triees   = sorted(valeurs)                  # ordre croissant
+            wᵢ       = SEQUENCE_FIBONACCI[n-1-i]        # poids décroissants
             p̃ᵢ = wᵢ · κᵢ / Σⱼ(wⱼ · κⱼ)
             H_F = -Σ p̃ᵢ · log₂(p̃ᵢ)
         """
@@ -231,11 +233,11 @@ class CalculateurRadiance:
         while len(fib) < n:
             fib.append(fib[-1] + fib[-2])
 
-        # Trier les complexités en ordre croissant (le plus simple = poids fib(1) = 1)
+        # Trier les complexités en ordre croissant
         triees = sorted(valeurs)
 
-        # Probabilités pondérées Fibonacci
-        poids_pondere = [fib[i] * triees[i] for i in range(n)]
+        # Probabilités pondérées Fibonacci : inversement couplé (plus simple = poids max)
+        poids_pondere = [fib[n - 1 - i] * triees[i] for i in range(n)]
         total_pond = sum(poids_pondere)
         if total_pond == 0:
             return 0.0
@@ -288,9 +290,10 @@ class CalculateurRadiance:
 
         Où :
           ΔC = sqrt(σ²_L / σ²_max)    — incertitude de complexité normalisée [0, 1]
-          ΔL = H_F / H_max            — incertitude de lisibilité normalisée [0, 1]
+          ΔL = min(1, H_F / H_max)    — incertitude de lisibilité normalisée [0, 1]
                                         H_F = entropie Fibonacci-pondérée (Phase 14)
                                         H_max = log₂(φ⁴) ≈ 2.88 bits (référence naturelle)
+                                        Borné à 1 : H_F peut dépasser H_max pour n > φ⁴
           ħ_φ = 1/φ ≈ 0.618          — constante d'action réduite dorée
           plancher = ħ_φ / 2 ≈ 0.309 — minimum d'incertitude quantique
 
@@ -308,7 +311,7 @@ class CalculateurRadiance:
         plancher = HBAR_PHI / 2  # ħ_φ / 2 ≈ 0.309
 
         delta_c = math.sqrt(variance / sigma_max_sq) if variance > 0 else 0.0
-        delta_l = entropie / h_max if h_max > 0 else 0.0
+        delta_l = min(1.0, entropie / h_max) if h_max > 0 else 0.0
 
         produit = delta_c * delta_l
         tension = produit / plancher if plancher > 0 else 0.0
