@@ -146,3 +146,85 @@ class TestHeisenbergDansResultat:
 
         assert "heisenberg_tension" in sortie
         assert sortie["heisenberg_tension"] == 0.0
+
+
+class TestEntropieFibonacci:
+    """Tests unitaires pour CalculateurRadiance._entropie_fibonacci()."""
+
+    def _build_calculateur(self):
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="test.py")
+        return CalculateurRadiance(r)
+
+    def test_entropie_vide_retourne_zero(self):
+        """Une liste vide donne H_F = 0."""
+        calc = self._build_calculateur()
+        assert calc._entropie_fibonacci([]) == 0.0
+
+    def test_entropie_valeurs_nulles_retourne_zero(self):
+        """Une liste de zéros donne H_F = 0 (total pondéré nul)."""
+        calc = self._build_calculateur()
+        assert calc._entropie_fibonacci([0, 0, 0]) == 0.0
+
+    def test_entropie_valeur_unique_retourne_zero(self):
+        """Une seule fonction → distribution dégénérée → H_F = 0."""
+        calc = self._build_calculateur()
+        assert calc._entropie_fibonacci([5]) == 0.0
+
+    def test_entropie_toujours_non_negative(self):
+        """H_F ≥ 0 pour toute entrée."""
+        calc = self._build_calculateur()
+        for valeurs in ([1, 2, 3], [5, 13, 21, 34], [1] * 20):
+            assert calc._entropie_fibonacci(valeurs) >= 0.0
+
+    def test_entropie_fibonacci_present_dans_resultat(self):
+        """Le champ fibonacci_entropy doit apparaître dans le résultat calculer()."""
+        import tempfile
+        import textwrap
+        from pathlib import Path
+        from phi_complexity.analyseur import AnalyseurPhi
+        from phi_complexity.metriques import CalculateurRadiance
+
+        code = textwrap.dedent("""
+            def f(x):
+                return x * 2
+
+            def g(a, b):
+                return a + b
+        """)
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(code)
+            path = f.name
+        try:
+            analyseur = AnalyseurPhi(path)
+            resultat = analyseur.analyser()
+            calc = CalculateurRadiance(resultat)
+            sortie = calc.calculer()
+            assert "fibonacci_entropy" in sortie
+            assert isinstance(sortie["fibonacci_entropy"], float)
+            assert sortie["fibonacci_entropy"] >= 0.0
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_entropie_fibonacci_present_resultat_vide(self):
+        """fibonacci_entropy = 0.0 pour un fichier sans fonctions."""
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="empty.py")
+        calc = CalculateurRadiance(r)
+        sortie = calc.calculer()
+        assert "fibonacci_entropy" in sortie
+        assert sortie["fibonacci_entropy"] == 0.0
+
+    def test_entropie_fibonacci_extension_dynamique(self):
+        """H_F fonctionne pour plus de 14 fonctions (extension au-delà de SEQUENCE_FIBONACCI)."""
+        calc = self._build_calculateur()
+        valeurs = list(range(1, 20))  # 19 fonctions
+        result = calc._entropie_fibonacci(valeurs)
+        assert isinstance(result, float)
+        assert result >= 0.0

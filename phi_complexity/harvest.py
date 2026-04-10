@@ -21,7 +21,9 @@ from .core import PHI
 # Facteurs de normalisation pour le vecteur φ
 _NORM_RADIANCE: float = 100.0
 _NORM_LILITH: float = 1000.0
-_NORM_ENTROPIE: float = 10.0
+# H_F max théorique ≈ log₂(n) avec n=14 termes Fibonacci ≈ 3.81 bits
+# On retient 5.0 pour absorber les corpus plus larges (> 14 fonctions).
+_NORM_ENTROPIE_FIB: float = 5.0
 
 
 class HarvestEngine:
@@ -34,7 +36,7 @@ class HarvestEngine:
     pour l'entraînement supervisé d'un modèle de détection.
     """
 
-    VERSION_SCHEMA: str = "1.0"
+    VERSION_SCHEMA: str = "1.1"
 
     def __init__(self, sortie: str = ".phi/harvest.jsonl") -> None:
         self.sortie = sortie
@@ -72,6 +74,7 @@ class HarvestEngine:
             "radiance": float(metriques.get("radiance", 0.0)),
             "lilith_variance": float(metriques.get("lilith_variance", 0.0)),
             "shannon_entropy": float(metriques.get("shannon_entropy", 0.0)),
+            "fibonacci_entropy": float(metriques.get("fibonacci_entropy", 0.0)),
             "phi_ratio": float(metriques.get("phi_ratio", 0.0)),
             "phi_ratio_delta": float(metriques.get("phi_ratio_delta", 0.0)),
             "zeta_score": float(metriques.get("zeta_score", 0.0)),
@@ -95,16 +98,20 @@ class HarvestEngine:
             "nb_critiques": sum(
                 1 for a in annotations if str(a.get("niveau", "")) == "CRITICAL"
             ),
-            # Vecteur de résonance Phi (pour clustering)
+            # Vecteur de résonance Phi (pour clustering) — pondéré par Fibonacci
             "vecteur_phi": self._vecteur_resonance(metriques),
         }
 
     def _vecteur_resonance(self, m: Dict[str, Any]) -> List[float]:
-        """Encode les métriques en vecteur normalisé pour la similitude cosinus."""
+        """
+        Encode les métriques en vecteur normalisé pour la similitude cosinus.
+        Utilise strictement l'entropie pondérée Fibonacci (H_F) comme
+        indicateur d'ordre naturel, en remplacement de l'entropie de Shannon brute.
+        """
         return [
             float(m.get("radiance", 0.0)) / _NORM_RADIANCE,
             min(1.0, float(m.get("lilith_variance", 0.0)) / _NORM_LILITH),
-            min(1.0, float(m.get("shannon_entropy", 0.0)) / _NORM_ENTROPIE),
+            min(1.0, float(m.get("fibonacci_entropy", 0.0)) / _NORM_ENTROPIE_FIB),
             min(1.0, abs(float(m.get("phi_ratio", 0.0)) - PHI)),
             min(1.0, float(m.get("zeta_score", 0.0))),
         ]

@@ -2,7 +2,7 @@ from __future__ import annotations
 import math
 from typing import List, Dict, Any, Optional
 
-from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, HBAR_PHI, statut_gnostique
+from .core import PHI, TAXE_SUTURE, ETA_GOLDEN, HBAR_PHI, SEQUENCE_FIBONACCI, statut_gnostique
 from .analyseur import ResultatAnalyse
 
 
@@ -36,17 +36,19 @@ class CalculateurRadiance:
         complexites: List[int] = [f.complexite for f in self.r.fonctions]
         variance = self._variance(complexites)
         entropie = self._entropie_shannon(complexites)
+        entropie_fib = self._entropie_fibonacci(complexites)
         return {
             "complexites": complexites,
             "lilith_variance": variance,
             "shannon_entropy": entropie,
+            "fibonacci_entropy": entropie_fib,
             "phi_ratio": self._phi_ratio(complexites),
             "fibonacci_distance": sum(f.distance_fib for f in self.r.fonctions),
             "zeta_score": self._zeta_score(complexites),
             "nb_anomalies": len(
                 [a for a in self.r.annotations if a.niveau in ("WARNING", "CRITICAL")]
             ),
-            "heisenberg": self._heisenberg_phi(variance, entropie),
+            "heisenberg": self._heisenberg_phi(variance, entropie_fib),
         }
 
     # ────────────────────────────────────────────────────────
@@ -79,6 +81,7 @@ class CalculateurRadiance:
             "statut_gnostique": statut_gnostique(self.r.radiance),
             "lilith_variance": round(self.r.lilith_variance, 3),
             "shannon_entropy": round(self.r.shannon_entropy, 3),
+            "fibonacci_entropy": round(float(brutes["fibonacci_entropy"]), 3),
             "phi_ratio": round(self.r.phi_ratio, 3),
             "phi_ratio_delta": round(abs(self.r.phi_ratio - PHI), 3),
             "fibonacci_distance": round(brutes["fibonacci_distance"], 3),
@@ -181,6 +184,46 @@ class CalculateurRadiance:
         probas = [v / total for v in valeurs]
         return -sum(p * math.log2(p) for p in probas if p > 0)
 
+    def _entropie_fibonacci(self, valeurs: List[int]) -> float:
+        """
+        H_F = -Σ p̃ᵢ · log₂(p̃ᵢ) — Entropie pondérée par la suite de Fibonacci.
+
+        Les complexités sont triées par ordre croissant et reçoivent les poids
+        fib(1), fib(2), …, fib(n) de la séquence naturelle.  Les fonctions les
+        plus simples (plus proches de la grammaire naturelle) pèsent davantage.
+        Une distribution qui suit la progression Fibonacci minimise H_F ;
+        une distribution uniforme non-Fibonacci la maximise.
+
+        Formule :
+            wᵢ = SEQUENCE_FIBONACCI[i]   (complété par fib(n-1)+fib(n-2) si n > 14)
+            p̃ᵢ = wᵢ · κᵢ / Σⱼ(wⱼ · κⱼ)
+            H_F = -Σ p̃ᵢ · log₂(p̃ᵢ)
+        """
+        if not valeurs:
+            return 0.0
+        total_k = sum(valeurs)
+        if total_k == 0:
+            return 0.0
+
+        # Construire la suite de Fibonacci jusqu'à len(valeurs) termes
+        n = len(valeurs)
+        fib: List[int] = list(SEQUENCE_FIBONACCI[:n])
+        # Étendre dynamiquement si plus de 14 fonctions
+        while len(fib) < n:
+            fib.append(fib[-1] + fib[-2])
+
+        # Trier les complexités en ordre croissant (le plus simple = poids fib(1) = 1)
+        triees = sorted(valeurs)
+
+        # Probabilités pondérées Fibonacci
+        poids_pondere = [fib[i] * triees[i] for i in range(n)]
+        total_pond = sum(poids_pondere)
+        if total_pond == 0:
+            return 0.0
+
+        probas_fib = [w / total_pond for w in poids_pondere]
+        return -sum(p * math.log2(p) for p in probas_fib if p > 0)
+
     def _phi_ratio(self, valeurs: List[int]) -> float:
         """φ-ratio = max(κ) / μ. Doit tendre vers φ = 1.618."""
         if not valeurs or len(valeurs) < 2:
@@ -243,6 +286,7 @@ class CalculateurRadiance:
             "statut_gnostique": statut_gnostique(60.0),
             "lilith_variance": 0.0,
             "shannon_entropy": 0.0,
+            "fibonacci_entropy": 0.0,
             "phi_ratio": 1.0,
             "phi_ratio_delta": PHI - 1.0,
             "fibonacci_distance": 0.0,
