@@ -49,6 +49,7 @@ class CalculateurRadiance:
                 [a for a in self.r.annotations if a.niveau in ("WARNING", "CRITICAL")]
             ),
             "heisenberg": self._heisenberg_phi(variance, entropie_fib),
+            "coherence_bayes": self._coherence_bayes(complexites),
         }
 
     # ────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ class CalculateurRadiance:
             "fibonacci_distance": round(brutes["fibonacci_distance"], 3),
             "zeta_score": round(brutes["zeta_score"], 4),
             "heisenberg_tension": round(brutes["heisenberg"]["tension_quantique"], 4),
+            "coherence_bayes": round(brutes["coherence_bayes"], 4),
             "resistance": round(self.r.resistance, 4),
             "pole_alpha": self.r.pole_alpha,
             "pole_omega": self.r.pole_omega,
@@ -134,7 +136,7 @@ class CalculateurRadiance:
 
     def _indice_radiance(self, brutes: Dict[str, Any]) -> float:
         """
-        R = 100 - f(Lilith) - g(Shannon) - h(Anomalies) - i(Fibonacci)
+        R = 100 - f(Lilith) - g(Shannon) - h(Anomalies) - i(Fibonacci) - j(C_Bayes)
         Chaque déduction est plafonnée (Loi d'Indulgence).
         Plancher : 40 (Loi Antifragile — EQ-AFR-BMAD).
         """
@@ -143,6 +145,7 @@ class CalculateurRadiance:
         score -= self._deduction_entropie(brutes["shannon_entropy"])
         score -= self._deduction_anomalies(brutes["nb_anomalies"])
         score -= self._deduction_fibonacci(brutes["fibonacci_distance"])
+        score -= self._deduction_bayes(brutes["coherence_bayes"])
         return max(40.0, score)
 
     def _deduction_lilith(self, variance: float) -> float:
@@ -162,6 +165,15 @@ class CalculateurRadiance:
     def _deduction_fibonacci(self, distance: float) -> float:
         """i(D_F) = min(10, D_F × η_golden)."""
         return min(10.0, distance * ETA_GOLDEN)
+
+    def _deduction_bayes(self, coherence: float) -> float:
+        """j(C_Bayes) = min(10, C_Bayes × φ).
+
+        Pénalité Bayésienne Dorée (EQ-BAY-001..008).
+        C_Bayes = 0  → ratios parfaitement dorés, aucune déduction.
+        C_Bayes ≥ 6.18 → déduction maximale de 10 points.
+        """
+        return min(10.0, coherence * PHI)
 
     # ────────────────────────────────────────────────────────
     # FORMULES MATHÉMATIQUES SOUVERAINES (atomiques)
@@ -240,6 +252,28 @@ class CalculateurRadiance:
         resultat: float = min(1.0, zeta * PHI)
         return float(resultat)
 
+    def _coherence_bayes(self, valeurs: List[int]) -> float:
+        """C_Bayes = mean(|κ[i+1]/κᵢ − φ|) — Cohérence Bayésienne Dorée.
+
+        Mesure combien les rapports de complexité consécutifs s'écartent du
+        nombre d'or φ. Ancrage : EQ-BAY-001..008 (Attracteur Bayésien Doré).
+
+        θ★ = (φ, φ², φ³) — le vecteur idéal est une cascade dorée.
+        C_Bayes = 0  → chaque paire κ[i+1]/κ[i] = φ exactement (code parfait).
+        C_Bayes → ∞  → distribution chaotique, aucune cohérence dorée.
+
+        Les paires où κ[i] = 0 sont ignorées (division impossible).
+        Nécessite ≥ 2 fonctions ; retourne 0.0 sinon.
+        """
+        if len(valeurs) < 2:
+            return 0.0
+        pairs = [
+            abs(valeurs[i + 1] / valeurs[i] - PHI)
+            for i in range(len(valeurs) - 1)
+            if valeurs[i] != 0
+        ]
+        return sum(pairs) / len(pairs) if pairs else 0.0
+
     def _heisenberg_phi(self, variance: float, entropie: float) -> Dict[str, float]:
         """
         Relation d'incertitude de Heisenberg-Phi (CM-HUP) :
@@ -298,6 +332,7 @@ class CalculateurRadiance:
             "fibonacci_distance": 0.0,
             "zeta_score": 0.0,
             "heisenberg_tension": 0.0,
+            "coherence_bayes": 0.0,
             "nb_fonctions": 0,
             "nb_classes": self.r.nb_classes,
             "nb_imports": self.r.nb_imports,

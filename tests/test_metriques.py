@@ -270,3 +270,100 @@ class TestFormulesBrutesEdgeCases:
         calc = self._build_calculateur()
         # Par défaut, ResultatAnalyse.oudjat est None
         assert calc._serialiser_oudjat() is None
+
+
+class TestCoherenceBayes:
+    """Tests unitaires pour CalculateurRadiance._coherence_bayes() — EQ-BAY-001..008."""
+
+    def _build_calculateur(self):
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="test.py")
+        return CalculateurRadiance(r)
+
+    def test_moins_de_deux_valeurs_retourne_zero(self):
+        """Moins de 2 fonctions → C_Bayes = 0.0 (pas de paire à mesurer)."""
+        calc = self._build_calculateur()
+        assert calc._coherence_bayes([]) == 0.0
+        assert calc._coherence_bayes([5]) == 0.0
+
+    def test_paire_parfaitement_doree(self):
+        """κ[1]/κ[0] = φ → C_Bayes = 0.0 (attracteur exact)."""
+        from phi_complexity.core import PHI
+
+        calc = self._build_calculateur()
+        # Choisir des valeurs dont le rapport est exactement φ
+        a = 100.0
+        b = a * PHI
+        # _coherence_bayes attend des int, approcher avec des ints proches
+        result = calc._coherence_bayes([100, round(b)])
+        assert result < 0.1  # très proche de 0
+
+    def test_paires_toutes_zero_ignorees(self):
+        """Si κ[i] = 0 pour toutes les paires (dénominateurs nuls), retourne 0.0."""
+        calc = self._build_calculateur()
+        # [0, 0, 0] : paires (0,0) et (0,0) — les deux ont κ[i]=0, toutes ignorées
+        assert calc._coherence_bayes([0, 0, 0]) == 0.0
+
+    def test_valeur_positive_pour_distribution_chaotique(self):
+        """Distribution très disparate → C_Bayes > 0."""
+        calc = self._build_calculateur()
+        result = calc._coherence_bayes([1, 100, 1, 100])
+        assert result > 0.0
+
+    def test_symetrie_pas_garantie(self):
+        """C_Bayes est asymétrique : [a, b] ≠ [b, a] en général."""
+        calc = self._build_calculateur()
+        ab = calc._coherence_bayes([2, 5])
+        ba = calc._coherence_bayes([5, 2])
+        # L'un ou l'autre peut être plus petit ; les deux sont ≥ 0
+        assert ab >= 0.0
+        assert ba >= 0.0
+
+    def test_coherence_bayes_dans_resultat_calculer(self, tmp_path):
+        """calculer() expose 'coherence_bayes' dans le dictionnaire résultat."""
+        import textwrap
+
+        from phi_complexity.analyseur import AnalyseurPhi
+        from phi_complexity.metriques import CalculateurRadiance
+
+        code = textwrap.dedent("""\
+            def f(): pass
+            def g(): pass
+        """)
+        f = tmp_path / "test.py"
+        f.write_text(code)
+        r = AnalyseurPhi(str(f)).analyser()
+        result = CalculateurRadiance(r).calculer()
+        assert "coherence_bayes" in result
+        assert isinstance(result["coherence_bayes"], float)
+        assert result["coherence_bayes"] >= 0.0
+
+    def test_coherence_bayes_dans_resultat_vide(self):
+        """_resultat_vide() expose 'coherence_bayes' = 0.0."""
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        r = ResultatAnalyse(fichier="vide.py")
+        result = CalculateurRadiance(r)._resultat_vide()
+        assert "coherence_bayes" in result
+        assert result["coherence_bayes"] == 0.0
+
+    def test_deduction_bayes_zero_quand_coherent(self):
+        """_deduction_bayes(0.0) = 0.0 — aucune pénalité si parfaitement doré."""
+        calc = self._build_calculateur()
+        assert calc._deduction_bayes(0.0) == 0.0
+
+    def test_deduction_bayes_plafonnee_a_10(self):
+        """_deduction_bayes est plafonnée à 10 points (Loi d'Indulgence)."""
+        calc = self._build_calculateur()
+        assert calc._deduction_bayes(100.0) == 10.0
+
+    def test_deduction_bayes_scale_phi(self):
+        """_deduction_bayes(c) = c × φ pour les petites valeurs."""
+        from phi_complexity.core import PHI
+
+        calc = self._build_calculateur()
+        c = 1.0
+        assert abs(calc._deduction_bayes(c) - c * PHI) < 1e-10
