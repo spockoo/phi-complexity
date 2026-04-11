@@ -66,5 +66,10 @@ nav:
   - Guide d'Utilisation:
     - Installation: installation.md
     - Usage CLI: usage.md
+    - Guide Complet: GUIDE.md
+  - Architecture:
+    - Guide Développeur: DEVELOPER.md
+    - Kernel Souverain: kernel-souverain.md
+  - Assembleur: ASSEMBLY.md
   - Roadmap & Vision: roadmap.md
   - Licence: licence.md

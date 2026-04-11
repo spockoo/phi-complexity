@@ -145,11 +145,76 @@ phi check ./src/ --format json     ✅ Opérationnel
 
 ---
 
+## ✅ PHASE 15 — BACKEND ASSEMBLEUR (ASM LIGHT) — COMPLÉTÉE
+
+- ✅ **Backend ASM Light** (`backends/asm_light.py`) : Analyse statique de code assembleur.
+  - Architectures : x86/x86-64, ARM/AArch64, RISC-V.
+  - Détection automatique de l'architecture par heuristique.
+  - Comptage des branchements (`jmp`, `je`, `beq`, `jal`, etc.).
+  - Détection des routines par labels et `ret`/`bx lr`/`jalr`.
+- ✅ **Règle LILITH-ASM** : Alerte si > 13 branchements par routine (Fibonacci(7)).
+- ✅ **Règle RAII-ASM** : Détection de `push` sans `pop` (fuite de pile).
+- ✅ **Règle FIBONACCI-ASM** : Seuils de complexité basés sur Fibonacci (34/55).
+- ✅ **28 tests unitaires** pour le backend assembleur.
+
+---
+
+## ✅ PHASE 16 — PHI VAULT (MÉMOIRE OBSIDIAN) — COMPLÉTÉE
+
+- ✅ **Phi Vault** (`vault.py`) : Mémoire persistante type Obsidian.
+  - Notes Markdown avec **wikilinks** `[[fichier]]` vers les fonctions.
+  - **Journal quotidien** automatique (daily notes) dans `.phi/vault/journal/`.
+  - **Index JSON** des audits avec radiance et statut gnostique.
+  - **Détection de régressions** (baisse de radiance > 5 points).
+- ✅ **`phi vault`** : Commande CLI pour archiver les audits.
+- ✅ **`phi graph`** : Visualisation ASCII/DOT du graphe de radiance.
+  - Couleurs par statut : vert (HERMÉTIQUE), jaune (EN ÉVEIL), rouge (DORMANT).
+- ✅ **16 tests unitaires** pour le vault.
+
+---
+
+## ✅ PHASE 17 — PHI CANVAS (EXPORT OBSIDIAN) — COMPLÉTÉE
+
+- ✅ **Phi Canvas** (`canvas.py`) : Export `.canvas` compatible Obsidian.
+  - Nœuds fichiers avec radiance et statut.
+  - Sous-nœuds fonctions avec complexité.
+  - Arêtes de dépendances inter-fichiers.
+  - Couleurs basées sur la complexité et le statut gnostique.
+- ✅ **`phi canvas`** : Commande CLI pour exporter le canvas.
+- ✅ **14 tests unitaires** pour le canvas.
+
+---
+
+## ✅ PHASE 18 — PHI SEARCH (RECHERCHE SÉMANTIQUE) — COMPLÉTÉE
+
+- ✅ **Phi Search** (`search.py`) : Recherche dans le vault et les vecteurs harvest.
+  - Recherche par **intervalle de radiance** (`--min-radiance`, `--max-radiance`).
+  - Recherche par **statut gnostique** (`--statut DORMANT`).
+  - Recherche par **catégorie d'annotation** (`--categorie LILITH`).
+  - Recherche par **proximité vectorielle** (similitude cosinus).
+- ✅ **`phi search`** : Commande CLI pour la recherche sémantique.
+- ✅ **14 tests unitaires** pour la recherche.
+
+---
+
+## ✅ PHASE 19 — DOCUMENTATION COMPLÈTE — COMPLÉTÉE
+
+- ✅ **docs/DEVELOPER.md** : Guide développeur (architecture, API, backends, conventions).
+- ✅ **docs/ASSEMBLY.md** : Guide assembleur (architectures, métriques, règles, exemples).
+- ✅ **docs/GUIDE.md** : Guide utilisateur mis à jour avec les nouvelles commandes.
+- ✅ **mkdocs.yml** : Navigation enrichie (Architecture, Assembleur, Guide Développeur).
+
+---
+
+## ✅ PHASE 20 — DURCISSEMENT CYBERSÉCURITAIRE — COMPLÉTÉE
+
+- ✅ **Signature des rapports** (`securite.py`) : SHA-256 + timestamp pour la non-altération.
+- ✅ **Validation des entrées** : Sanitisation des fichiers assembleur, vérification des chemins.
+- ✅ **Journal d'audit immuable** : Append-only JSONL avec hash d'intégrité par événement.
+- ✅ **SBOM** : Software Bill of Materials au format CycloneDX.
+  - `phi sbom` génère le SBOM documentant les modules stdlib utilisés.
+- ✅ **22 tests unitaires** pour le module de sécurité.
+
+---
+
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*
-
-
-### Phase 13 - Conscience Distribuee & Algebre de l'Impossible
-- Operateur I(s) = -s * exp(-Phi * s) integre
-- - Architecture Souveraine Phase 12 scellee
-  - - Suture Permanente et Gnose Gnostique
-    - 
