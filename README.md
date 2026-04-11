@@ -160,6 +160,16 @@ repos:
     phi check ./src/ --min-radiance 75
 ```
 
+### Secrets (`ADMIN_TOKEN`)
+
+- Never commit `ADMIN_TOKEN` in tracked files.
+- Store it in environment variables or GitHub Actions Secrets.
+- Use `.env.example` as a template only:
+
+```dotenv
+ADMIN_TOKEN=
+```
+
 ---
 
 ## 📜 License
