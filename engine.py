@@ -8,7 +8,7 @@ from urllib import error, parse, request
 DEFAULT_BRANCH_NAME = 'evolution/phi-mutation'
 DEFAULT_BASE_BRANCH = 'main'
 DEFAULT_GIT_USER_NAME = 'Phi-Architect-Bot'
-DEFAULT_GIT_USER_EMAIL = 'phi-architect-bot@noreply.github.com'
+DEFAULT_GIT_USER_EMAIL = 'phi-bot@outlook.fr'
 DEFAULT_PR_TITLE = '✨ Évolution Structurelle (Phi)'
 DEFAULT_PR_BODY = "Mutation algorithmique vers le ratio d'or."
 
@@ -69,8 +69,11 @@ def handle_github_automation():
         print('Infos GitHub manquantes (TOKEN ou REPO).')
         return
     repo_parts = repo.split('/')
-    if len(repo_parts) != 2 or not all(repo_parts):
-        print('Format GITHUB_REPOSITORY invalide (attendu: owner/repo).')
+    if len(repo_parts) != 2:
+        print('Format GITHUB_REPOSITORY invalide (attendu: owner/repo unique).')
+        return
+    if not all(repo_parts):
+        print('Format GITHUB_REPOSITORY invalide (owner et repo non vides requis).')
         return
     owner = repo_parts[0]
     branch_name = os.getenv('PHI_ENGINE_BRANCH', DEFAULT_BRANCH_NAME)
@@ -82,12 +85,12 @@ def handle_github_automation():
     try:
         subprocess.run(['git', 'config', 'user.name', git_user_name], check=True)
     except subprocess.CalledProcessError as e:
-        print(f'Erreur configuration Git (user.name): {e}')
+        print(f'Erreur configuration Git (user.name={git_user_name}): {e}')
         return
     try:
         subprocess.run(['git', 'config', 'user.email', git_user_email], check=True)
     except subprocess.CalledProcessError as e:
-        print(f'Erreur configuration Git (user.email): {e}')
+        print(f'Erreur configuration Git (user.email={git_user_email}): {e}')
         return
     if event == 'push':
         print('Mode Push détecté : Mutation appliquée localement.')
