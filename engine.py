@@ -8,7 +8,7 @@ from urllib import error, parse, request
 DEFAULT_BRANCH_NAME = 'evolution/phi-mutation'
 DEFAULT_BASE_BRANCH = 'main'
 DEFAULT_GIT_USER_NAME = 'Phi-Architect-Bot'
-DEFAULT_GIT_USER_EMAIL = 'phi-bot@outlook.fr'
+DEFAULT_GIT_USER_EMAIL = 'phi-architect-bot@users.noreply.github.com'
 DEFAULT_PR_TITLE = '✨ Évolution Structurelle (Phi)'
 DEFAULT_PR_BODY = "Mutation algorithmique vers le ratio d'or."
 
@@ -65,8 +65,11 @@ def handle_github_automation():
     event = os.getenv('GITHUB_EVENT_NAME', '')
     repo = os.getenv('GITHUB_REPOSITORY', '')
     token = os.getenv('GITHUB_TOKEN', '')
-    if not (token and repo and '/' in repo):
+    if not (token and repo):
         print('Infos GitHub manquantes (TOKEN ou REPO).')
+        return
+    if '/' not in repo:
+        print('Format GITHUB_REPOSITORY invalide (attendu: owner/repo).')
         return
     owner = repo.split('/')[0]
     branch_name = os.getenv('PHI_ENGINE_BRANCH', DEFAULT_BRANCH_NAME)
@@ -75,8 +78,12 @@ def handle_github_automation():
     git_user_email = os.getenv('PHI_ENGINE_GIT_USER_EMAIL', DEFAULT_GIT_USER_EMAIL)
     pr_title = os.getenv('PHI_ENGINE_PR_TITLE', DEFAULT_PR_TITLE)
     pr_body = os.getenv('PHI_ENGINE_PR_BODY', DEFAULT_PR_BODY)
-    subprocess.run(['git', 'config', 'user.name', git_user_name], check=False)
-    subprocess.run(['git', 'config', 'user.email', git_user_email], check=False)
+    try:
+        subprocess.run(['git', 'config', 'user.name', git_user_name], check=True)
+        subprocess.run(['git', 'config', 'user.email', git_user_email], check=True)
+    except Exception as e:
+        print(f'Erreur configuration Git : {e}')
+        return
     if event == 'push':
         print('Mode Push détecté : Mutation appliquée localement.')
         return
