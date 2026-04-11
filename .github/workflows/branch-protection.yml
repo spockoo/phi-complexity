@@ -36,8 +36,26 @@ jobs:
         run: |
           if [ -z "$ADMIN_TOKEN" ]; then
             echo "❌ ADMIN_TOKEN secret is not configured."
-            echo "   Please create a Personal Access Token with 'Administration: Read & write'"
-            echo "   and add it as a repository secret named ADMIN_TOKEN."
+            echo ""
+            echo "📋 Configuration en 3 étapes :"
+            echo ""
+            echo "   1️⃣  Créer un Fine-grained PAT :"
+            echo "      → https://github.com/settings/tokens?type=beta"
+            echo "      → Repository access : Only select repositories → ${{ github.repository }}"
+            echo "      → Permissions → Repository permissions → Administration : Read and write"
+            echo ""
+            echo "   2️⃣  Ajouter le PAT comme secret du dépôt :"
+            echo "      → https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "      → 'New repository secret' → Name: ADMIN_TOKEN → Value: votre PAT"
+            echo ""
+            echo "   3️⃣  Configurer l'environnement 'branch-protection' :"
+            echo "      → https://github.com/${{ github.repository }}/settings/environments"
+            echo "      → Créer l'environnement 'branch-protection' s'il n'existe pas"
+            echo "      → Vérifier que le secret ADMIN_TOKEN est accessible dans cet environnement"
+            echo ""
+            echo "⚠️  Note : Un PAT configuré sur votre profil GitHub n'est PAS automatiquement"
+            echo "   disponible comme secret de dépôt. Vous devez copier la valeur du PAT"
+            echo "   et la coller manuellement dans les secrets du dépôt (étape 2)."
             exit 1
           fi
           echo "✅ ADMIN_TOKEN is available."
