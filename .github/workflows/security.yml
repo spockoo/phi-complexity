@@ -1,54 +1,20 @@
-name: "🔐 Sécurité — CodeQL + Dependency Review"
+name: "🔐 Sécurité — Dependency Review"
 
-# Analyse de sécurité complète :
-# - CodeQL : détection de vulnérabilités statiques dans le code Python
+# Revue de sécurité des dépendances :
 # - Dependency Review : bloque les PR qui introduisent des dépendances vulnérables
 # - Secret scanning : activé au niveau du dépôt (paramètres GitHub)
+# - CodeQL : géré par le "default setup" activé dans les paramètres du dépôt
+#   (un workflow avancé ici provoquerait un conflit avec le default setup)
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
-  schedule:
-    - cron: '0 3 * * 1'  # Chaque lundi à 3h UTC
   workflow_dispatch:
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
 
 jobs:
-  codeql:
-    name: "CodeQL — Analyse Statique Python"
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 🔬 Initialisation CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: python
-          queries: security-and-quality
-
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 📦 Installation
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-
-      - name: 🔎 Analyse CodeQL
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:python"
-
   dependency-review:
     name: "Dependency Review"
     runs-on: ubuntu-latest
