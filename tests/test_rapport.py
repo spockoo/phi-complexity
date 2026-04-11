@@ -106,7 +106,9 @@ class TestGenerateurMarkdown:
 
     def test_markdown_sauvegarde_fichier(self):
         fichier = creer_fichier(CODE_SIMPLE)
-        sortie = tempfile.mktemp(suffix=".md")
+        fd, sortie = tempfile.mkstemp(suffix=".md")
+        os.close(fd)
+        os.unlink(sortie)  # le rapport doit créer le fichier
         try:
             rapport_markdown(fichier, sortie=sortie)
             assert os.path.exists(sortie)
