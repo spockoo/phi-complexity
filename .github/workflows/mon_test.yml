@@ -12,11 +12,13 @@ jobs:
   evolution:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Nécessaire pour le rebase
+          fetch-depth: 0 # Nécessaire pour effectuer un rebase propre
 
-      - uses: actions/setup-python@v5
+      - name: Configuration de Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       
@@ -25,22 +27,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python engine.py 
 
-      - name: Synchronisation forcée
+      - name: Synchronisation et résolution des conflits
         run: |
           git config --local user.email "phi-bot@outlook.fr"
           git config --local user.name "Phi-Bot"
           
+          # Ajout des modifications générées par engine.py
           git add .
           
-          # On ne commit/push que s'il y a des changements
+          # Vérifier s'il y a des changements à committer
           if ! git diff --cached --quiet; then
             git commit -m "🧬 evolution: mutation structurelle [skip ci]"
             
-            # Récupère les derniers changements et place ton commit au-dessus
-            git pull --rebase origin main
+            # Tente un rebase. En cas de conflit (head vs base), 
+            # le robot gagne avec '-X theirs'
+            git pull --rebase -X theirs origin main
             
-            # Pousse les changements proprement
+            # Pousse les changements vers le dépôt distant
             git push origin main
           else
-            echo "Aucun changement à synchroniser."
+            echo "Aucun changement détecté, rien à synchroniser."
           fi
