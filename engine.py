@@ -4,14 +4,12 @@ import json
 import os
 import subprocess
 from urllib import error, parse, request
-
 DEFAULT_BRANCH_NAME = 'evolution/phi-mutation'
 DEFAULT_BASE_BRANCH = 'main'
 DEFAULT_GIT_USER_NAME = 'Phi-Architect-Bot'
 DEFAULT_GIT_USER_EMAIL = 'phi-bot@outlook.fr'
 DEFAULT_PR_TITLE = '✨ Évolution Structurelle (Phi)'
 DEFAULT_PR_BODY = "Mutation algorithmique vers le ratio d'or."
-
 
 class PhiArchitect:
     """
