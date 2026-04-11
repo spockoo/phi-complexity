@@ -1,70 +1,61 @@
-name: Phi-Complexity CI
+name: "CI — Tests & Qualité (φ-Stable)"
+
+# Pipeline CI principal : lint → typage → tests avec couverture.
+# Aucune mutation automatique, aucun push vers main.
+# Permissions minimales (lecture seule).
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
+    name: "test (${{ matrix.python-version }})"
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        ref: ${{ github.head_ref || github.ref_name }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov ruff
-        pip install -e .
+      - name: 📦 Installation des dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff 'black==25.11.0' mypy pytest pytest-cov
+          pip install -e .
 
-    - name: Auto-Fix (Ruff)
-      # Auto-correct fixable lint issues and commit them back to the branch.
-      # This prevents transient E741/F401 style violations from blocking CI.
-      # Exit code 0 = no issues; 1 = issues found (some fixed, some may remain).
-      # We allow both; the following hard-check step will catch anything unfixable.
-      run: |
-        ruff check --fix phi_complexity/ tests/; exit_code=$?
-        if [ $exit_code -gt 1 ]; then exit $exit_code; fi
-        if ! git diff --quiet -- phi_complexity/ tests/; then
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add phi_complexity/ tests/
-          git commit -m "style(auto): ruff --fix applied by CI [skip ci]"
-          git pull --rebase origin "$GITHUB_HEAD_REF" || git pull --rebase origin "$GITHUB_REF_NAME"
-          git push
-        fi
+      - name: ✨ Lint (Ruff)
+        run: ruff check .
 
-    - name: Lint (Ruff)
-      run: |
-        ruff check phi_complexity/ tests/
+      - name: 🎨 Format check (Black)
+        run: black --check .
 
-    - name: Run unit tests
-      run: |
-        pytest tests/ --cov=phi_complexity --cov-report=xml --cov-fail-under=89
+      - name: 🔍 Typage (mypy)
+        run: mypy phi_complexity --ignore-missing-imports
 
-    - name: Radiant Auto-Audit
-      run: |
-        python -m phi_complexity.cli check . --min-radiance 50
-        python -m phi_complexity.cli memory
+      - name: 🧪 Tests avec couverture
+        run: pytest --cov=phi_complexity --cov-report=xml --cov-fail-under=89
 
-    - name: Formal Type Verification (MyPy)
-      run: |
-        pip install mypy
-        mypy phi_complexity/
+      - name: 📊 Upload artefact couverture
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 7

@@ -1,24 +1,69 @@
-name: Validate Engine Script
+name: "φ-Évolution Expérimentale (non-bloquant)"
+
+# Workflow expérimental : analyse la santé structurelle via engine.py.
+# Ne pousse JAMAIS directement sur main — crée une PR si des changements sont détectés.
+# Découplé du CI principal pour ne pas perturber les gates de qualité.
 
 on:
+  schedule:
+    - cron: '0 0 * * *'  # Chaque nuit à minuit UTC
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  validate-engine:
+  evolution:
+    name: "Mutation Structurelle Phi"
     runs-on: ubuntu-latest
+
+    # Garde-fou anti-boucle : bloque si déclenché par le bot lui-même
+    if: github.actor != 'github-actions[bot]'
+
     steps:
-      - name: Checkout
+      - name: 📥 Checkout (historique complet)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Ensure engine.py exists at repository root
+      - name: 🐍 Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: 📦 Installation
         run: |
-          if [ ! -f engine.py ]; then
-            echo "Error: engine.py not found at repository root"
-            exit 1
-          fi
+          python -m pip install --upgrade pip
+          pip install -e .
 
-      - name: Validate engine.py syntax
-        run: python -c "import py_compile; py_compile.compile('engine.py', doraise=True)"
+      - name: 📐 Exécution du Moteur Phi
+        id: engine
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python engine.py
+          echo "changed=$(git status --porcelain | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - name: 🌿 Création de branche d'évolution
+        if: steps.engine.outputs.changed != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="evolution/phi-mutation-$(date +%Y%m%d-%H%M%S)"
+          git config user.email "phi-bot@outlook.fr"
+          git config user.name "Phi-Bot"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "🧬 evolution: mutation structurelle phi [skip ci]"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "🧬 Évolution Structurelle Phi ($(date +%Y-%m-%d))" \
+            --body "Mutation automatique basée sur le ratio d'or φ = 1.618.\n\nGénérée par engine.py — à réviser avant merge." \
+            --base main \
+            --head "$BRANCH" \
+            --label "automated" || echo "PR déjà existante ou label absent."
+
+      - name: ℹ️ Aucun changement détecté
+        if: steps.engine.outputs.changed == '0'
+        run: echo "L'organisme est déjà en harmonie. Aucune mutation nécessaire."
