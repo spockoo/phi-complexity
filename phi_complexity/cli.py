@@ -9,7 +9,14 @@ from .core import VERSION
 
 # Extensions de fichiers supportées par le framework φ-Meta
 _EXTENSIONS_SUPPORTEES: Tuple[str, ...] = (
-    ".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s"
+    ".py",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".rs",
+    ".asm",
+    ".s",
 )
 
 # ────────────────────────────────────────────────────────
@@ -140,7 +147,8 @@ Exemples :
 
     # Phase 17 — Canvas (export .canvas compatible Obsidian)
     canvas_parser = subparsers.add_parser(
-        "canvas", help="Exporter un Canvas Obsidian (.canvas) du code audité (Phase 17)."
+        "canvas",
+        help="Exporter un Canvas Obsidian (.canvas) du code audité (Phase 17).",
     )
     canvas_parser.add_argument("cible", help="Fichier ou dossier à auditer")
     canvas_parser.add_argument(
@@ -500,8 +508,7 @@ def _executer_memory() -> int:
 
 def _executer_fund() -> None:
     """Affiche le message de soutien à la recherche souveraine."""
-    print(
-        """
+    print("""
 ╔══════════════════════════════════════════════════╗
 ║      PHI-COMPLEXITY — RECHERCHE SOUVERAINE       ║
 ╚══════════════════════════════════════════════════╝
@@ -518,8 +525,7 @@ def _executer_fund() -> None:
   ◈  WEB : https://phidelia.dev
 
   Merci de participer à la SUTURE universelle. ✦
-    """
-    )
+    """)
 
 
 def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
@@ -570,7 +576,9 @@ def _executer_canvas(args: argparse.Namespace, fichiers: List[str]) -> int:
 
     sortie = args.output
     canvas.exporter(sortie)
-    print(f"  ✦ Canvas exporté : {sortie} ({len(canvas.nodes)} nœuds, {len(canvas.edges)} arêtes)")
+    print(
+        f"  ✦ Canvas exporté : {sortie} ({len(canvas.nodes)} nœuds, {len(canvas.edges)} arêtes)"
+    )
     return 0
 
 
