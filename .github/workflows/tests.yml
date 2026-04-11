@@ -1,92 +1,61 @@
-name: "Souveraineté & Auto-Évolution (φ-Recursive)"
+name: "CI — Tests & Qualité (φ-Stable)"
+
+# Pipeline CI principal : lint → typage → tests avec couverture.
+# Aucune mutation automatique, aucun push vers main.
+# Permissions minimales (lecture seule).
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  schedule:
-    - cron: '0 * * * *' # Pulsation horaire
-  workflow_dispatch:      # Stimulus manuel
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  evolutionary_cycle:
-    name: "Cycle d'Évolution & Tests"
+  test:
+    name: "test (${{ matrix.python-version }})"
     runs-on: ubuntu-latest
-    
+
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
-      - name: 🧬 1. Initialisation de l'ADN
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Crucial pour permettre le rebase
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🐍 2. Système Nerveux (Python ${{ matrix.python-version }})
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
-      - name: 📦 3. Installation & Dépendances
+      - name: 📦 Installation des dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install ruff black pytest mypy
+          pip install ruff black mypy pytest pytest-cov
           pip install -e .
 
-      - name: 📐 4. Exécution du Moteur Phi (Mutation)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python engine.py
+      - name: ✨ Lint (Ruff)
+        run: ruff check .
 
-      - name: ✨ 5. Auto-Réparation (Ruff & Black)
-        run: |
-          ruff check --fix . || echo "Ajustements mineurs"
-          black .
+      - name: 🎨 Format check (Black)
+        run: black --check .
 
-      - name: 🧪 6. Audit de Qualité (Tests & Types)
-        run: |
-          mypy . --ignore-missing-imports || echo "Incohérences détectées"
-          pytest --cov=phi_complexity --cov-fail-under=80 || echo "Échec des tests"
+      - name: 🔍 Typage (mypy)
+        run: mypy phi_complexity --ignore-missing-imports
 
-      - name: 🚀 7. Synchronisation Souveraine (Push avec Rebase)
-        if: github.event_name == 'push'
-        run: |
-          # Vérification robuste des changements
-          if [ -n "$(git status --porcelain)" ]; then
-            git config --local user.email "github-actions[bot]@://github.com"
-            git config --local user.name "github-actions[bot]"
-            
-            git add .
-            git commit -m "🧬 evolution: mutation structurelle [skip ci]"
-            
-            # TECHNIQUE INGÉNIEUR : On récupère les derniers commits et on rejoue la mutation par-dessus
-            echo "Synchronisation avec le remote..."
-            git fetch origin main
-            git rebase origin/main
-            
-            # Poussée finale
-            git push origin main
-          else
-            echo "L'organisme est déjà en harmonie. Aucune mutation."
-          fi
+      - name: 🧪 Tests avec couverture
+        run: pytest --cov=phi_complexity --cov-report=xml --cov-fail-under=89
 
-      - name: 🧹 8. Nettoyage des branches éphémères
-        if: github.event_name == 'schedule'
-        run: |
-          git fetch --prune
-          git branch -r | grep 'origin/evolution/' | while read branch; do
-            b=${branch#origin/}
-            if [ -z "$(git log main..origin/$b)" ]; then
-              git push origin --delete $b || true
-            fi
-          done
+      - name: 📊 Upload artefact couverture
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 7

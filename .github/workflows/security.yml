@@ -1,0 +1,66 @@
+name: "🔐 Sécurité — CodeQL + Dependency Review"
+
+# Analyse de sécurité complète :
+# - CodeQL : détection de vulnérabilités statiques dans le code Python
+# - Dependency Review : bloque les PR qui introduisent des dépendances vulnérables
+# - Secret scanning : activé au niveau du dépôt (paramètres GitHub)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * 1'  # Chaque lundi à 3h UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  codeql:
+    name: "CodeQL — Analyse Statique Python"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔬 Initialisation CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Installation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: 🔎 Analyse CodeQL
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  dependency-review:
+    name: "Dependency Review"
+    runs-on: ubuntu-latest
+    # S'exécute uniquement sur les PR pour bloquer les dépendances vulnérables
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔍 Revue des dépendances
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0, LGPL-2.0
