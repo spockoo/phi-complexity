@@ -431,8 +431,7 @@ def _executer_memory() -> int:
 
 def _executer_fund() -> None:
     """Affiche le message de soutien à la recherche souveraine."""
-    print(
-        """
+    print("""
 ╔══════════════════════════════════════════════════╗
 ║      PHI-COMPLEXITY — RECHERCHE SOUVERAINE       ║
 ╚══════════════════════════════════════════════════╝
@@ -449,8 +448,7 @@ def _executer_fund() -> None:
   ◈  WEB : https://phidelia.dev
 
   Merci de participer à la SUTURE universelle. ✦
-    """
-    )
+    """)
 
 
 # ────────────────────────────────────────────────────────
