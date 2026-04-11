@@ -355,6 +355,20 @@ def _est_finding_securite(finding: Dict[str, Any]) -> bool:
     return True
 
 
+def _est_bloquant_security(
+    security_relevant: bool, surface: str, severite: str
+) -> bool:
+    return (
+        security_relevant
+        and surface == "production"
+        and severite
+        in {
+            "critical",
+            "high",
+        }
+    )
+
+
 def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
     categorie = str(annotation.get("categorie", "UNKNOWN"))
     niveau = str(annotation.get("niveau", "WARNING"))
@@ -376,11 +390,7 @@ def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
         "context": str(annotation.get("extrait", "")),
         "surface": surface,
         "security_relevant": security_relevant,
-        "blocking": (
-            security_relevant
-            and surface == "production"
-            and severite in {"critical", "high"}
-        ),
+        "blocking": _est_bloquant_security(security_relevant, surface, severite),
         "confidence": _confidence_par_source("phi", severite),
         "exploitability": (
             _EXPLOITABILITY_CRITICAL
@@ -463,10 +473,8 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
                     "context": "",
                     "surface": surface,
                     "security_relevant": security_relevant,
-                    "blocking": (
-                        security_relevant
-                        and surface == "production"
-                        and severite in {"critical", "high"}
+                    "blocking": _est_bloquant_security(
+                        security_relevant, surface, severite
                     ),
                     "out_of_scope": out_of_scope,
                     "confidence": _confidence_par_source("sarif", severite),

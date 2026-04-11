@@ -18,6 +18,7 @@ from phi_complexity.securite import (
     construire_audit_securite,
     exporter_audit_securite,
     verifier_politique_securite,
+    _est_finding_securite,
 )
 
 CODE_C_VULNERABLE = """\
@@ -440,8 +441,8 @@ class TestAuditSecurite:
         être traitées comme vulnérabilités bloquantes."""
         tmpdir = tempfile.mkdtemp()
         try:
-            fichier = os.path.join(tmpdir, "complexe.py")
-            with open(fichier, "w", encoding="utf-8") as f:
+            file_path = os.path.join(tmpdir, "complexe.py")
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(
                     """def f(a, b, c):
     if a:
@@ -460,7 +461,7 @@ class TestAuditSecurite:
 """
                 )
 
-            audit = construire_audit_securite([fichier])
+            audit = construire_audit_securite([file_path])
             summary = audit["summary"]
             non_security = [
                 f for f in audit["findings"] if not f.get("security_relevant", True)
@@ -472,3 +473,22 @@ class TestAuditSecurite:
             assert summary["status"] == "PASS"
         finally:
             shutil.rmtree(tmpdir)
+
+    def test_est_finding_securite_prioritise_security_relevant(self):
+        assert _est_finding_securite({"security_relevant": True}) is True
+        assert _est_finding_securite({"security_relevant": False}) is False
+
+    def test_est_finding_securite_fallback_par_source(self):
+        assert (
+            _est_finding_securite({"source": "phi-complexity", "rule_id": "CWE-134"})
+            is True
+        )
+        assert (
+            _est_finding_securite(
+                {"source": "phi-complexity", "rule_id": "CYCLOMATIQUE"}
+            )
+            is False
+        )
+        assert (
+            _est_finding_securite({"source": "Flawfinder", "rule_id": "FF1009"}) is True
+        )
