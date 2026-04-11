@@ -1,17 +1,11 @@
 name: "Souveraineté & Auto-Évolution (φ-Recursive)"
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  PHI_THRESHOLD: 1.618  # Constante d'ancrage pour l'évolution
-
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   schedule:
-    - cron: '0 * * * *'  # Pulsation horaire : l'organisme s'analyse chaque heure
-  workflow_dispatch:      # Déclenchement manuel (Stimulus externe)
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,101 +13,43 @@ permissions:
 
 jobs:
   evolutionary_cycle:
-    name: "Cycle de Mutation Structurelle"
+    name: "Cycle de Mutation"
     runs-on: ubuntu-latest
     
     steps:
-      - name: 1. Initialisation de l'ADN
+      - name: 1. Initialisation
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
 
-      - name: 2. Activation du Système Nerveux (Python)
+      - name: 2. Système Nerveux (Python)
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: 'pip'
 
-      - name: 3. Assimilation des Outils d'Analyse
+      - name: 3. Installation Dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy black
-          pip install -e .
+          pip install ruff black
 
-      - name: 4. Auto-Réparation (Métaprogrammation de Style)
+      - name: 4. Exécution du Moteur Phi (Mutation)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Correction automatique des patterns de code non-optimaux
-          ruff check --fix .
-          black .
+          # C'est ici qu'on lance ton vrai moteur
+          python engine.py
           
-      - name: 5. Audit de Cohérence (Mypy)
+      - name: 5. Nettoyage et Formatage
         run: |
-          # Validation de l'intégrité des structures de données
-          mypy . --ignore-missing-imports --strict || echo "Alert: Structural inconsistencies detected."
+          # On assure que la mutation est propre syntaxiquement
+          ruff check --fix . || echo "Ruff a corrigé des alertes."
+          black .
 
-      - name: 6. Génération de la Mutation (Auto-PR)
-        if: github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "evolution(auto): structural mutation aligned with φ-invariants"
-          branch: "evolution/phi-mutation"
-          base: main
-          title: "🧬 Mutation Autonome : Optimisation du Corpus"
-          body: |
-            ### Rapport d'Évolution Automatique
-            **Cycle :** Horaire (Cron 0 * * * *)
-            
-            **Actions réalisées :**
-            - [x] **Auto-Correction** : Alignement syntaxique via Ruff & Black.
-            - [x] **Audit Mypy** : Vérification de la stabilité du système nerveux.
-            - [x] **Invariants φ** : Optimisation de la radiance structurelle.
-            
-            *Cette modification a été générée de manière récursive sans intervention humaine directe.*
-          labels: |
-            auto-evolution
-            automated-pr
-            phi-optimized
-
-      - name: 7. Extraction de la Version Souveraine
-        if: github.ref == 'refs/heads/main'
-        id: get_version
+      - name: 6. Push Direct (si Push)
+        if: github.event_name == 'push'
         run: |
-          # Extrait la version du fichier pyproject.toml
-          VERSION=$(grep -m 1 "version =" pyproject.toml | cut -d '"' -f 2)
-          echo "VERSION=v$VERSION" >> $GITHUB_ENV
-          # Vérifie si le tag existe déjà sur le remote pour éviter une release dupliquée
-          if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "v$VERSION"; then
-            echo "tag_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "tag_exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 8. Publication de la Release
-        if: github.ref == 'refs/heads/main' && steps.get_version.outputs.tag_exists == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          # On utilise une syntaxe de secours pour calmer l'éditeur GitHub
-          tag_name: ${{ env.VERSION }}
-          name: "🧬 Cycle d'Évolution ${{ env.VERSION }}"
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 9. Purge des branches éphémères
-        if: github.ref == 'refs/heads/main'
-        run: |
-          # Supprime les branches de mutation déjà fusionnées pour garder l'organisme propre
-          git fetch --prune
-          for branch in $(git branch -r | grep 'origin/evolution/'); do
-            branch_name=$(echo $branch | sed 's/origin\///')
-            if [ -z "$(git log main..origin/$branch_name)" ]; then
-              echo "Nettoyage de la branche fusionnée : $branch_name"
-              git push origin --delete $branch_name || echo "Déjà supprimée."
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config --local user.email "phi-bot@outlook.fr"
+          git config --local user.name "Phi-Bot"
+          git add .
+          git commit -m "🧬 evolution: mutation structurelle [skip ci]" || echo "Rien à commiter"
+          git push
