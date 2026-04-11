@@ -217,4 +217,18 @@ phi check ./src/ --format json     ✅ Opérationnel
 
 ---
 
+## ✅ PHASE 21 — DÉTECTION CWE-134 (FORMAT STRING) — COMPLÉTÉE
+
+- ✅ **Détection CWE-134** : Analyse statique des vulnérabilités de chaîne de format dans le code C/C++.
+  - Fonctions couvertes : `printf`, `fprintf`, `sprintf`, `snprintf`, `dprintf`,
+    `vprintf`, `vfprintf`, `vsprintf`, `vsnprintf`, `syslog`, `wprintf`, `fwprintf`, `swprintf`.
+  - Détection des appels avec format non-littéral (variable contrôlable).
+  - Zéro faux positif sur les formats littéraux (`"%s"`, `"%d\n"`, etc.).
+  - Annotations de niveau CRITICAL avec message de correction explicite.
+- ✅ **Exemple `moteur_c.c`** enrichi avec démonstrations CWE-134 (vulnérable + sûr).
+- ✅ **14 tests unitaires** pour la détection CWE-134.
+- ✅ **Correction Black** : Formatage de `cli.py` et `test_metriques.py` conforme.
+
+---
+
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*
