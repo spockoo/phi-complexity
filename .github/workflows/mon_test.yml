@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Important pour le rebase
+          fetch-depth: 0 # Nécessaire pour le rebase
 
       - uses: actions/setup-python@v5
         with:
@@ -26,15 +26,21 @@ jobs:
         run: python engine.py 
 
       - name: Synchronisation forcée
-        if: github.event_name == 'push'
         run: |
           git config --local user.email "phi-bot@outlook.fr"
           git config --local user.name "Phi-Bot"
+          
           git add .
-          # On vérifie s'il y a des changements avant de commit
+          
+          # On ne commit/push que s'il y a des changements
           if ! git diff --cached --quiet; then
             git commit -m "🧬 evolution: mutation structurelle [skip ci]"
-            # REBASE : La clé pour éviter l'erreur non-fast-forward
+            
+            # Récupère les derniers changements et place ton commit au-dessus
             git pull --rebase origin main
+            
+            # Pousse les changements proprement
             git push origin main
+          else
+            echo "Aucun changement à synchroniser."
           fi
