@@ -436,7 +436,7 @@ class TestAuditSecurite:
         finally:
             shutil.rmtree(tmpdir)
 
-    def test_phi_quality_annotations_do_not_block_security_gate(self):
+    def test_phi_quality_annotations_excluded_from_security_gate(self):
         """Les annotations qualité phi (ex: CYCLOMATIQUE) ne doivent pas
         être traitées comme vulnérabilités bloquantes."""
         tmpdir = tempfile.mkdtemp()

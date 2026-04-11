@@ -494,6 +494,11 @@ def _score_securite(findings: Sequence[Dict[str, Any]]) -> float:
         Séquence de findings normalisés (dict) contenant notamment `surface`,
         `severity`, et éventuellement `out_of_scope`/`security_relevant`.
 
+    Notes
+    -----
+    Les métriques qualité (ex: radiance) sont volontairement exclues du
+    calcul pour éviter des faux négatifs de sécurité en CI.
+
     Seuls les findings sécurité en surface production impactent le score.
     Les findings hors périmètre (`out_of_scope`) et les annotations qualité
     non-sécurité sont exclus.
