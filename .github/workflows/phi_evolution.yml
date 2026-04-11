@@ -4,16 +4,21 @@ on:
   push:
     branches: [ main ]
   schedule:
-    - cron: '0 0 * * *' # S'exécute chaque nuit
+    - cron: '0 0 * * *' # S'exécute chaque nuit à minuit
+  workflow_dispatch: # Permet de le lancer manuellement pour tester
 
 jobs:
   phi_evolve:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write # Requis pour la fonction de PR automatique
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Récupère tout l'historique pour éviter les erreurs de branche
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -22,13 +27,17 @@ jobs:
 
       - name: Run Evolution Engine
         id: evolve
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Donne l'accès au script engine.py
         run: |
-          # On lance le moteur et on capture si une modification a eu lieu
+          # Lance le script (qui gère les PR en mode cron ou les modifs en mode push)
           python engine.py
+          # Vérifie s'il y a des changements locaux pour le mode push direct
           echo "changed=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
 
-      - name: Commit & Push Changes
-        if: steps.evolve.outputs.changed != '0'
+      - name: Commit & Push Changes (Push mode only)
+        # On ne commit direct que si on est sur un push et qu'il y a des changements
+        if: github.event_name == 'push' && steps.evolve.outputs.changed != '0'
         run: |
           git config --local user.email "phi-bot@outlook.fr"
           git config --local user.name "Phi-Complexity Bot"
