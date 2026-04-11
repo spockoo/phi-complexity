@@ -20,13 +20,13 @@ jobs:
     
     strategy:
       matrix:
-        python-version: ["3.10"] # Standard professionnel stable
+        python-version: ["3.10"]
 
     steps:
       - name: 🧬 1. Initialisation de l'ADN
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Crucial pour permettre le rebase
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🐍 2. Système Nerveux (Python ${{ matrix.python-version }})
@@ -50,33 +50,40 @@ jobs:
 
       - name: ✨ 5. Auto-Réparation (Ruff & Black)
         run: |
-          ruff check --fix . || echo "Corrections mineures appliquées"
+          ruff check --fix . || echo "Ajustements mineurs"
           black .
 
       - name: 🧪 6. Audit de Qualité (Tests & Types)
         run: |
-          # Vérification de l'intégrité après mutation
-          mypy . --ignore-missing-imports || echo "Alert: Incohérences détectées"
-          pytest --cov=phi_complexity --cov-fail-under=80 || echo "Tests en échec après mutation"
+          mypy . --ignore-missing-imports || echo "Incohérences détectées"
+          pytest --cov=phi_complexity --cov-fail-under=80 || echo "Échec des tests"
 
-      - name: 🚀 7. Synchronisation Souveraine (Push)
+      - name: 🚀 7. Synchronisation Souveraine (Push avec Rebase)
         if: github.event_name == 'push'
         run: |
-          if ! git diff --quiet; then
+          # Vérification robuste des changements
+          if [ -n "$(git status --porcelain)" ]; then
             git config --local user.email "github-actions[bot]@://github.com"
             git config --local user.name "github-actions[bot]"
+            
             git add .
             git commit -m "🧬 evolution: mutation structurelle [skip ci]"
-            git push
+            
+            # TECHNIQUE INGÉNIEUR : On récupère les derniers commits et on rejoue la mutation par-dessus
+            echo "Synchronisation avec le remote..."
+            git fetch origin main
+            git rebase origin/main
+            
+            # Poussée finale
+            git push origin main
           else
-            echo "Aucune mutation nécessaire."
+            echo "L'organisme est déjà en harmonie. Aucune mutation."
           fi
 
-      - name: 🧹 8. Nettoyage des branches
+      - name: 🧹 8. Nettoyage des branches éphémères
         if: github.event_name == 'schedule'
         run: |
           git fetch --prune
-          # Supprime les branches d'évolution fusionnées pour garder l'organisme propre
           git branch -r | grep 'origin/evolution/' | while read branch; do
             b=${branch#origin/}
             if [ -z "$(git log main..origin/$b)" ]; then
