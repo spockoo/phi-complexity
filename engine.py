@@ -65,32 +65,49 @@ def handle_github_automation():
         return
     owner = repo.split('/')[0]
     branch_name = os.getenv('PHI_AUTOMATION_BRANCH', 'evolution/phi-mutation')
+    base_branch = os.getenv('PHI_BASE_BRANCH', 'main')
     subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'])
     subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'])
-    subprocess.run(['git', 'checkout', '-B', branch_name], check=True)
-    subprocess.run(['git', 'add', '.'], check=True)
-    has_changes = subprocess.run(
-        ['git', 'diff', '--cached', '--quiet'],
-        check=False,
-    ).returncode != 0
-    if not has_changes:
-        print('Aucun changement à proposer en PR.')
+    try:
+        # Branche dédiée à l'auto-évolution: on repart de HEAD à chaque cycle pour rester idempotent.
+        subprocess.run(['git', 'checkout', '-B', branch_name], check=True)
+        subprocess.run(['git', 'add', '.'], check=True)
+        has_changes = subprocess.run(
+            ['git', 'diff', '--cached', '--quiet'],
+            check=False,
+        ).returncode != 0
+        if not has_changes:
+            print('Aucun changement à proposer en PR.')
+            return
+        subprocess.run(['git', 'commit', '-m', '🧬 [Cron] Harmonisation vers Ratio Phi'], check=True)
+        # Force-with-lease maintient une seule branche d'évolution sans écraser un historique inattendu.
+        subprocess.run(['git', 'push', '--force-with-lease', 'origin', branch_name], check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Échec des opérations git pour {branch_name}: {exc}")
         return
-    subprocess.run(['git', 'commit', '-m', '🧬 [Cron] Harmonisation vers Ratio Phi'], check=True)
-    subprocess.run(['git', 'push', '--force-with-lease', 'origin', branch_name], check=True)
 
-    query = parse.urlencode({'state': 'open', 'head': f'{owner}:{branch_name}', 'base': 'main'})
-    with request.urlopen(
-        request.Request(
-            f'https://api.github.com/repos/{repo}/pulls?{query}',
-            headers={
-                'Authorization': f'Bearer {token}',
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28',
-            },
-        )
-    ) as response:
-        open_prs = json.loads(response.read().decode('utf-8'))
+    query = parse.urlencode({'state': 'open', 'head': f'{owner}:{branch_name}', 'base': base_branch})
+    try:
+        with request.urlopen(
+            request.Request(
+                f'https://api.github.com/repos/{repo}/pulls?{query}',
+                headers={
+                    'Authorization': f'Bearer {token}',
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28',
+                },
+            )
+        ) as response:
+            open_prs = json.loads(response.read().decode('utf-8'))
+    except error.HTTPError as exc:
+        print(f'Échec lecture des PR ouvertes pour {branch_name} dans {repo}: {exc.code} {exc.reason}')
+        return
+    except error.URLError as exc:
+        print(f'Échec réseau lecture PR ouvertes pour {branch_name} dans {repo}: {exc.reason}')
+        return
+    except json.JSONDecodeError:
+        print(f'Réponse API invalide lors de la lecture des PR ouvertes pour {branch_name} dans {repo}.')
+        return
     if open_prs:
         print(f'PR déjà ouverte sur {branch_name}, mise à jour seulement.')
         return
@@ -99,7 +116,7 @@ def handle_github_automation():
         {
             'title': '✨ Évolution Structurelle (Phi)',
             'head': branch_name,
-            'base': 'main',
+            'base': base_branch,
             'body': 'Rééquilibrage automatique et audit continu des commits non fusionnés.',
         }
     ).encode('utf-8')
@@ -119,7 +136,9 @@ def handle_github_automation():
         ):
             print(f'PR créée sur {branch_name}')
     except error.HTTPError as exc:
-        print(f'Échec création PR: {exc.code} {exc.reason}')
+        print(f'Échec création PR pour {branch_name} dans {repo}: {exc.code} {exc.reason}')
+    except error.URLError as exc:
+        print(f'Échec réseau création PR pour {branch_name} dans {repo}: {exc.reason}')
 if __name__ == '__main__':
     architect = PhiArchitect()
     if architect.run_cycle():

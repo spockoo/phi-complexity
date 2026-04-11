@@ -2,7 +2,7 @@ name: "Souveraineté Récursive Phi"
 
 on:
   schedule:
-    - cron: '0 0 * * *' # S'exécute chaque nuit à minuit
+    - cron: '0 0 * * *' # S'exécute chaque nuit à minuit UTC
   workflow_dispatch: # Permet de le lancer manuellement pour tester
 
 concurrency:
