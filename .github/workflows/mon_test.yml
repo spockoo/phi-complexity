@@ -1,55 +1,156 @@
-name: "Souveraineté & Auto-Évolution (φ-Recursive)"
+import ast
+import inspect
+import json
+import os
+import subprocess
+from urllib import error, parse, request
 
-on:
-  push:
-    branches: [ "main" ]
-  schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+class PhiArchitect:
+    """
+    Moteur d'Auto-Évolution "Souverain"
+    Audit la complexité, nettoie le code mort et ajuste le ratio Phi.
+    """
+    def __init__(self):
+        self.phi = 1.61803398875
+        self.filename = inspect.getfile(self.__class__)
+        self.complexity_limit = 10 # Seuil d'ingénierie (pas plus de 10 chemins par fonction)
 
-permissions:
-  contents: write
-  pull-requests: write
+    def clean_merge_markers(self):
+        """Supprime les résidus de conflits Git (<<<<, ====, >>>>)."""
+        if not os.path.exists(self.filename): return
+        with open(self.filename, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        clean_lines = [l for l in lines if not any(l.startswith(m) for m in ["<<<<<<<", "=======", ">>>>>>>"])]
+        with open(self.filename, "w", encoding="utf-8") as f:
+            f.writelines(clean_lines)
 
-jobs:
-  evolutionary_cycle:
-    name: "Cycle de Mutation"
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: 1. Initialisation
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    def get_complexity(self, node):
+        """Algorithme de Complexité Cyclomatique (Audit de maintenabilité)."""
+        complexity = 1
+        for child in ast.walk(node):
+            if isinstance(child, (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With, ast.IfExp)):
+                complexity += 1
+        return complexity
 
-      - name: 2. Système Nerveux (Python)
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    def clean_dead_code(self, tree):
+        """Algorithme : Supprime les variables d'équilibrage devenues obsolètes."""
+        source = ast.unparse(tree)
+        new_body = []
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+                var_name = node.targets[0].id
+                if var_name.startswith("static_sync_") and source.count(var_name) <= 1:
+                    continue # On ignore cette ligne (code mort)
+            new_body.append(node)
+        tree.body = new_body
+        return tree
 
-      - name: 3. Installation Dépendances
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff black
+    def run_cycle(self):
+        self.clean_merge_markers()
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            source = f.read()
+        
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            print("❌ Erreur de syntaxe. L'organisme ne peut pas s'analyser.")
+            return False
 
-      - name: 4. Exécution du Moteur Phi (Mutation)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # C'est ici qu'on lance ton vrai moteur
-          python engine.py
-          
-      - name: 5. Nettoyage et Formatage
-        run: |
-          # On assure que la mutation est propre syntaxiquement
-          ruff check --fix . || echo "Ruff a corrigé des alertes."
-          black .
+        # 1. Audit de Complexité
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                comp = self.get_complexity(node)
+                if comp > self.complexity_limit:
+                    print(f"⚠️ Alerte : {node.name} trop complexe ({comp}). Mutation annulée.")
+                    return False
 
-      - name: 6. Push Direct (si Push)
-        if: github.event_name == 'push'
-        run: |
-          git config --local user.email "phi-bot@outlook.fr"
-          git config --local user.name "Phi-Bot"
-          git add .
-          git commit -m "🧬 evolution: mutation structurelle [skip ci]" || echo "Rien à commiter"
-          git push
+        # 2. Analyse du Ratio Phi
+        nodes = list(ast.walk(tree))
+        logic = [n for n in nodes if isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.With))]
+        data = [n for n in nodes if isinstance(n, (ast.Assign, ast.Constant, ast.List, ast.Dict))]
+        
+        ratio = len(data) / len(logic) if logic else len(data)
+        diff = self.phi - ratio
+        print(f"--- [PHI-ENGINE] Ratio: {ratio:.3f} | Cible: {self.phi:.3f} ---")
+
+        if abs(diff) < 0.01:
+            print("⚖️ Harmonie atteinte.")
+            return False
+
+        # 3. Mutation Structurelle
+        if diff > 0:
+            new_var_name = f"static_sync_{len(data)}"
+            new_data = ast.Assign(
+                targets=[ast.Name(id=new_var_name, ctx=ast.Store())],
+                value=ast.Constant(value=round(diff, 4))
+            )
+            tree.body.insert(0, new_data)
+            print(f"🧬 Mutation : Injection de {new_var_name}")
+
+        # 4. Optimisation
+        tree = self.clean_dead_code(tree)
+
+        with open(self.filename, 'w', encoding='utf-8') as f:
+            f.write(ast.unparse(tree))
+        return True
+
+def handle_github_automation():
+    """Gère l'automatisation GitHub (Push ou PR Idempotente)."""
+    event = os.getenv('GITHUB_EVENT_NAME')
+    repo = os.getenv('GITHUB_REPOSITORY')
+    token = os.getenv('GITHUB_TOKEN')
+    if not token or not repo: return
+
+    branch_name = "evolution/phi-mutation"
+    base_branch = "main"
+
+    subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'])
+    subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'])
+
+    if event == 'push':
+        print("🚀 Mode Push : Mutation appliquée.")
+        return
+
+    # Mode Schedule/Dispatch : Branche et PR
+    try:
+        subprocess.run(['git', 'checkout', '-B', branch_name], check=True)
+        subprocess.run(['git', 'add', '.'], check=True)
+        if subprocess.run(['git', 'diff', '--cached', '--quiet']).returncode == 0:
+            print("✨ Aucun changement structurel détecté.")
+            return
+        
+        subprocess.run(['git', 'commit', '-m', '🧬 evolution: mutation structurelle phi'], check=True)
+        subprocess.run(['git', 'push', '--force', 'origin', branch_name], check=True)
+    except Exception as e:
+        print(f"❌ Erreur Git : {e}")
+        return
+
+    # Check PR existante (Idempotence)
+    api_url = f'https://github.com{repo}/pulls'
+    try:
+        req = request.Request(f"{api_url}?state=open&head={repo.split('/')[0]}:{branch_name}")
+        req.add_header('Authorization', f'token {token}')
+        with request.urlopen(req) as r:
+            if json.loads(r.read().decode()):
+                print("✅ PR déjà ouverte. Mise à jour de la branche terminée.")
+                return
+
+        # Création PR
+        payload = json.dumps({
+            'title': '✨ Évolution Structurelle (Phi)',
+            'head': branch_name, 'base': base_branch,
+            'body': 'Mutation automatique basée sur le ratio d\'or et l\'audit de complexité.'
+        }).encode()
+        post_req = request.Request(api_url, data=payload, method='POST')
+        post_req.add_header('Authorization', f'token {token}')
+        post_req.add_header('Content-Type', 'application/json')
+        with request.urlopen(post_req):
+            print("🆕 Pull Request créée avec succès.")
+    except Exception as e:
+        print(f"❌ Erreur API : {e}")
+
+if __name__ == '__main__':
+    architect = PhiArchitect()
+    if architect.run_cycle():
+        if os.getenv('GITHUB_ACTIONS'):
+            handle_github_automation()
