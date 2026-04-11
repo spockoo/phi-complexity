@@ -312,7 +312,7 @@ class SentinelResponse:
 
         lignes += [
             "---",
-            f"*Généré par phi-complexity/sentinel v{self.VERSION_SPEC}*",
+            f"*Genere par phi-complexity/sentinel v{self.VERSION_SPEC}*",
         ]
         return "\n".join(lignes)
 
