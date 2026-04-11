@@ -543,7 +543,7 @@ def traiter(a, b, c, d, e):  # phi: ignore[CYCLOMATIQUE]
         import ast as ast_mod
         from phi_complexity.analyseur import AnalyseurPythonInternal
 
-        # if a and b and c → BoolOp(values=[a, b, c]) → +2 (len-1=2) + 1 (If) = 3
+        # if a and b and c → +2 (BoolOp) +1 (If) +1 (base) = 4
         code = (
             "def f(a, b, c):\n    if a and b and c:\n        return 1\n    return 0\n"
         )
