@@ -250,6 +250,15 @@ exporter_sbom(".phi/sbom.json")
 - **Tests** : pytest avec coverage ≥ 89%
 - **Commentaires** : En français, style φ-Meta
 
+### Visibilité des branches distantes
+
+Si votre clone local n'affiche pas toutes les branches du dépôt (ex: seulement `main`), synchronisez les références distantes :
+
+```bash
+git fetch --all --prune
+git branch -r
+```
+
 ---
 
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*

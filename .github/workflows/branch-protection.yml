@@ -1,120 +1,104 @@
 name: 🔒 Configure Branch Protection
 
-# Ce workflow configure les règles de protection des branches importantes
-# via l'API GitHub. Il se déclenche manuellement ou à chaque push sur main.
+# Ce workflow configure les règles de protection des branches importantes.
+# Exécution manuelle uniquement, avec token d'administration stocké en secret.
 #
 # PRÉREQUIS : Un Personal Access Token (PAT) avec la permission
 #             "Administration: Read & write" doit être stocké dans
 #             les secrets du dépôt sous le nom ADMIN_TOKEN.
 
 on:
-  workflow_dispatch:          # Déclenchement manuel depuis l'onglet Actions
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/branch-protection.yml'  # Re-apply on config change
+  workflow_dispatch: # Déclenchement manuel depuis l'onglet Actions
 
 permissions:
   contents: read
 
+concurrency:
+  group: branch-protection-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   protect-branches:
-    name: Apply Rulesets
+    name: Apply branch protection set
     runs-on: ubuntu-latest
+    environment: branch-protection
 
     steps:
       - name: 🔍 Check ADMIN_TOKEN secret
-        id: check_token
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           if [ -z "$ADMIN_TOKEN" ]; then
-            echo "⚠️  ADMIN_TOKEN secret is not configured."
+            echo "❌ ADMIN_TOKEN secret is not configured."
             echo "   Please create a Personal Access Token with 'Administration: Read & write'"
             echo "   and add it as a repository secret named ADMIN_TOKEN."
-            echo "has_token=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "✅ ADMIN_TOKEN is available."
-            echo "has_token=true" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
+          echo "✅ ADMIN_TOKEN is available."
 
-      - name: 🔒 Protect branch — main
-        if: steps.check_token.outputs.has_token == 'true'
+      - name: 🎯 Resolve protected branch targets
+        id: targets
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          gh api \
-            --method PUT \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository }}/branches/main/protection \
-            --input - <<'EOF'
+          mapfile -t all_branches < <(
+            gh api --paginate /repos/${{ github.repository }}/branches --jq '.[].name'
+          )
+          targets=()
+          for branch in "${all_branches[@]}"; do
+            if [[ "$branch" == "copilot/"* ]]; then
+              continue
+            fi
+            if [[ "$branch" == "main" || "$branch" == "develop" || "$branch" == release/* ]]; then
+              targets+=("$branch")
+            fi
+          done
+          if [ "${#targets[@]}" -eq 0 ]; then
+            targets=("main")
+          fi
           {
-            "required_status_checks": {
-              "strict": true,
-              "contexts": [
-                "test (3.9 · ubuntu-latest)",
-                "test (3.10 · ubuntu-latest)",
-                "test (3.11 · ubuntu-latest)",
-                "test (3.12 · ubuntu-latest)",
-                "test (3.13 · ubuntu-latest)",
-                "test (3.14 · ubuntu-latest)"
-              ]
-            },
-            "enforce_admins": true,
-            "required_pull_request_reviews": {
-              "dismiss_stale_reviews": true,
-              "require_code_owner_reviews": true,
-              "required_approving_review_count": 1,
-              "require_last_push_approval": true
-            },
-            "restrictions": null,
-            "required_linear_history": true,
-            "allow_force_pushes": false,
-            "allow_deletions": false,
-            "block_creations": false,
-            "required_conversation_resolution": true,
-            "lock_branch": false,
-            "allow_fork_syncing": true
-          }
-          EOF
+            echo "branches<<EOF"
+            printf '%s\n' "${targets[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: 🔒 Protect branch — develop (if exists)
-        if: steps.check_token.outputs.has_token == 'true'
+      - name: 🔒 Apply protection on targets
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          # Vérifie si la branche develop existe avant d'appliquer les règles
-          if gh api /repos/${{ github.repository }}/branches/develop \
-               --silent 2>/dev/null; then
+          while IFS= read -r branch; do
+            [ -z "$branch" ] && continue
+            if [ "$branch" = "main" ]; then
+              enforce_admins=true
+              require_last_push_approval=true
+              required_linear_history=true
+            else
+              enforce_admins=false
+              require_last_push_approval=false
+              required_linear_history=false
+            fi
+            encoded_branch=$(python -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$branch")
+            echo "Applying branch protection on '$branch'..."
             gh api \
               --method PUT \
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              /repos/${{ github.repository }}/branches/develop/protection \
-              --input - <<'EOF'
+              /repos/${{ github.repository }}/branches/${encoded_branch}/protection \
+              --input - <<EOF
             {
               "required_status_checks": {
                 "strict": true,
-                "contexts": [
-                  "test (3.9 · ubuntu-latest)",
-                  "test (3.10 · ubuntu-latest)",
-                  "test (3.11 · ubuntu-latest)",
-                  "test (3.12 · ubuntu-latest)",
-                  "test (3.13 · ubuntu-latest)",
-                  "test (3.14 · ubuntu-latest)"
-                ]
+                "contexts": ["ci-gate"]
               },
-              "enforce_admins": false,
+              "enforce_admins": ${enforce_admins},
               "required_pull_request_reviews": {
                 "dismiss_stale_reviews": true,
                 "require_code_owner_reviews": true,
                 "required_approving_review_count": 1,
-                "require_last_push_approval": false
+                "require_last_push_approval": ${require_last_push_approval}
               },
               "restrictions": null,
-              "required_linear_history": false,
+              "required_linear_history": ${required_linear_history},
               "allow_force_pushes": false,
               "allow_deletions": false,
               "block_creations": false,
@@ -123,26 +107,17 @@ jobs:
               "allow_fork_syncing": true
             }
           EOF
-            echo "✅ Branch 'develop' protected."
-          else
-            echo "ℹ️ Branch 'develop' does not exist — skipping."
-          fi
+          done <<< "${{ steps.targets.outputs.branches }}"
 
       - name: 📋 Summary
-        if: steps.check_token.outputs.has_token == 'true'
         run: |
           echo "### 🔒 Branch Protection Applied" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Règle | main | develop |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|------|---------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Revue de code requise (×1) | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Revue CODEOWNERS requise | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dismiss stale reviews | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Status checks requis (CI verte) | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branche à jour avant merge | ✅ | ❌ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Force push interdit | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Suppression de branche interdite | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Historique linéaire requis | ✅ | ❌ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Conversations résolues requises | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Approbation du dernier push | ✅ | ❌ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Admins soumis aux règles | ✅ | ❌ |" >> $GITHUB_STEP_SUMMARY
+          echo "**Branches ciblées :**" >> $GITHUB_STEP_SUMMARY
+          while IFS= read -r branch; do
+            [ -z "$branch" ] && continue
+            echo "- \`$branch\`" >> $GITHUB_STEP_SUMMARY
+          done <<< "${{ steps.targets.outputs.branches }}"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Check requis stable : \`ci-gate\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Exclusion explicite : branches \`copilot/*\`" >> $GITHUB_STEP_SUMMARY
