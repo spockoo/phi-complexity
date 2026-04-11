@@ -18,6 +18,7 @@ from phi_complexity.cli import (
     _executer_oracle,
     _executer_harvest,
     _executer_spiral,
+    _executer_shield,
     _executer_memory,
     _executer_fund,
     _afficher_bmad,
@@ -32,6 +33,8 @@ def ajouter(a: float, b: float) -> float:
 def multiplier(a: float, b: float) -> float:
     return a * b
 """
+
+IMPOSSIBLE_SECURITY_SCORE = 101.0
 
 
 def creer_fichier(code: str) -> str:
@@ -135,6 +138,24 @@ class TestFonctionsInternesCLI:
     ):
         parser = _construire_parseur()
         return parser.parse_args(["harvest", fichier, "--output", output])
+
+    def _args_shield(
+        self,
+        fichier: str = "/dummy.py",
+        output: str = "/tmp/security.json",
+        min_security_score: float = 70.0,
+    ):
+        parser = _construire_parseur()
+        return parser.parse_args(
+            [
+                "shield",
+                fichier,
+                "--output",
+                output,
+                "--min-security-score",
+                str(min_security_score),
+            ]
+        )
 
     # ──────────────── _auditer_un_fichier() ────────────────
 
@@ -272,6 +293,35 @@ class TestFonctionsInternesCLI:
     def test_executer_spiral_fichier_invalide(self, capsys):
         code = _executer_spiral(["/inexistant.py"])
         assert code == 1
+
+    # ──────────────── _executer_shield() ────────────────
+
+    def test_executer_shield(self, capsys, tmp_path):
+        fichier = creer_fichier(CODE_TEST)
+        sortie = str(tmp_path / "security.json")
+        try:
+            args = self._args_shield(fichier, output=sortie, min_security_score=0.0)
+            code = _executer_shield(args, [fichier])
+            out = capsys.readouterr().out
+            assert code == 0
+            assert os.path.exists(sortie)
+            assert "Shield" in out
+        finally:
+            os.unlink(fichier)
+
+    def test_executer_shield_echec_seuil(self, capsys, tmp_path):
+        fichier = creer_fichier(CODE_TEST)
+        sortie = str(tmp_path / "security.json")
+        try:
+            args = self._args_shield(
+                fichier,
+                output=sortie,
+                min_security_score=IMPOSSIBLE_SECURITY_SCORE,
+            )
+            code = _executer_shield(args, [fichier])
+            assert code == 1
+        finally:
+            os.unlink(fichier)
 
     # ──────────────── _executer_memory() ────────────────
 

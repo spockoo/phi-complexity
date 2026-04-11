@@ -15,7 +15,18 @@ from phi_complexity.securite import (
     JournalAudit,
     generer_sbom,
     exporter_sbom,
+    construire_audit_securite,
+    exporter_audit_securite,
+    verifier_politique_securite,
+    _est_finding_securite,
 )
+
+CODE_C_VULNERABLE = """\
+#include <stdio.h>
+void f(char *x) {
+    printf(x);
+}
+"""
 
 # ────────────────────────────────────────────────────────
 # TESTS — Signature des rapports
@@ -230,3 +241,264 @@ class TestSBOM:
             assert os.path.isfile(chemin)
         finally:
             shutil.rmtree(tmpdir)
+
+
+class TestAuditSecurite:
+    def test_audit_securite_phi_detecte_cwe134(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            chemin = os.path.join(tmpdir, "vuln.c")
+            with open(chemin, "w", encoding="utf-8") as f:
+                f.write(CODE_C_VULNERABLE)
+            audit = construire_audit_securite([chemin])
+            assert audit["summary"]["findings_total"] == 1
+            assert audit["summary"]["blocking_findings"] == 1
+            assert audit["findings"][0]["rule_id"] == "CWE-134"
+            assert audit["findings"][0]["severity"] == "critical"
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_audit_securite_exclut_demo_par_defaut(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            examples_dir = os.path.join(tmpdir, "examples")
+            os.makedirs(examples_dir)
+            chemin = os.path.join(examples_dir, "demo.c")
+            with open(chemin, "w", encoding="utf-8") as f:
+                f.write(CODE_C_VULNERABLE)
+            audit = construire_audit_securite([chemin], include_demo=False)
+            assert audit["summary"]["findings_total"] == 0
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_audit_securite_sarif_normalise(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            sarif_path = os.path.join(tmpdir, "scan.sarif")
+            payload = {
+                "runs": [
+                    {
+                        "tool": {"driver": {"name": "Flawfinder"}},
+                        "results": [
+                            {
+                                "ruleId": "CWE-134",
+                                "level": "error",
+                                "message": {"text": "Potential format string problem"},
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {"uri": "src/main.c"},
+                                            "region": {"startLine": 12},
+                                        }
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+            with open(sarif_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+            audit = construire_audit_securite([], sarif_path=sarif_path)
+            assert audit["summary"]["findings_total"] == 1
+            finding = audit["findings"][0]
+            assert finding["source"] == "Flawfinder"
+            assert finding["severity"] == "high"
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_exporter_audit_securite_et_politique(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            audit = {
+                "summary": {
+                    "security_score": 84.0,
+                    "findings_total": 0,
+                    "blocking_findings": 0,
+                }
+            }
+            chemin = os.path.join(tmpdir, "security", "audit.json")
+            exporter_audit_securite(audit, chemin)
+            assert os.path.isfile(chemin)
+            assert verifier_politique_securite(audit, 70.0) is True
+            assert verifier_politique_securite(audit, 90.0) is False
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_c_scanner_python_file_out_of_scope(self):
+        """Flawfinder (C scanner) findings on Python files must be out-of-scope
+        and non-blocking so they do not tank the security score."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            sarif_path = os.path.join(tmpdir, "flawfinder.sarif")
+            payload = {
+                "runs": [
+                    {
+                        "tool": {"driver": {"name": "Flawfinder"}},
+                        "results": [
+                            # Python file — should be out_of_scope, not blocking
+                            {
+                                "ruleId": "FF1009",
+                                "level": "error",
+                                "message": {"text": "open(): Check when opening files"},
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {
+                                                "uri": "phi_complexity/cli.py"
+                                            },
+                                            "region": {"startLine": 10},
+                                        }
+                                    }
+                                ],
+                            },
+                            # C file — should remain blocking (in scope for Flawfinder)
+                            {
+                                "ruleId": "CWE-134",
+                                "level": "error",
+                                "message": {"text": "Format string problem"},
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {"uri": "src/engine.c"},
+                                            "region": {"startLine": 5},
+                                        }
+                                    }
+                                ],
+                            },
+                        ],
+                    }
+                ]
+            }
+            with open(sarif_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+            audit = construire_audit_securite([], sarif_path=sarif_path)
+            findings = audit["findings"]
+            py_finding = next(f for f in findings if f["path"].endswith(".py"))
+            c_finding = next(f for f in findings if f["path"].endswith(".c"))
+
+            # Python file: out-of-scope, not blocking, does not reduce score
+            assert py_finding["out_of_scope"] is True
+            assert py_finding["blocking"] is False
+
+            # C file: in-scope, blocking (production surface, high severity)
+            assert c_finding.get("out_of_scope") is False
+            assert c_finding["blocking"] is True
+
+            # Score should only be penalised for the C finding
+            s = audit["summary"]
+            assert s["out_of_scope_findings"] == 1
+            assert s["blocking_findings"] == 1
+            assert s["security_score"] < 100.0
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_c_scanner_python_only_scan_passes_gate(self):
+        """When Flawfinder scans only Python files (e.g. ./phi_complexity),
+        all findings are out-of-scope → score=100, status=PASS."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            sarif_path = os.path.join(tmpdir, "flawfinder.sarif")
+            results = [
+                {
+                    "ruleId": "FF1009",
+                    "level": "error",
+                    "message": {"text": "open() check"},
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": f"phi_complexity/mod{i}.py"
+                                },
+                                "region": {"startLine": i * 10},
+                            }
+                        }
+                    ],
+                }
+                for i in range(12)
+            ]
+            payload = {
+                "runs": [
+                    {"tool": {"driver": {"name": "Flawfinder"}}, "results": results}
+                ]
+            }
+            with open(sarif_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+            audit = construire_audit_securite([], sarif_path=sarif_path)
+            s = audit["summary"]
+            assert s["blocking_findings"] == 0
+            assert s["out_of_scope_findings"] == 12
+            assert s["security_score"] == 100.0
+            assert s["status"] == "PASS"
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_phi_quality_annotations_excluded_from_security_gate(self):
+        """Les annotations qualité phi (ex: CYCLOMATIQUE) ne doivent pas
+        être traitées comme vulnérabilités bloquantes."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            file_path = os.path.join(tmpdir, "complexe.py")
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(
+                    """def f(a, b, c):
+    if a:
+        if b:
+            if c:
+                return 1
+    if not a and b:
+        return 2
+    if a and not b:
+        return 3
+    if a and b and c:
+        return 4
+    if (a and b) or (b and c) or (a and c):
+        return 5
+    return 0
+"""
+                )
+
+            audit = construire_audit_securite([file_path])
+            summary = audit["summary"]
+            non_security = [
+                f for f in audit["findings"] if not f.get("security_relevant", True)
+            ]
+
+            assert non_security
+            assert summary["blocking_findings"] == 0
+            assert summary["security_score"] == 100.0
+            assert summary["status"] == "PASS"
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_est_finding_securite_prioritize_security_relevant(self):
+        assert _est_finding_securite({"security_relevant": True}) is True
+        assert _est_finding_securite({"security_relevant": False}) is False
+        assert (
+            _est_finding_securite(
+                {
+                    "security_relevant": False,
+                    "source": "phi-complexity",
+                    "rule_id": "CWE-134",
+                }
+            )
+            is False
+        )
+
+    def test_est_finding_securite_fallback_par_source(self):
+        assert (
+            _est_finding_securite({"source": "phi-complexity", "rule_id": "CWE-134"})
+            is True
+        )
+        assert (
+            _est_finding_securite(
+                {"source": "phi-complexity", "rule_id": "CYCLOMATIQUE"}
+            )
+            is False
+        )
+        assert (
+            _est_finding_securite({"source": "Flawfinder", "rule_id": "FF1009"}) is True
+        )

@@ -194,6 +194,33 @@ Exemples :
         help="Fichier SBOM de sortie (défaut: .phi/sbom.json)",
     )
 
+    shield_parser = subparsers.add_parser(
+        "shield", help="Audit sécurité unifié + gate CI (Phase 22)."
+    )
+    shield_parser.add_argument("cible", help="Fichier ou dossier à auditer")
+    shield_parser.add_argument(
+        "--sarif",
+        default=None,
+        help="Fichier SARIF externe à fusionner (ex: flawfinder_results.sarif)",
+    )
+    shield_parser.add_argument(
+        "--output",
+        "-o",
+        default=".phi/security_audit.json",
+        help="Fichier JSON de sortie (défaut: .phi/security_audit.json)",
+    )
+    shield_parser.add_argument(
+        "--min-security-score",
+        type=float,
+        default=70.0,
+        help="Seuil minimal de sécurité pour passer le gate (défaut: 70)",
+    )
+    shield_parser.add_argument(
+        "--include-demo",
+        action="store_true",
+        help="Inclure les exemples pédagogiques dans le score/gate",
+    )
+
     return parser
 
 
@@ -617,6 +644,56 @@ def _executer_sbom(args: argparse.Namespace) -> int:
     return 0
 
 
+def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Phase 22 : Audit sécurité unifié avec gate CI."""
+    from .securite import (
+        JournalAudit,
+        construire_audit_securite,
+        exporter_audit_securite,
+        verifier_politique_securite,
+    )
+
+    if args.sarif and not os.path.exists(args.sarif):
+        print(f"❌ Fichier SARIF introuvable : {args.sarif}")
+        return 1
+
+    audit = construire_audit_securite(
+        fichiers=fichiers,
+        sarif_path=args.sarif,
+        include_demo=args.include_demo,
+    )
+    exporter_audit_securite(audit, args.output)
+
+    summary = audit["summary"]
+    score = float(summary["security_score"])
+    status = (
+        "PASS"
+        if verifier_politique_securite(audit, args.min_security_score)
+        else "FAIL"
+    )
+    oos = int(summary.get("out_of_scope_findings", 0))
+    print(
+        f"  ✦ Shield: {status} | score={score:.2f} | "
+        f"findings={summary['findings_total']} | blocking={summary['blocking_findings']}"
+        + (f" | out_of_scope={oos}" if oos else "")
+    )
+    print(f"  ✦ Audit exporté : {args.output}")
+
+    journal = JournalAudit()
+    journal.enregistrer(
+        "SECURITY_AUDIT",
+        {
+            "target_count": len(fichiers),
+            "score": score,
+            "status": status,
+            "blocking_findings": int(summary["blocking_findings"]),
+            "out_of_scope_findings": oos,
+            "sarif": args.sarif or "",
+        },
+    )
+    return 0 if status == "PASS" else 1
+
+
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
@@ -684,6 +761,8 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_vault(args, fichiers))
     elif args.commande == "canvas":
         sys.exit(_executer_canvas(args, fichiers))
+    elif args.commande == "shield":
+        sys.exit(_executer_shield(args, fichiers))
 
 
 if __name__ == "__main__":

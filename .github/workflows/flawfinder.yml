@@ -18,6 +18,9 @@ jobs:
   flawfinder:
     name: Flawfinder
     runs-on: ubuntu-latest
+    env:
+      # Convention dépôt: chemins sans espaces.
+      FLAWFINDER_TARGETS: "./phi_complexity ./engine.py"
     permissions:
       actions: read
       contents: read
@@ -29,10 +32,36 @@ jobs:
       - name: flawfinder_scan
         uses: david-a-wheeler/flawfinder@8e4a779ad59dbfaee5da586aa9210853b701959c
         with:
-          arguments: '--sarif ./'
+          arguments: "--sarif ${{ env.FLAWFINDER_TARGETS }}"
           output: 'flawfinder_results.sarif'
 
       - name: Upload analysis results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{github.workspace}}/flawfinder_results.sarif
+
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flawfinder-results
+          path: flawfinder_results.sarif
+          retention-days: 7
+
+      - name: Install phi-complexity
+        run: pip install -e .
+
+      - name: Security gate (phi shield)
+        run: |
+          phi shield ./phi_complexity \
+            --sarif ${{github.workspace}}/flawfinder_results.sarif \
+            --output .phi/security_audit.json \
+            --min-security-score 70
+
+      - name: Upload security audit (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: .phi/security_audit.json
+          retention-days: 7
