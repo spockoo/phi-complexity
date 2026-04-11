@@ -250,6 +250,23 @@ exporter_sbom(".phi/sbom.json")
 - **Tests** : pytest avec coverage ≥ 89%
 - **Commentaires** : En français, style φ-Meta
 
+### Visibilité des branches distantes
+
+Si votre clone local n'affiche pas toutes les branches du dépôt (ex: seulement `main`), synchronisez les références distantes :
+
+```bash
+git fetch --all --prune
+git branch -r
+```
+
+### Pré-requis workflow `branch-protection`
+
+Le workflow `.github/workflows/branch-protection.yml` nécessite :
+
+- un environnement GitHub nommé **`branch-protection`** (Settings → Environments),
+- le secret **`ADMIN_TOKEN`** disponible pour cet environnement/référentiel,
+- idéalement des reviewers d'environnement pour contrôler son exécution manuelle.
+
 ---
 
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*

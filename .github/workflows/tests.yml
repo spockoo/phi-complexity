@@ -103,3 +103,20 @@ jobs:
       - name: 🧪 Tests (pre-release, tolérant)
         run: |
           python -m pytest tests/ --no-cov -x -q || echo "⚠️ Certains tests échouent sur 3.15-dev — attendu en pre-release."
+
+  ci-gate:
+    name: "ci-gate"
+    runs-on: ubuntu-latest
+    needs: [test]
+    # Toujours exécuté pour publier un statut explicite même si le job `test`
+    # est annulé ou ignoré, afin d'avoir un check de protection stable.
+    if: always()
+
+    steps:
+      - name: ✅ Gate des checks requis
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Le job test n'est pas en succès (result=${{ needs.test.result }})."
+            exit 1
+          fi
+          echo "Tous les checks requis sont passés."
