@@ -21,6 +21,8 @@ jobs:
   protect-branches:
     name: Apply branch protection set
     runs-on: ubuntu-latest
+    # Requiert un environnement `branch-protection` configuré côté dépôt
+    # (reviewers/approvals éventuels + accès au secret ADMIN_TOKEN).
     environment: branch-protection
 
     steps:

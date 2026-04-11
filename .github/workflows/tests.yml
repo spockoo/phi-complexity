@@ -114,7 +114,7 @@ jobs:
       - name: ✅ Gate des checks requis
         run: |
           if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "Le job test a échoué (result=${{ needs.test.result }})."
+            echo "Le job test n'est pas en succès (result=${{ needs.test.result }})."
             exit 1
           fi
           echo "Tous les checks requis sont passés."
