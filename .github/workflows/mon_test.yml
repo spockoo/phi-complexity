@@ -19,4 +19,6 @@ jobs:
             echo "Error: engine.py not found at repository root"
             exit 1
           fi
-          python -m py_compile engine.py
+
+      - name: Validate engine.py syntax
+        run: python -c "import py_compile; py_compile.compile('engine.py', doraise=True)"
