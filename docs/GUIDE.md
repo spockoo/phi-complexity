@@ -14,8 +14,9 @@
 5. [Règles de Codage Souverain](#règles-de-codage-souverain)
 6. [Intégration CI/CD](#intégration-cicd)
 7. [API Python](#api-python)
-8. [Badges Radiance](#badges-radiance)
-9. [Exemples](#exemples)
+8. [Jupyter Notebooks](#jupyter-notebooks)
+9. [Badges Radiance](#badges-radiance)
+10. [Exemples](#exemples)
 
 ---
 
@@ -356,6 +357,71 @@ fichiers = ["src/main.py", "src/utils.py"]
 verdict = oracle.valider_release(fichiers, seuil=70.0, nb_tests=68)
 print(verdict["acceptee"])   # → True
 print(verdict["version_phi"]) # → "v82.68"
+```
+
+---
+
+## Jupyter Notebooks
+
+Le dossier `notebooks/` contient 7 notebooks d'étude interactifs qui explorent les fondements mathématiques et les applications de phi-complexity.
+
+### Installation
+
+```bash
+pip install phi-complexity[notebooks]
+```
+
+Cela installe les dépendances optionnelles : `jupyter`, `matplotlib`, `numpy`.
+
+### Lancer les notebooks
+
+```bash
+cd notebooks/
+jupyter notebook
+```
+
+### Notebooks disponibles
+
+| # | Notebook | Sujet |
+|---|---|---|
+| 01 | `01_quasicristaux_penrose.ipynb` | Pavages de Penrose, symétrie d'ordre 5, φ-Ratio |
+| 02 | `02_riemann_zeta.ipynb` | Fonction ζ de Riemann, ζ_meta, zéros de la radiance |
+| 03 | `03_schrodinger_incertitude.ipynb` | Incertitude Heisenberg-Phi ΔC·ΔL ≥ ħ_φ/2 |
+| 04 | `04_sentinel_cybersec.ipynb` | Pipeline Sentinel 5 couches, MITRE ATT&CK, corrélation bayésienne |
+| 05 | `05_harvest_ml.ipynb` | ML sur vecteurs φ : clustering, k-NN, visualisation MDS |
+| 06 | `06_spirale_doree_fractale.ipynb` | Spirale dorée 137.5°, dimension fractale de l'AST |
+| 07 | `07_matrice_holographique.ipynb` | Espace Z[φ], transmutation Maat, similitude cosinus |
+
+### Fonctions d'aide pour notebooks
+
+Le module `phi_complexity.notebook_helpers` fournit des fonctions de visualisation prêtes à l'emploi :
+
+```python
+from phi_complexity.notebook_helpers import (
+    charger_metriques,    # Charger les métriques d'un fichier ou dossier
+    charger_harvest,      # Charger un corpus JSONL de harvest
+    radar_radiance,       # Radar chart des métriques de radiance
+    carte_heisenberg,     # Carte d'incertitude Heisenberg-Phi
+    spirale_doree,        # Spirale dorée de Fibonacci
+    enregistrer_magics,   # Activer les magic commands IPython
+)
+```
+
+### Magic commands IPython
+
+Après avoir appelé `enregistrer_magics()` dans un notebook :
+
+```python
+from phi_complexity.notebook_helpers import enregistrer_magics
+enregistrer_magics()
+```
+
+Les commandes suivantes sont disponibles :
+
+```
+%phi_check mon_script.py       # Audit rapide avec résumé
+%phi_report mon_script.py      # Rapport console complet
+%phi_spiral mon_script.py      # Spirale dorée du fichier
 ```
 
 ---
