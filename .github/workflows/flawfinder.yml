@@ -29,8 +29,8 @@ jobs:
       - name: Identify C/C++ analysis targets
         id: targets
         run: |
-          files=$(find . -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' \
-            -o -name '*.h' -o -name '*.hpp' -o -name '*.hh' \) | sort | tr '\n' ' ')
+          files=$(find . -path ./.git -prune -o -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' \
+            -o -name '*.h' -o -name '*.hpp' -o -name '*.hh' \) -print | sort | tr '\n' ' ')
           echo "files=${files}" >> "$GITHUB_OUTPUT"
           if [ -n "$files" ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
