@@ -54,9 +54,12 @@ jobs:
             "required_status_checks": {
               "strict": true,
               "contexts": [
-                "test (3.9)",
-                "test (3.10)",
-                "test (3.11)"
+                "test (3.9 · ubuntu-latest)",
+                "test (3.10 · ubuntu-latest)",
+                "test (3.11 · ubuntu-latest)",
+                "test (3.12 · ubuntu-latest)",
+                "test (3.13 · ubuntu-latest)",
+                "test (3.14 · ubuntu-latest)"
               ]
             },
             "enforce_admins": true,
@@ -95,9 +98,12 @@ jobs:
               "required_status_checks": {
                 "strict": true,
                 "contexts": [
-                  "test (3.9)",
-                  "test (3.10)",
-                  "test (3.11)"
+                  "test (3.9 · ubuntu-latest)",
+                  "test (3.10 · ubuntu-latest)",
+                  "test (3.11 · ubuntu-latest)",
+                  "test (3.12 · ubuntu-latest)",
+                  "test (3.13 · ubuntu-latest)",
+                  "test (3.14 · ubuntu-latest)"
                 ]
               },
               "enforce_admins": false,
