@@ -319,6 +319,22 @@ def _confidence_par_source(source: str, severite: str) -> float:
     return round(min(0.99, base + bonus), 2)
 
 
+def _regle_phi_est_securite(categorie: str) -> bool:
+    # Les annotations phi "qualité/maintenabilité" (LILITH, CYCLOMATIQUE,
+    # FIBONACCI, ...) ne doivent pas bloquer un gate sécurité.
+    return categorie.upper().startswith("CWE-")
+
+
+def _est_finding_securite(finding: Dict[str, Any]) -> bool:
+    if "security_relevant" in finding:
+        return bool(finding.get("security_relevant"))
+    source = str(finding.get("source", "")).lower()
+    rule_id = str(finding.get("rule_id", ""))
+    if source == "phi-complexity":
+        return _regle_phi_est_securite(rule_id)
+    return True
+
+
 def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
     categorie = str(annotation.get("categorie", "UNKNOWN"))
     niveau = str(annotation.get("niveau", "WARNING"))
@@ -328,6 +344,7 @@ def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
     recommandation = ""
     if "Correction :" in message:
         recommandation = message.split("Correction :", 1)[1].strip()
+    security_relevant = _regle_phi_est_securite(categorie)
 
     return {
         "source": "phi-complexity",
@@ -338,7 +355,12 @@ def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
         "message": message,
         "context": str(annotation.get("extrait", "")),
         "surface": surface,
-        "blocking": surface == "production" and severite in {"critical", "high"},
+        "security_relevant": security_relevant,
+        "blocking": (
+            security_relevant
+            and surface == "production"
+            and severite in {"critical", "high"}
+        ),
         "confidence": _confidence_par_source("phi", severite),
         "exploitability": (
             _EXPLOITABILITY_CRITICAL
@@ -408,6 +430,7 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
             _, ext = os.path.splitext(uri.lower())
             is_c_scanner = source_name.lower() in _C_FAMILY_SCANNERS
             out_of_scope = is_c_scanner and ext not in _C_FAMILY_EXTENSIONS
+            security_relevant = not out_of_scope
 
             findings.append(
                 {
@@ -419,10 +442,12 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
                     "message": message,
                     "context": "",
                     "surface": surface,
+                    "security_relevant": security_relevant,
                     "blocking": (
-                        surface == "production"
-                        and severite in {"critical", "high"}
+                        security_relevant
                         and not out_of_scope
+                        and surface == "production"
+                        and severite in {"critical", "high"}
                     ),
                     "out_of_scope": out_of_scope,
                     "confidence": _confidence_par_source("sarif", severite),
@@ -440,6 +465,9 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
 def _score_securite(
     findings: Sequence[Dict[str, Any]], radiances: Sequence[float]
 ) -> float:
+    # Le score de sécurité ne doit pas dériver des métriques qualité (radiance)
+    # pour éviter les faux FAIL en CI "security gate".
+    _ = radiances
     score = 100.0
     for finding in findings:
         if finding.get("surface") != "production":
@@ -448,15 +476,10 @@ def _score_securite(
         # are kept for traceability but do not penalize the score.
         if finding.get("out_of_scope"):
             continue
+        if not _est_finding_securite(finding):
+            continue
         severite = str(finding.get("severity", "medium"))
         score -= _SEVERITE_SCORE.get(severite, 5.0)
-
-    for radiance in radiances:
-        if radiance < _RADIANCE_THRESHOLD:
-            score -= min(
-                _MAX_RADIANCE_PENALTY,
-                (_RADIANCE_THRESHOLD - radiance) / _RADIANCE_PENALTY_DIVISOR,
-            )
 
     return round(max(0.0, min(100.0, score)), 2)
 

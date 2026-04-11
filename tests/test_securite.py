@@ -434,3 +434,38 @@ class TestAuditSecurite:
             assert s["status"] == "PASS"
         finally:
             shutil.rmtree(tmpdir)
+
+    def test_phi_quality_annotations_do_not_block_security_gate(self):
+        """Les annotations qualité phi (ex: CYCLOMATIQUE) ne doivent pas
+        être traitées comme vulnérabilités bloquantes."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            fichier = os.path.join(tmpdir, "complexe.py")
+            with open(fichier, "w", encoding="utf-8") as f:
+                f.write(
+                    """def f(a, b, c):
+    if a:
+        if b:
+            if c:
+                return 1
+    if not a and b:
+        return 2
+    if a and not b:
+        return 3
+    if a and b and c:
+        return 4
+    if (a and b) or (b and c) or (a and c):
+        return 5
+    return 0
+"""
+                )
+
+            audit = construire_audit_securite([fichier])
+            summary = audit["summary"]
+
+            assert summary["findings_total"] >= 1
+            assert summary["blocking_findings"] == 0
+            assert summary["security_score"] == 100.0
+            assert summary["status"] == "PASS"
+        finally:
+            shutil.rmtree(tmpdir)
