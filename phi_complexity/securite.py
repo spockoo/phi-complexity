@@ -445,7 +445,6 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
                     "security_relevant": security_relevant,
                     "blocking": (
                         security_relevant
-                        and not out_of_scope
                         and surface == "production"
                         and severite in {"critical", "high"}
                     ),
@@ -462,12 +461,9 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
     return findings
 
 
-def _score_securite(
-    findings: Sequence[Dict[str, Any]], radiances: Sequence[float]
-) -> float:
+def _score_securite(findings: Sequence[Dict[str, Any]]) -> float:
     # Le score de sécurité ne doit pas dériver des métriques qualité (radiance)
     # pour éviter les faux FAIL en CI "security gate".
-    _ = radiances
     score = 100.0
     for finding in findings:
         if finding.get("surface") != "production":
@@ -495,13 +491,11 @@ def construire_audit_securite(
     from . import auditer
 
     findings: List[Dict[str, Any]] = []
-    radiances: List[float] = []
     erreurs: List[str] = []
 
     for fichier in fichiers:
         try:
             metriques = auditer(fichier)
-            radiances.append(float(metriques.get("radiance", 100.0)))
             annotations = metriques.get("annotations", [])
             if isinstance(annotations, list):
                 for annot in annotations:
@@ -519,7 +513,7 @@ def construire_audit_securite(
     if not include_demo:
         findings = [f for f in findings if f.get("surface") != "demo"]
 
-    score = _score_securite(findings, radiances)
+    score = _score_securite(findings)
     blocking = [
         f
         for f in findings
