@@ -80,8 +80,12 @@ def handle_github_automation():
     branch_name = 'evolution/phi-mutation'
     base_branch = 'main'
     owner = repo.split('/')[0]
-    subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'], check=True)
-    subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'], check=True)
+    try:
+        subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'], check=True)
+        subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'], check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Erreur configuration Git : {exc}")
+        return
     if event == 'push':
         print("Mode Push : mutation appliquée localement.")
         return
