@@ -3,7 +3,7 @@ import inspect
 import json
 import os
 import subprocess
-from urllib import request
+from urllib import error, parse, request
 
 class PhiArchitect:
 
@@ -70,42 +70,57 @@ class PhiArchitect:
         return True
 
 def handle_github_automation():
+    """Gère l'automatisation GitHub : commit, push et création de PR."""
     event = os.getenv('GITHUB_EVENT_NAME')
     repo = os.getenv('GITHUB_REPOSITORY')
     token = os.getenv('GITHUB_TOKEN')
     if not token or not repo:
+        print("Infos GitHub manquantes (TOKEN ou REPO).")
         return
     branch_name = 'evolution/phi-mutation'
     base_branch = 'main'
     owner = repo.split('/')[0]
-    subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'])
-    subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'])
+    subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'], check=True)
+    subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'], check=True)
     if event == 'push':
+        print("Mode Push : mutation appliquée localement.")
         return
     try:
         subprocess.run(['git', 'checkout', '-B', branch_name], check=True)
         subprocess.run(['git', 'add', '.'], check=True)
         if subprocess.run(['git', 'diff', '--cached', '--quiet']).returncode == 0:
+            print("Aucun changement structurel à proposer.")
             return
         subprocess.run(['git', 'commit', '-m', '🧬 evolution: mutation structurelle phi'], check=True)
         subprocess.run(['git', 'push', '--force', 'origin', branch_name], check=True)
-    except Exception:
+    except subprocess.CalledProcessError as exc:
+        print(f"Erreur Git : {exc}")
         return
-    api_url = f'https://://github.com{repo}/pulls'
+    api_url = f'https://api.github.com/repos/{repo}/pulls'
+    query = parse.urlencode({'state': 'open', 'head': f'{owner}:{branch_name}'})
     try:
-        check_req = request.Request(f'{api_url}?state=open&head={owner}:{branch_name}')
+        check_req = request.Request(f'{api_url}?{query}')
         check_req.add_header('Authorization', f'token {token}')
+        check_req.add_header('Accept', 'application/vnd.github.v3+json')
         with request.urlopen(check_req) as r:
             if json.loads(r.read().decode()):
+                print("PR déjà existante. Mise à jour effectuée.")
                 return
-        payload = json.dumps({'title': '✨ Évolution Structurelle (Phi)', 'head': branch_name, 'base': base_branch, 'body': "Mutation automatique basée sur le ratio d'or."}).encode()
+        payload = json.dumps({
+            'title': '✨ Évolution Structurelle (Phi)',
+            'head': branch_name,
+            'base': base_branch,
+            'body': "Mutation automatique basée sur le ratio d'or.",
+        }).encode()
         post_req = request.Request(api_url, data=payload, method='POST')
         post_req.add_header('Authorization', f'token {token}')
         post_req.add_header('Content-Type', 'application/json')
         with request.urlopen(post_req):
-            pass
-    except Exception:
-        pass
+            print("Nouvelle PR créée avec succès.")
+    except error.HTTPError as exc:
+        print(f"Erreur API GitHub : {exc.code} {exc.reason}")
+    except error.URLError as exc:
+        print(f"Erreur réseau : {exc.reason}")
 if __name__ == '__main__':
     architect = PhiArchitect()
     if architect.run_cycle():
