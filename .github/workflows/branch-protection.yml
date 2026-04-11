@@ -1,7 +1,7 @@
 name: 🔒 Configure Branch Protection
 
 # Ce workflow configure les règles de protection des branches importantes.
-# Exécution manuelle uniquement, avec token d'administration stocké en secret.
+# Exécution manuelle + réapplication automatique lors des changements de ce workflow.
 #
 # PRÉREQUIS : Un Personal Access Token (PAT) avec la permission
 #             "Administration: Read & write" doit être stocké dans
@@ -9,6 +9,10 @@ name: 🔒 Configure Branch Protection
 
 on:
   workflow_dispatch: # Déclenchement manuel depuis l'onglet Actions
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/branch-protection.yml'
 
 permissions:
   contents: read
