@@ -18,6 +18,9 @@ jobs:
   flawfinder:
     name: Flawfinder
     runs-on: ubuntu-latest
+    env:
+      # Convention dépôt: chemins sans espaces.
+      FLAWFINDER_TARGETS: "./phi_complexity ./engine.py"
     permissions:
       actions: read
       contents: read
@@ -29,7 +32,7 @@ jobs:
       - name: flawfinder_scan
         uses: david-a-wheeler/flawfinder@8e4a779ad59dbfaee5da586aa9210853b701959c
         with:
-          arguments: '--sarif ./phi_complexity ./engine.py'
+          arguments: "--sarif ${{ env.FLAWFINDER_TARGETS }}"
           output: 'flawfinder_results.sarif'
 
       - name: Upload analysis results to GitHub Security tab

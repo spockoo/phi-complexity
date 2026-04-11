@@ -19,6 +19,8 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Sequence
 
+from .core import PHI
+
 # ────────────────────────────────────────────────────────
 # SIGNATURE DES RAPPORTS
 # ────────────────────────────────────────────────────────
@@ -257,13 +259,30 @@ _NIVEAU_VERS_SEVERITE = {
     "INFO": "info",
 }
 
+# Pondérations alignées sur une décroissance φ.
+_SEVERITY_HIGH_BASE = 16.0
 _SEVERITE_SCORE = {
-    "critical": 28.0,
-    "high": 18.0,
-    "medium": 9.0,
-    "low": 3.0,
-    "info": 1.0,
+    "critical": round(_SEVERITY_HIGH_BASE * PHI, 3),
+    "high": _SEVERITY_HIGH_BASE,
+    "medium": round(_SEVERITY_HIGH_BASE / PHI, 3),
+    "low": round(_SEVERITY_HIGH_BASE / (PHI**2), 3),
+    "info": round(_SEVERITY_HIGH_BASE / (PHI**3), 3),
 }
+
+# Seuils dérivés de φ pour garder l'harmonie mathématique du score.
+_RADIANCE_THRESHOLD = round(100.0 / PHI, 3)
+_MAX_RADIANCE_PENALTY = round(10.0 * PHI, 3)
+_RADIANCE_PENALTY_DIVISOR = PHI
+_SURFACE_DEMO_MARKERS = ("/examples/",)
+# Décalages de confiance : +0.5 (source externe), +0.2 (moteur interne).
+_CONFIDENCE_SARIF_OFFSET = 0.5
+_CONFIDENCE_PHI_OFFSET = 0.2
+_CONFIDENCE_BASE_SARIF = round(PHI / (PHI + _CONFIDENCE_SARIF_OFFSET), 2)
+_CONFIDENCE_BASE_PHI = round(PHI / (PHI + _CONFIDENCE_PHI_OFFSET), 2)
+_EXPLOITABILITY_CRITICAL = round(PHI / (PHI + 0.08), 2)
+_EXPLOITABILITY_STANDARD = round(PHI / (PHI + 0.7), 2)
+_EXPLOITABILITY_HIGH = round(PHI / (PHI + 0.2), 2)
+_EXPLOITABILITY_MEDIUM = round(PHI / (PHI + 1.3), 2)
 
 
 def _normaliser_severite(niveau: str) -> str:
@@ -272,11 +291,16 @@ def _normaliser_severite(niveau: str) -> str:
 
 def _surface_fichier(path: str) -> str:
     normalise = path.replace("\\", "/").lower()
-    return "demo" if "/examples/" in normalise else "production"
+    return (
+        "demo"
+        if any(marker in normalise for marker in _SURFACE_DEMO_MARKERS)
+        else "production"
+    )
 
 
 def _confidence_par_source(source: str, severite: str) -> float:
-    base = 0.82 if source == "sarif" else 0.9
+    # Base plus faible pour SARIF (hétérogénéité externe), plus forte pour phi.
+    base = _CONFIDENCE_BASE_SARIF if source == "sarif" else _CONFIDENCE_BASE_PHI
     bonus = {"critical": 0.08, "high": 0.05, "medium": 0.03, "low": 0.01}.get(
         severite, 0.0
     )
@@ -304,7 +328,11 @@ def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
         "surface": surface,
         "blocking": surface == "production" and severite in {"critical", "high"},
         "confidence": _confidence_par_source("phi", severite),
-        "exploitability": 0.95 if severite == "critical" else 0.7,
+        "exploitability": (
+            _EXPLOITABILITY_CRITICAL
+            if severite == "critical"
+            else _EXPLOITABILITY_STANDARD
+        ),
         "recommendation": recommandation,
     }
 
@@ -374,7 +402,11 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
                     "blocking": surface == "production"
                     and severite in {"critical", "high"},
                     "confidence": _confidence_par_source("sarif", severite),
-                    "exploitability": 0.9 if severite in {"critical", "high"} else 0.55,
+                    "exploitability": (
+                        _EXPLOITABILITY_HIGH
+                        if severite in {"critical", "high"}
+                        else _EXPLOITABILITY_MEDIUM
+                    ),
                     "recommendation": "",
                 }
             )
@@ -392,8 +424,11 @@ def _score_securite(
         score -= _SEVERITE_SCORE.get(severite, 5.0)
 
     for radiance in radiances:
-        if radiance < 70.0:
-            score -= min(15.0, (70.0 - radiance) / 2.0)
+        if radiance < _RADIANCE_THRESHOLD:
+            score -= min(
+                _MAX_RADIANCE_PENALTY,
+                (_RADIANCE_THRESHOLD - radiance) / _RADIANCE_PENALTY_DIVISOR,
+            )
 
     return round(max(0.0, min(100.0, score)), 2)
 

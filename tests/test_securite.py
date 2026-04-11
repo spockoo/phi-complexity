@@ -20,6 +20,13 @@ from phi_complexity.securite import (
     verifier_politique_securite,
 )
 
+CODE_C_VULNERABLE = """\
+#include <stdio.h>
+void f(char *x) {
+    printf(x);
+}
+"""
+
 # ────────────────────────────────────────────────────────
 # TESTS — Signature des rapports
 # ────────────────────────────────────────────────────────
@@ -241,10 +248,12 @@ class TestAuditSecurite:
         try:
             chemin = os.path.join(tmpdir, "vuln.c")
             with open(chemin, "w", encoding="utf-8") as f:
-                f.write("#include <stdio.h>\nvoid f(char *x) {\n    printf(x);\n}\n")
+                f.write(CODE_C_VULNERABLE)
             audit = construire_audit_securite([chemin])
-            assert audit["summary"]["findings_total"] >= 1
-            assert audit["summary"]["blocking_findings"] >= 1
+            assert audit["summary"]["findings_total"] == 1
+            assert audit["summary"]["blocking_findings"] == 1
+            assert audit["findings"][0]["rule_id"] == "CWE-134"
+            assert audit["findings"][0]["severity"] == "critical"
         finally:
             shutil.rmtree(tmpdir)
 
@@ -255,7 +264,7 @@ class TestAuditSecurite:
             os.makedirs(examples_dir)
             chemin = os.path.join(examples_dir, "demo.c")
             with open(chemin, "w", encoding="utf-8") as f:
-                f.write("#include <stdio.h>\nvoid f(char *x) {\n    printf(x);\n}\n")
+                f.write(CODE_C_VULNERABLE)
             audit = construire_audit_securite([chemin], include_demo=False)
             assert audit["summary"]["findings_total"] == 0
         finally:

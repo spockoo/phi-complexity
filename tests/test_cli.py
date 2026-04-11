@@ -34,6 +34,8 @@ def multiplier(a: float, b: float) -> float:
     return a * b
 """
 
+IMPOSSIBLE_SECURITY_SCORE = 101.0
+
 
 def creer_fichier(code: str) -> str:
     with tempfile.NamedTemporaryFile(
@@ -311,7 +313,11 @@ class TestFonctionsInternesCLI:
         fichier = creer_fichier(CODE_TEST)
         sortie = str(tmp_path / "security.json")
         try:
-            args = self._args_shield(fichier, output=sortie, min_security_score=101.0)
+            args = self._args_shield(
+                fichier,
+                output=sortie,
+                min_security_score=IMPOSSIBLE_SECURITY_SCORE,
+            )
             code = _executer_shield(args, [fichier])
             assert code == 1
         finally:
