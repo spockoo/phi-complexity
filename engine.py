@@ -2,15 +2,53 @@ import ast
 import inspect
 import json
 import os
+import re
 import subprocess
 from urllib import error, parse, request
+
+# ────────────────────────────────────────────────────────
+# DURCISSEMENT CYBERSÉCURITAIRE
+# CWE-807 / CWE-20  : validation stricte des entrées environnement
+# CWE-362           : résolution sécurisée des chemins fichiers
+# ────────────────────────────────────────────────────────
+
+_ENV_PATTERNS = {
+    "GITHUB_EVENT_NAME": re.compile(r"^[a-z_]{1,64}$"),
+    "GITHUB_REPOSITORY": re.compile(r"^[a-zA-Z0-9._-]{1,100}/[a-zA-Z0-9._-]{1,100}$"),
+    "GITHUB_TOKEN": re.compile(r"^[a-zA-Z0-9_.\-]{1,255}$"),
+    "GITHUB_ACTIONS": re.compile(r"^(true|1)$"),
+}
+_ENV_BRANCH = re.compile(r"^[a-zA-Z0-9_./-]{1,200}$")
+_MAX_ENV_LEN = 512
+
+
+def _env_securise(nom, defaut=""):
+    """Lecture sécurisée d'une variable d'environnement avec validation.
+
+    Mitige CWE-807 (reliance on untrusted inputs in a security decision)
+    et CWE-20 (improper input validation).
+    """
+    val = os.environ.get(nom, defaut)
+    if not val:
+        return defaut
+    if len(val) > _MAX_ENV_LEN:
+        return defaut
+    pattern = _ENV_PATTERNS.get(nom, _ENV_BRANCH)
+    if not pattern.match(val):
+        return defaut
+    return val
+
+
+def _chemin_reel(chemin):
+    """Résolution sécurisée d'un chemin fichier (CWE-362 / TOCTOU)."""
+    return os.path.realpath(chemin)
 
 
 class PhiArchitect:
 
     def __init__(self):
         self.phi = 1.61803398875
-        self.filename = inspect.getfile(self.__class__)
+        self.filename = _chemin_reel(inspect.getfile(self.__class__))
         self.complexity_limit = 10
 
     def clean_merge_markers(self):
@@ -95,17 +133,17 @@ class PhiArchitect:
 
 def handle_github_automation():
     """Gère l'automatisation GitHub : commit, push et création de PR."""
-    event = os.getenv("GITHUB_EVENT_NAME")
-    repo = os.getenv("GITHUB_REPOSITORY")
-    token = os.getenv("GITHUB_TOKEN")
+    event = _env_securise("GITHUB_EVENT_NAME")
+    repo = _env_securise("GITHUB_REPOSITORY")
+    token = _env_securise("GITHUB_TOKEN")
     if not token or not repo:
         print("Infos GitHub manquantes (TOKEN ou REPO).")
         return
     if event not in ["schedule", "workflow_dispatch"]:
         print("Événement sans création de PR automatique.")
         return
-    branch_name = os.getenv("PHI_AUTOMATION_BRANCH", "evolution/phi-mutation")
-    base_branch = os.getenv("PHI_BASE_BRANCH", "main")
+    branch_name = _env_securise("PHI_AUTOMATION_BRANCH", "evolution/phi-mutation")
+    base_branch = _env_securise("PHI_BASE_BRANCH", "main")
     owner = repo.split("/")[0]
     try:
         subprocess.run(["git", "config", "user.name", "Phi-Architect-Bot"], check=True)
@@ -185,5 +223,5 @@ def handle_github_automation():
 if __name__ == "__main__":
     architect = PhiArchitect()
     if architect.run_cycle():
-        if os.getenv("GITHUB_ACTIONS"):
+        if _env_securise("GITHUB_ACTIONS"):
             handle_github_automation()

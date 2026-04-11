@@ -1,4 +1,5 @@
 import json
+import os
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from urllib import error
@@ -10,6 +11,62 @@ assert _ENGINE_SPEC is not None
 assert _ENGINE_SPEC.loader is not None
 engine = module_from_spec(_ENGINE_SPEC)
 _ENGINE_SPEC.loader.exec_module(engine)
+
+
+# ────────────────────────────────────────────────────────
+# Tests de durcissement CWE-807 / CWE-20 / CWE-362
+# ────────────────────────────────────────────────────────
+
+
+def test_env_securise_accepts_valid_event():
+    with patch.dict(os.environ, {"GITHUB_EVENT_NAME": "schedule"}, clear=False):
+        assert engine._env_securise("GITHUB_EVENT_NAME") == "schedule"
+
+
+def test_env_securise_rejects_invalid_event():
+    with patch.dict(os.environ, {"GITHUB_EVENT_NAME": "../../hack"}, clear=False):
+        assert engine._env_securise("GITHUB_EVENT_NAME") == ""
+
+
+def test_env_securise_rejects_oversized_value():
+    with patch.dict(os.environ, {"GITHUB_EVENT_NAME": "a" * 600}, clear=False):
+        assert engine._env_securise("GITHUB_EVENT_NAME") == ""
+
+
+def test_env_securise_returns_default_when_missing():
+    with patch.dict(os.environ, {}, clear=True):
+        assert engine._env_securise("NONEXISTENT_VAR", "fallback") == "fallback"
+
+
+def test_env_securise_validates_repository_format():
+    with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo"}, clear=False):
+        assert engine._env_securise("GITHUB_REPOSITORY") == "owner/repo"
+    with patch.dict(os.environ, {"GITHUB_REPOSITORY": "invalid-no-slash"}, clear=False):
+        assert engine._env_securise("GITHUB_REPOSITORY") == ""
+
+
+def test_env_securise_validates_branch_names():
+    with patch.dict(
+        os.environ, {"PHI_AUTOMATION_BRANCH": "feat/new-thing"}, clear=False
+    ):
+        assert engine._env_securise("PHI_AUTOMATION_BRANCH") == "feat/new-thing"
+    with patch.dict(os.environ, {"PHI_AUTOMATION_BRANCH": "rm -rf /"}, clear=False):
+        assert engine._env_securise("PHI_AUTOMATION_BRANCH") == ""
+
+
+def test_chemin_reel_resolves_realpath(tmp_path):
+    f = tmp_path / "test.py"
+    f.write_text("x = 1")
+    assert engine._chemin_reel(str(f)) == os.path.realpath(str(f))
+
+
+def test_chemin_reel_resolves_symlink(tmp_path):
+    target = tmp_path / "real.py"
+    target.write_text("x = 1")
+    link = tmp_path / "link.py"
+    link.symlink_to(target)
+    resolved = engine._chemin_reel(str(link))
+    assert resolved == str(target.resolve())
 
 
 class _FakeResponse:
