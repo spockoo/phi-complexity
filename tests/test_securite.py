@@ -462,8 +462,11 @@ class TestAuditSecurite:
 
             audit = construire_audit_securite([fichier])
             summary = audit["summary"]
+            non_security = [
+                f for f in audit["findings"] if not f.get("security_relevant", True)
+            ]
 
-            assert summary["findings_total"] >= 1
+            assert non_security
             assert summary["blocking_findings"] == 0
             assert summary["security_score"] == 100.0
             assert summary["status"] == "PASS"

@@ -320,12 +320,32 @@ def _confidence_par_source(source: str, severite: str) -> float:
 
 
 def _regle_phi_est_securite(categorie: str) -> bool:
+    """Indique si une catégorie d'annotation phi relève de la sécurité.
+
+    Parameters
+    ----------
+    categorie:
+        Catégorie d'annotation émise par le moteur phi-complexity.
+
+    Returns
+    -------
+    bool
+        True si la catégorie représente une vulnérabilité sécurité (CWE-*),
+        False pour les signaux qualité/maintenabilité.
+    """
     # Les annotations phi "qualité/maintenabilité" (LILITH, CYCLOMATIQUE,
     # FIBONACCI, ...) ne doivent pas bloquer un gate sécurité.
     return categorie.upper().startswith("CWE-")
 
 
 def _est_finding_securite(finding: Dict[str, Any]) -> bool:
+    """Détermine si un finding doit impacter le score/policy sécurité.
+
+    Le champ `security_relevant` est prioritaire lorsqu'il est fourni.
+    Sinon, la décision est dérivée de la source et de la règle:
+    - `phi-complexity` : seules les règles CWE-* sont sécurité;
+    - autres sources (SARIF/outils externes) : sécurité par défaut.
+    """
     if "security_relevant" in finding:
         return bool(finding.get("security_relevant"))
     source = str(finding.get("source", "")).lower()
