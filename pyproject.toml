@@ -58,5 +58,9 @@ no_implicit_reexport = true
 module = "tests"
 ignore_errors = true
 
+[tool.black]
+target-version = ["py39"]
+line-length = 88
+
 [tool.pytest.ini_options]
 addopts = "--cov=phi_complexity --cov-fail-under=89"
