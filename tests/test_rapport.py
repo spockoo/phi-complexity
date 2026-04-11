@@ -4,6 +4,7 @@ tests/test_rapport.py — Tests du générateur de rapports Console/Markdown/JSO
 
 import json
 import os
+import shutil
 import textwrap
 import tempfile
 from phi_complexity import rapport_console, rapport_markdown, rapport_json
@@ -106,9 +107,8 @@ class TestGenerateurMarkdown:
 
     def test_markdown_sauvegarde_fichier(self):
         fichier = creer_fichier(CODE_SIMPLE)
-        fd, sortie = tempfile.mkstemp(suffix=".md")
-        os.close(fd)
-        os.unlink(sortie)  # le rapport doit créer le fichier
+        dossier = tempfile.mkdtemp()
+        sortie = os.path.join(dossier, "rapport.md")
         try:
             rapport_markdown(fichier, sortie=sortie)
             assert os.path.exists(sortie)
@@ -117,8 +117,7 @@ class TestGenerateurMarkdown:
             assert "RADIANCE" in contenu
         finally:
             os.unlink(fichier)
-            if os.path.exists(sortie):
-                os.unlink(sortie)
+            shutil.rmtree(dossier)
 
     def test_markdown_mentions_phi_meta(self):
         fichier = creer_fichier(CODE_SIMPLE)
