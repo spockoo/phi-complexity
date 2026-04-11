@@ -1,4 +1,4 @@
-name: Mon Test Engine
+name: Validate Engine Script
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  run-engine:
+  validate-engine:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
