@@ -1,7 +1,6 @@
-name: "φ-Évolution Expérimentale (non-bloquant)"
+name: "φ-Validation Engine (non-bloquant)"
 
-# Workflow expérimental : analyse la santé structurelle via engine.py.
-# Ne pousse JAMAIS directement sur main — crée une PR si des changements sont détectés.
+# Workflow expérimental : vérifie le moteur racine `engine.py` sans créer de PR.
 # Découplé du CI principal pour ne pas perturber les gates de qualité.
 
 on:
@@ -10,22 +9,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  evolution:
-    name: "Mutation Structurelle Phi"
+  validation:
+    name: "Validation du moteur racine"
     runs-on: ubuntu-latest
-
-    # Garde-fou anti-boucle : bloque si déclenché par le bot lui-même
-    if: github.actor != 'github-actions[bot]'
 
     steps:
       - name: 📥 Checkout (historique complet)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: 🐍 Setup Python 3.10
         uses: actions/setup-python@v5
@@ -36,34 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          pip install pytest
 
-      - name: 📐 Exécution du Moteur Phi
-        id: engine
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python engine.py
-          echo "changed=$(git status --porcelain | wc -l)" >> "$GITHUB_OUTPUT"
-
-      - name: 🌿 Création de branche d'évolution
-        if: steps.engine.outputs.changed != '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH="evolution/phi-mutation-$(date +%Y%m%d-%H%M%S)"
-          git config user.email "phi-bot@outlook.fr"
-          git config user.name "Phi-Bot"
-          git checkout -b "$BRANCH"
-          git add .
-          git commit -m "🧬 evolution: mutation structurelle phi [skip ci]"
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "🧬 Évolution Structurelle Phi ($(date +%Y-%m-%d))" \
-            --body "Mutation automatique basée sur le ratio d'or φ = 1.618.\n\nGénérée par engine.py — à réviser avant merge." \
-            --base main \
-            --head "$BRANCH" \
-            --label "automated" || echo "PR déjà existante ou label absent."
-
-      - name: ℹ️ Aucun changement détecté
-        if: steps.engine.outputs.changed == '0'
-        run: echo "L'organisme est déjà en harmonie. Aucune mutation nécessaire."
+      - name: 🧪 Tests ciblés du moteur racine
+        run: pytest tests/test_engine.py -q

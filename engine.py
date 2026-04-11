@@ -101,61 +101,85 @@ def handle_github_automation():
     if not token or not repo:
         print("Infos GitHub manquantes (TOKEN ou REPO).")
         return
-    branch_name = "evolution/phi-mutation"
-    base_branch = "main"
+    if event not in ["schedule", "workflow_dispatch"]:
+        print("Événement sans création de PR automatique.")
+        return
+    branch_name = os.getenv("PHI_AUTOMATION_BRANCH", "evolution/phi-mutation")
+    base_branch = os.getenv("PHI_BASE_BRANCH", "main")
     owner = repo.split("/")[0]
     try:
         subprocess.run(["git", "config", "user.name", "Phi-Architect-Bot"], check=True)
         subprocess.run(
             ["git", "config", "user.email", "phi-bot@outlook.fr"], check=True
         )
-    except subprocess.CalledProcessError as exc:
-        print(f"Erreur configuration Git : {exc}")
-        return
-    if event == "push":
-        print("Mode Push : mutation appliquée localement.")
-        return
-    try:
         subprocess.run(["git", "checkout", "-B", branch_name], check=True)
         subprocess.run(["git", "add", "."], check=True)
-        if subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode == 0:
-            print("Aucun changement structurel à proposer.")
+        diff_result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            check=False,
+        )
+        if diff_result.returncode not in {0, 1}:
+            print(f"Erreur vérification des changements git pour {branch_name}.")
+            return
+        if diff_result.returncode == 0:
+            print("Aucun changement à proposer en PR.")
             return
         subprocess.run(
-            ["git", "commit", "-m", "🧬 evolution: mutation structurelle phi"],
+            ["git", "commit", "-m", "🧬 [Cron] Harmonisation vers Ratio Phi"],
             check=True,
         )
-        subprocess.run(["git", "push", "--force", "origin", branch_name], check=True)
+        subprocess.run(
+            ["git", "push", "--force-with-lease", "origin", branch_name],
+            check=True,
+        )
     except subprocess.CalledProcessError as exc:
-        print(f"Erreur Git : {exc}")
+        print(f"Échec des opérations git pour {branch_name}: {exc}")
         return
     api_url = f"https://api.github.com/repos/{repo}/pulls"
-    query = parse.urlencode({"state": "open", "head": f"{owner}:{branch_name}"})
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    query = parse.urlencode(
+        {"state": "open", "head": f"{owner}:{branch_name}", "base": base_branch}
+    )
     try:
-        check_req = request.Request(f"{api_url}?{query}")
-        check_req.add_header("Authorization", f"token {token}")
-        check_req.add_header("Accept", "application/vnd.github.v3+json")
-        with request.urlopen(check_req) as r:
-            if json.loads(r.read().decode()):
-                print("PR déjà existante. Mise à jour effectuée.")
+        with request.urlopen(
+            request.Request(f"{api_url}?{query}", headers=headers)
+        ) as response:
+            if json.loads(response.read().decode("utf-8")):
+                print(f"PR déjà ouverte sur {branch_name}, mise à jour seulement.")
                 return
         payload = json.dumps(
             {
                 "title": "✨ Évolution Structurelle (Phi)",
                 "head": branch_name,
                 "base": base_branch,
-                "body": "Mutation automatique basée sur le ratio d'or.",
+                "body": "Rééquilibrage automatique et audit continu des commits non fusionnés.",
             }
-        ).encode()
-        post_req = request.Request(api_url, data=payload, method="POST")
-        post_req.add_header("Authorization", f"token {token}")
-        post_req.add_header("Content-Type", "application/json")
-        with request.urlopen(post_req):
-            print("Nouvelle PR créée avec succès.")
+        ).encode("utf-8")
+        with request.urlopen(
+            request.Request(
+                api_url,
+                data=payload,
+                method="POST",
+                headers={**headers, "Content-Type": "application/json"},
+            )
+        ):
+            print(f"PR créée sur {branch_name}")
     except error.HTTPError as exc:
-        print(f"Erreur API GitHub : {exc.code} {exc.reason}")
+        print(
+            f"Échec création/lecture PR pour {branch_name} dans {repo}: {exc.code} {exc.reason}"
+        )
     except error.URLError as exc:
-        print(f"Erreur réseau : {exc.reason}")
+        print(
+            f"Échec réseau création/lecture PR pour {branch_name} dans {repo}: {exc.reason}"
+        )
+    except json.JSONDecodeError:
+        print(
+            f"Réponse API invalide lors de la lecture des PR ouvertes pour {branch_name} dans {repo}."
+        )
 
 
 if __name__ == "__main__":
