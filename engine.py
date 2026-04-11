@@ -19,9 +19,9 @@ class PhiArchitect:
         with open(self.filename, "r", encoding="utf-8") as f:
             lines = f.readlines()
         clean_lines = [
-            l
-            for l in lines
-            if not any((l.startswith(m) for m in ["<<<<<<<", "=======", ">>>>>>>"]))
+            line
+            for line in lines
+            if not any((line.startswith(m) for m in ["<<<<<<<", "=======", ">>>>>>>"]))
         ]
         with open(self.filename, "w", encoding="utf-8") as f:
             f.writelines(clean_lines)
@@ -116,7 +116,7 @@ def handle_github_automation():
             check=True,
         )
         subprocess.run(["git", "push", "--force", "origin", branch_name], check=True)
-    except:
+    except Exception:
         return
     api_url = f"https://://github.com{repo}/pulls"
     try:
@@ -138,7 +138,7 @@ def handle_github_automation():
         post_req.add_header("Content-Type", "application/json")
         with request.urlopen(post_req):
             pass
-    except:
+    except Exception:
         pass
 
 
