@@ -24,6 +24,8 @@ jobs:
   os-matrix:
     name: "os (${{ matrix.os }} · py${{ matrix.python-version }})"
     runs-on: ${{ matrix.os }}
+    env:
+      PYTHONIOENCODING: utf-8
 
     strategy:
       fail-fast: false
