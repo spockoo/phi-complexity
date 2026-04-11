@@ -7,7 +7,7 @@ name: "🖥️ Couche OS — Compatibilité Multi-Plateforme (φ-Arch)"
 #   · ubuntu-latest  — Noyau Linux (systemd, glibc)
 #   · ubuntu-24.04   — LTS courant (base CI stable)
 #   · macos-latest   — Darwin / XNU kernel (BSD layer)
-#   · macos-14       — Apple Silicon ARM (compatibilité legacy)
+#   · macos-14       — Apple Silicon ARM64 (couche Darwin stable)
 #   · windows-latest — NT kernel (MSVC toolchain)
 
 on:
