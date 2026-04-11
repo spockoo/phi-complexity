@@ -474,7 +474,7 @@ class TestAuditSecurite:
         finally:
             shutil.rmtree(tmpdir)
 
-    def test_est_finding_securite_prioritise_security_relevant(self):
+    def test_est_finding_securite_prioritize_security_relevant(self):
         assert _est_finding_securite({"security_relevant": True}) is True
         assert _est_finding_securite({"security_relevant": False}) is False
         assert (

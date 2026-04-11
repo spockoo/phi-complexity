@@ -361,11 +361,7 @@ def _est_bloquant_security(
     return (
         security_relevant
         and surface == "production"
-        and severite
-        in {
-            "critical",
-            "high",
-        }
+        and severite in {"critical", "high"}
     )
 
 
@@ -491,6 +487,12 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
 
 def _score_securite(findings: Sequence[Dict[str, Any]]) -> float:
     """Calcule un score de sécurité borné [0, 100].
+
+    Parameters
+    ----------
+    findings:
+        Séquence de findings normalisés (dict) contenant notamment `surface`,
+        `severity`, et éventuellement `out_of_scope`/`security_relevant`.
 
     Seuls les findings sécurité en surface production impactent le score.
     Les findings hors périmètre (`out_of_scope`) et les annotations qualité
