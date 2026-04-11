@@ -554,14 +554,17 @@ def carte_entropie_penrose(
     radiances = [m.get("radiance", 60.0) for m in metriques_list]
     entropies = [m.get("fibonacci_entropy", 0.0) for m in metriques_list]
     phi_deltas = [m.get("phi_ratio_delta", 0.0) for m in metriques_list]
-    noms = [os.path.basename(m.get("fichier", "?"))[:15] for m in metriques_list]
+    max_label_len = 15  # Tronquer les noms pour la lisibilité des annotations
+    noms = [
+        os.path.basename(m.get("fichier", "?"))[:max_label_len] for m in metriques_list
+    ]
 
     # Normaliser les couleurs par phi_ratio_delta
     max_delta = max(phi_deltas) if phi_deltas and max(phi_deltas) > 0 else 1.0
     couleurs_norm = [d / max_delta for d in phi_deltas]
 
     # Grille de Penrose (angle doré 36°)
-    angle_penrose = 36 * (math.pi / 180)
+    angle_penrose = math.radians(36)
     for k in range(10):
         theta = k * angle_penrose
         longueur = max(max(radiances) if radiances else 100, 100)
