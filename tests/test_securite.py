@@ -477,6 +477,16 @@ class TestAuditSecurite:
     def test_est_finding_securite_prioritise_security_relevant(self):
         assert _est_finding_securite({"security_relevant": True}) is True
         assert _est_finding_securite({"security_relevant": False}) is False
+        assert (
+            _est_finding_securite(
+                {
+                    "security_relevant": False,
+                    "source": "phi-complexity",
+                    "rule_id": "CWE-134",
+                }
+            )
+            is False
+        )
 
     def test_est_finding_securite_fallback_par_source(self):
         assert (

@@ -490,6 +490,12 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
 
 
 def _score_securite(findings: Sequence[Dict[str, Any]]) -> float:
+    """Calcule un score de sécurité borné [0, 100].
+
+    Seuls les findings sécurité en surface production impactent le score.
+    Les findings hors périmètre (`out_of_scope`) et les annotations qualité
+    non-sécurité sont exclus.
+    """
     # Le score de sécurité ne doit pas dériver des métriques qualité (radiance)
     # pour éviter les faux FAIL en CI "security gate".
     score = 100.0
