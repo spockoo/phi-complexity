@@ -8,11 +8,9 @@ import tempfile
 from phi_complexity.backends.asm_light import (
     AsmLightBackend,
     _detecter_architecture,
-    _extraire_routines,
     _patterns_pour_arch,
 )
 from phi_complexity.analyseur import AnalyseurPhi
-
 
 # ────────────────────────────────────────────────────────
 # FIXTURES — Code assembleur de test
@@ -275,7 +273,10 @@ class TestAsmAnnotations:
             r = backend.analyser()
             suture_annots = [a for a in r.annotations if a.categorie == "SUTURE"]
             assert len(suture_annots) >= 1
-            assert "push" in suture_annots[0].message.lower() or "pop" in suture_annots[0].message.lower()
+            assert (
+                "push" in suture_annots[0].message.lower()
+                or "pop" in suture_annots[0].message.lower()
+            )
         finally:
             os.unlink(chemin)
 

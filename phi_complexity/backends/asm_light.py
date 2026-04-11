@@ -10,7 +10,7 @@ Phase 15 du Morphic Phi Framework.
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from ..analyseur import ResultatAnalyse, MetriqueFonction, Annotation
 from ..core import distance_fibonacci
@@ -151,7 +151,12 @@ def _patterns_pour_arch(
     if arch == "arm":
         return _ARM_BRANCHES, _ARM_RET, _ARM_PUSH, _ARM_POP
     if arch == "riscv":
-        return _RISCV_BRANCHES, _RISCV_RET, _X86_PUSH, _X86_POP  # RISC-V n'a pas push/pop natif
+        return (
+            _RISCV_BRANCHES,
+            _RISCV_RET,
+            _X86_PUSH,
+            _X86_POP,
+        )  # RISC-V n'a pas push/pop natif
     return _X86_BRANCHES, _X86_RET, _X86_PUSH, _X86_POP
 
 
@@ -183,11 +188,11 @@ def _extraire_routines(
         # Vérifier qu'il y a des instructions (pas juste un label de données)
         bloc = lignes[debut:fin]
         has_instructions = any(
-            l.strip()
-            and not _COMMENT_LINE.match(l.strip())
-            and not _DIRECTIVE.match(l.strip())
-            and not _LABEL.match(l.strip())
-            for l in bloc
+            line.strip()
+            and not _COMMENT_LINE.match(line.strip())
+            and not _DIRECTIVE.match(line.strip())
+            and not _LABEL.match(line.strip())
+            for line in bloc
         )
         if has_instructions:
             routines.append((nom, debut, fin))
@@ -236,7 +241,7 @@ def _analyser_routine(
     # Complexité = instructions + branches pondérés
     complexite = nb_instructions + nb_branches * _POIDS_BRANCHEMENT
 
-    nb_lignes = len([l for l in bloc if l.strip()])
+    nb_lignes = len([line for line in bloc if line.strip()])
 
     metrique = MetriqueFonction(
         nom=nom,

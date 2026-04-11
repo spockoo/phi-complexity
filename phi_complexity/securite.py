@@ -19,7 +19,6 @@ import sys
 import time
 from typing import Any, Dict, List
 
-
 # ────────────────────────────────────────────────────────
 # SIGNATURE DES RAPPORTS
 # ────────────────────────────────────────────────────────
@@ -62,7 +61,7 @@ _EXTENSIONS_AUTORISEES = frozenset(
 _TAILLE_MAX_OCTETS = 10 * 1024 * 1024
 
 # Caractères interdits dans les chemins (prévention path traversal)
-_PATTERNS_INTERDITS = ("..", "~", "\x00")
+_PATTERNS_INTERDITS = ("..", "\x00")
 
 
 def valider_chemin_fichier(chemin: str) -> bool:
@@ -155,7 +154,7 @@ class JournalAudit:
             return []
         try:
             with open(self.journal_path, "r", encoding="utf-8") as f:
-                lignes = [json.loads(l) for l in f if l.strip()]
+                lignes = [json.loads(line) for line in f if line.strip()]
             return lignes[-limite:]
         except (json.JSONDecodeError, OSError):
             return []

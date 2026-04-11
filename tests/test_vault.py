@@ -2,7 +2,6 @@
 tests/test_vault.py — Tests du Phi Vault (Phase 16).
 """
 
-import json
 import os
 import tempfile
 import shutil

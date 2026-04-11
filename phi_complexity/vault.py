@@ -9,7 +9,6 @@ Phase 16 du Morphic Phi Framework.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import time
@@ -84,8 +83,8 @@ class PhiVault:
             "",
             "## Métriques",
             "",
-            f"| Métrique | Valeur |",
-            f"|----------|--------|",
+            "| Métrique | Valeur |",
+            "|----------|--------|",
             f"| **Radiance** | {radiance:.2f} / 100 |",
             f"| **Statut** | {statut} |",
             f"| **Lilith Variance** | {metriques.get('lilith_variance', 0.0):.2f} |",
@@ -244,8 +243,8 @@ class PhiVault:
 
         lignes = [
             "digraph phi_vault {",
-            '    rankdir=LR;',
-            '    node [shape=box, style=filled];',
+            "    rankdir=LR;",
+            "    node [shape=box, style=filled];",
             "",
         ]
 
@@ -262,9 +261,7 @@ class PhiVault:
                 color = "#e74c3c"
 
             label = f"{base}\\nRadiance: {radiance:.1f}"
-            lignes.append(
-                f'    "{base}" [label="{label}", fillcolor="{color}"];'
-            )
+            lignes.append(f'    "{base}" [label="{label}", fillcolor="{color}"];')
 
         lignes.append("}")
         return "\n".join(lignes)
@@ -301,9 +298,7 @@ class PhiVault:
             else:
                 icone = "░"
 
-            lignes.append(
-                f"  {icone} {base:<30} {barre} {radiance:>6.1f}"
-            )
+            lignes.append(f"  {icone} {base:<30} {barre} {radiance:>6.1f}")
 
         lignes.append("")
         return "\n".join(lignes)

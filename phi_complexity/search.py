@@ -12,9 +12,7 @@ from __future__ import annotations
 import json
 import math
 import os
-from typing import Any, Dict, List, Optional, Callable
-
-from .core import statut_gnostique, PHI
+from typing import Any, Dict, List
 
 
 class PhiSearch:
@@ -131,7 +129,9 @@ class PhiSearch:
 
         return sorted(resultats, key=lambda x: x["radiance"])
 
-    def rapport_recherche(self, resultats: List[Dict[str, Any]], titre: str = "Recherche") -> str:
+    def rapport_recherche(
+        self, resultats: List[Dict[str, Any]], titre: str = "Recherche"
+    ) -> str:
         """Génère un rapport ASCII des résultats de recherche."""
         if not resultats:
             return f"  ░  Aucun résultat pour : {titre}"

@@ -17,7 +17,6 @@ from phi_complexity.securite import (
     exporter_sbom,
 )
 
-
 # ────────────────────────────────────────────────────────
 # TESTS — Signature des rapports
 # ────────────────────────────────────────────────────────

@@ -12,9 +12,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from .core import statut_gnostique, PHI
+from .core import statut_gnostique
 
 
 def _generer_id(texte: str) -> str:
@@ -101,9 +101,7 @@ class PhiCanvas:
         self._x_offset += 800
         return node_id
 
-    def _ajouter_fonction(
-        self, fn: Dict[str, Any], x: int, y: int
-    ) -> str:
+    def _ajouter_fonction(self, fn: Dict[str, Any], x: int, y: int) -> str:
         """Ajoute un nœud de fonction au canvas."""
         nom = str(fn.get("nom", "?"))
         complexite = int(fn.get("complexite", 0))
