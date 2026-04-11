@@ -33,45 +33,57 @@ class CriticiteTelemetrie(Enum):
 
 
 # Ports bien connus à surveiller (ports privilégiés ou sensibles)
-_PORTS_SUSPECTS: frozenset = frozenset({
-    22,    # SSH
-    23,    # Telnet (non chiffré)
-    25,    # SMTP (potentielle exfiltration mail)
-    53,    # DNS (canal caché)
-    4444,  # Metasploit par défaut
-    4445,  # Variante Metasploit
-    5554,  # Sasser worm
-    6666,  # IRC (souvent C2)
-    6667,  # IRC
-    7777,  # Variante backdoor
-    8080,  # Proxy HTTP alternatif
-    8888,  # Proxy alternatif
-    9001,  # Tor default
-    9050,  # Tor SOCKS proxy
-    9999,  # Port backdoor commun
-    31337, # Elite / backdoor
-    65535, # Port max (inhabituel)
-})
+_PORTS_SUSPECTS: frozenset[int] = frozenset(
+    {
+        22,  # SSH
+        23,  # Telnet (non chiffré)
+        25,  # SMTP (potentielle exfiltration mail)
+        53,  # DNS (canal caché)
+        4444,  # Metasploit par défaut
+        4445,  # Variante Metasploit
+        5554,  # Sasser worm
+        6666,  # IRC (souvent C2)
+        6667,  # IRC
+        7777,  # Variante backdoor
+        8080,  # Proxy HTTP alternatif
+        8888,  # Proxy alternatif
+        9001,  # Tor default
+        9050,  # Tor SOCKS proxy
+        9999,  # Port backdoor commun
+        31337,  # Elite / backdoor
+        65535,  # Port max (inhabituel)
+    }
+)
 
 # Noms de processus typiquement associés à des activités suspectes
-_PROCESSUS_SUSPECTS: frozenset = frozenset({
-    "nc", "ncat", "netcat",      # Outils réseau offensifs
-    "nmap",                       # Scan de réseau
-    "tcpdump", "wireshark",       # Capture réseau (légitime mais à surveiller)
-    "msfconsole", "msfvenom",    # Metasploit
-    "hydra", "medusa",            # Brute force
-    "sqlmap",                     # SQL injection
-    "john", "hashcat",            # Cracking de mots de passe
-    "aircrack-ng",                # Attaque WiFi
-    "mimikatz",                   # Extraction de credentials
-    "cobalt",                     # Cobalt Strike
-    "beacon",                     # Cobalt Strike beacon
-    "powershell",                 # Souvent utilisé dans les attaques Windows
-    "wscript", "cscript",         # Scripting Windows
-    "regsvr32", "mshta",          # Living-off-the-land (LOTL)
-    "certutil",                   # LOTL (download/decode)
-    "bitsadmin",                  # LOTL (téléchargement)
-})
+_PROCESSUS_SUSPECTS: frozenset[str] = frozenset(
+    {
+        "nc",
+        "ncat",
+        "netcat",  # Outils réseau offensifs
+        "nmap",  # Scan de réseau
+        "tcpdump",
+        "wireshark",  # Capture réseau (légitime mais à surveiller)
+        "msfconsole",
+        "msfvenom",  # Metasploit
+        "hydra",
+        "medusa",  # Brute force
+        "sqlmap",  # SQL injection
+        "john",
+        "hashcat",  # Cracking de mots de passe
+        "aircrack-ng",  # Attaque WiFi
+        "mimikatz",  # Extraction de credentials
+        "cobalt",  # Cobalt Strike
+        "beacon",  # Cobalt Strike beacon
+        "powershell",  # Souvent utilisé dans les attaques Windows
+        "wscript",
+        "cscript",  # Scripting Windows
+        "regsvr32",
+        "mshta",  # Living-off-the-land (LOTL)
+        "certutil",  # LOTL (download/decode)
+        "bitsadmin",  # LOTL (téléchargement)
+    }
+)
 
 
 @dataclass
@@ -158,7 +170,9 @@ class TelemetryNormalizer:
                     criticite = CriticiteTelemetrie.SUSPECT
 
         # Détection de pipe vers shell (curl/wget + bash dans la même commande)
-        contient_pipe_bash = ("| bash" in cmdline or "| sh" in cmdline or "|bash" in cmdline)
+        contient_pipe_bash = (
+            "| bash" in cmdline or "| sh" in cmdline or "|bash" in cmdline
+        )
         if contient_pipe_bash:
             if "curl" in cmdline:
                 tags.append("pipe_curl_bash")
@@ -313,7 +327,9 @@ class TelemetryNormalizer:
         if suspectes:
             lignes.append(f"  ⚠  TRACES SUSPECTES ({len(suspectes)}) :")
             for t in suspectes[:10]:  # Limite à 10 pour la lisibilité
-                lignes.append(f"    ◈  [{t.criticite.value.upper()}] {t.evenement.description}")
+                lignes.append(
+                    f"    ◈  [{t.criticite.value.upper()}] {t.evenement.description}"
+                )
                 if t.tags:
                     lignes.append(f"       Tags: {', '.join(t.tags)}")
         else:

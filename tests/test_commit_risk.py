@@ -14,11 +14,9 @@ Couvre :
 from __future__ import annotations
 
 import json
-import math
-import sys
 import unittest
 from io import StringIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from phi_complexity.commit_risk import (
     FeaturesCommit,
@@ -154,8 +152,13 @@ class TestScorerCommit(unittest.TestCase):
         features = FeaturesCommit()
         _, details = scorer_commit(features)
         cles_attendues = [
-            "diff_size", "fichiers_changes", "chemins_sensibles",
-            "mots_suspects", "fichiers_binaires", "hors_heures_bureau", "weekend"
+            "diff_size",
+            "fichiers_changes",
+            "chemins_sensibles",
+            "mots_suspects",
+            "fichiers_binaires",
+            "hors_heures_bureau",
+            "weekend",
         ]
         for cle in cles_attendues:
             self.assertIn(cle, details)
@@ -205,35 +208,69 @@ class TestFacteursDominants(unittest.TestCase):
 
     def test_diff_volumineux_detecte(self):
         features = FeaturesCommit(lignes_ajoutees=300, lignes_supprimees=200)
-        details = {"diff_size": 1.0, "fichiers_changes": 0.0, "chemins_sensibles": 0.0,
-                   "mots_suspects": 0.0, "fichiers_binaires": 0.0,
-                   "hors_heures_bureau": 0.0, "weekend": 0.0}
+        details = {
+            "diff_size": 1.0,
+            "fichiers_changes": 0.0,
+            "chemins_sensibles": 0.0,
+            "mots_suspects": 0.0,
+            "fichiers_binaires": 0.0,
+            "hors_heures_bureau": 0.0,
+            "weekend": 0.0,
+        }
         facteurs = _identifier_facteurs_dominants(features, details)
-        self.assertTrue(any("diff" in f.lower() or "lignes" in f.lower() for f in facteurs))
+        self.assertTrue(
+            any("diff" in f.lower() or "lignes" in f.lower() for f in facteurs)
+        )
 
     def test_chemin_sensible_detecte(self):
         features = FeaturesCommit(chemins_sensibles=3)
-        details = {"diff_size": 0.0, "fichiers_changes": 0.0, "chemins_sensibles": 1.0,
-                   "mots_suspects": 0.0, "fichiers_binaires": 0.0,
-                   "hors_heures_bureau": 0.0, "weekend": 0.0}
+        details = {
+            "diff_size": 0.0,
+            "fichiers_changes": 0.0,
+            "chemins_sensibles": 1.0,
+            "mots_suspects": 0.0,
+            "fichiers_binaires": 0.0,
+            "hors_heures_bureau": 0.0,
+            "weekend": 0.0,
+        }
         facteurs = _identifier_facteurs_dominants(features, details)
         self.assertTrue(any("sensible" in f.lower() for f in facteurs))
 
     def test_aucun_facteur_si_tout_faible(self):
         features = FeaturesCommit()
-        details = {k: 0.0 for k in ["diff_size", "fichiers_changes", "chemins_sensibles",
-                                      "mots_suspects", "fichiers_binaires",
-                                      "hors_heures_bureau", "weekend"]}
+        details = {
+            k: 0.0
+            for k in [
+                "diff_size",
+                "fichiers_changes",
+                "chemins_sensibles",
+                "mots_suspects",
+                "fichiers_binaires",
+                "hors_heures_bureau",
+                "weekend",
+            ]
+        }
         facteurs = _identifier_facteurs_dominants(features, details)
         self.assertEqual(facteurs, [])
 
     def test_hors_heures_bureau_detecte(self):
         features = FeaturesCommit(hors_heures_bureau=True, heure=3)
-        details = {k: 0.0 for k in ["diff_size", "fichiers_changes", "chemins_sensibles",
-                                      "mots_suspects", "fichiers_binaires",
-                                      "hors_heures_bureau", "weekend"]}
+        details = {
+            k: 0.0
+            for k in [
+                "diff_size",
+                "fichiers_changes",
+                "chemins_sensibles",
+                "mots_suspects",
+                "fichiers_binaires",
+                "hors_heures_bureau",
+                "weekend",
+            ]
+        }
         facteurs = _identifier_facteurs_dominants(features, details)
-        self.assertTrue(any("heure" in f.lower() or "bureau" in f.lower() for f in facteurs))
+        self.assertTrue(
+            any("heure" in f.lower() or "bureau" in f.lower() for f in facteurs)
+        )
 
 
 class TestRapportConsole(unittest.TestCase):
@@ -251,7 +288,10 @@ class TestRapportConsole(unittest.TestCase):
             sha="deadbeef1234",
             score=0.95,
             niveau="CRITIQUE",
-            facteurs_dominants=["Diff volumineux : 2000 lignes", "Fichiers sensibles : 5"],
+            facteurs_dominants=[
+                "Diff volumineux : 2000 lignes",
+                "Fichiers sensibles : 5",
+            ],
         )
         sortie = rapport_console(rapport)
         self.assertIn("CRITIQUE", sortie)
@@ -293,23 +333,27 @@ class TestExtraireFeatures(unittest.TestCase):
 
     def _mock_run_git(self, resultats: dict):
         """Crée un patch de _run_git retournant des résultats prédéfinis selon les args."""
+
         def side_effect(args, cwd=None):
             key = " ".join(args)
             for pattern, val in resultats.items():
                 if pattern in key:
                     return val
             return ""
+
         return side_effect
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_extraction_basique(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "log -1 --format=%s": "feat: add new feature",
-            "log -1 --format=%an": "Alice",
-            "log -1 --format=%ai": "2024-01-15 14:30:00 +0000",
-            "log -1 --format=%ad": "1",
-            "diff --numstat": "10\t5\tsrc/main.py\n3\t1\tdocs/readme.md",
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "log -1 --format=%s": "feat: add new feature",
+                "log -1 --format=%an": "Alice",
+                "log -1 --format=%ai": "2024-01-15 14:30:00 +0000",
+                "log -1 --format=%ad": "1",
+                "diff --numstat": "10\t5\tsrc/main.py\n3\t1\tdocs/readme.md",
+            }
+        )
         features = extraire_features("abc123")
         self.assertEqual(features.sha, "abc123")
         self.assertEqual(features.message, "feat: add new feature")
@@ -321,26 +365,30 @@ class TestExtraireFeatures(unittest.TestCase):
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_extraction_chemin_sensible(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "log -1 --format=%s": "update ci",
-            "log -1 --format=%an": "Bob",
-            "log -1 --format=%ai": "2024-01-15 02:00:00 +0000",
-            "log -1 --format=%ad": "0",
-            "diff --numstat": "5\t2\t.github/workflows/ci.yml",
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "log -1 --format=%s": "update ci",
+                "log -1 --format=%an": "Bob",
+                "log -1 --format=%ai": "2024-01-15 02:00:00 +0000",
+                "log -1 --format=%ad": "0",
+                "diff --numstat": "5\t2\t.github/workflows/ci.yml",
+            }
+        )
         features = extraire_features("def456")
         self.assertEqual(features.chemins_sensibles, 1)
         self.assertTrue(features.hors_heures_bureau)  # heure 2 = nuit
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_extraction_fichier_binaire(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "log -1 --format=%s": "add binary",
-            "log -1 --format=%an": "Bob",
-            "log -1 --format=%ai": "2024-01-15 10:00:00 +0000",
-            "log -1 --format=%ad": "2",
-            "diff --numstat": "-\t-\timage.png",
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "log -1 --format=%s": "add binary",
+                "log -1 --format=%an": "Bob",
+                "log -1 --format=%ai": "2024-01-15 10:00:00 +0000",
+                "log -1 --format=%ad": "2",
+                "diff --numstat": "-\t-\timage.png",
+            }
+        )
         features = extraire_features("ghi789")
         self.assertEqual(features.fichiers_binaires, 1)
 
@@ -353,41 +401,51 @@ class TestExtraireFeatures(unittest.TestCase):
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_timestamp_malformate(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "log -1 --format=%ai": "not-a-date",
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "log -1 --format=%ai": "not-a-date",
+            }
+        )
         features = extraire_features("malformed")
         self.assertEqual(features.heure, 12)  # Valeur par défaut
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_weekend_samedi(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "log -1 --format=%ad": "6",  # samedi
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "log -1 --format=%ad": "6",  # samedi
+            }
+        )
         features = extraire_features("sat123")
         self.assertTrue(features.est_weekend)
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_weekend_dimanche(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "log -1 --format=%ad": "0",  # dimanche
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "log -1 --format=%ad": "0",  # dimanche
+            }
+        )
         features = extraire_features("sun123")
         self.assertTrue(features.est_weekend)
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_diff_numstat_malformee(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "diff --numstat": "malformed_line_without_tabs",
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "diff --numstat": "malformed_line_without_tabs",
+            }
+        )
         features = extraire_features("bad123")
         self.assertEqual(features.lignes_ajoutees, 0)
 
     @patch("phi_complexity.commit_risk._run_git")
     def test_diff_numstat_valeurs_non_entiers(self, mock_git):
-        mock_git.side_effect = self._mock_run_git({
-            "diff --numstat": "abc\txyz\tfile.py",
-        })
+        mock_git.side_effect = self._mock_run_git(
+            {
+                "diff --numstat": "abc\txyz\tfile.py",
+            }
+        )
         features = extraire_features("nonint")
         self.assertEqual(features.lignes_ajoutees, 0)
 
@@ -421,7 +479,7 @@ class TestMainCLI(unittest.TestCase):
         mock_analyser.return_value = RapportRisque(
             sha="abc123", score=0.15, niveau="FAIBLE"
         )
-        with patch("sys.stdout", new_callable=StringIO) as mock_out:
+        with patch("sys.stdout", new_callable=StringIO):
             code = main(["--sha", "abc123", "--format", "console"])
         self.assertEqual(code, 0)
 
@@ -434,13 +492,14 @@ class TestMainCLI(unittest.TestCase):
             features={},
             details={},
         )
-        with patch("sys.stdout", new_callable=StringIO) as mock_out:
+        with patch("sys.stdout", new_callable=StringIO):
             code = main(["--sha", "abc123", "--format", "json"])
         self.assertEqual(code, 0)
 
     @patch("phi_complexity.commit_risk.analyser_commit")
     def test_cli_output_fichier(self, mock_analyser, tmp_path=None):
         import tempfile
+
         mock_analyser.return_value = RapportRisque(
             sha="abc123",
             score=0.1,
@@ -458,6 +517,7 @@ class TestMainCLI(unittest.TestCase):
             self.assertEqual(data["sha"], "abc123")
         finally:
             import os
+
             if os.path.exists(chemin):
                 os.unlink(chemin)
 

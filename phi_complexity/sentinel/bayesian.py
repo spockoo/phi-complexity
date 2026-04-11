@@ -28,7 +28,6 @@ from typing import Dict, List, Optional
 from .behavior import BehaviorAnalyzer, SignalComportemental
 from .telemetry import TelemetryNormalizer, TraceNormalisee
 
-
 # ──────────────────────────────────────────────
 # CONSTANTES DU MODÈLE BAYÉSIEN SENTINEL
 # ──────────────────────────────────────────────
@@ -146,9 +145,7 @@ class BayesianCorrelator:
         """
         # Log-odds initial depuis le prior
         epsilon = 1e-9
-        log_odds = math.log(
-            (self._prior + epsilon) / (1.0 - self._prior + epsilon)
-        )
+        log_odds = math.log((self._prior + epsilon) / (1.0 - self._prior + epsilon))
 
         # Mise à jour bayésienne pour chaque signal
         poids = [(score_os, 0.8), (score_commit, 0.6), (score_telemetrie, 0.7)]

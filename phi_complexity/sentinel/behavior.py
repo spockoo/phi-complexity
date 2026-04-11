@@ -51,9 +51,11 @@ class SignalComportemental:
     """
 
     type: TypeBehavior
-    confiance: float          # [0.0, 1.0] — probabilité que ce signal soit réel
+    confiance: float  # [0.0, 1.0] — probabilité que ce signal soit réel
     description: str
-    traces_source: List[str]  # Sources (descriptions) des traces ayant déclenché ce signal
+    traces_source: List[
+        str
+    ]  # Sources (descriptions) des traces ayant déclenché ce signal
     timestamp: float = field(default_factory=time.time)
     mitre_technique: str = ""  # Identifiant MITRE ATT&CK (ex: "T1059.001")
 
@@ -74,36 +76,106 @@ class SignalComportemental:
 # ──────────────────────────────────────────────
 
 # Correspondance tag → (TypeBehavior, confiance, description, mitre)
-_REGLES_TAGS: List[tuple] = [
+_REGLES_TAGS: List[tuple[str, TypeBehavior, float, str, str]] = [
     # Tag, TypeBehavior, confiance_base, description, mitre
-    ("setuid_suspect", TypeBehavior.ELEVATION, 0.75,
-     "Tentative d'escalade via setuid (chmod +s détecté)", "T1548.001"),
-    ("permissions_larges", TypeBehavior.ELEVATION, 0.50,
-     "Permissions larges appliquées (chmod 777)", "T1548"),
-    ("encodage_base64", TypeBehavior.DEFENCE_EVASION, 0.65,
-     "Encodage base64 détecté dans la ligne de commande", "T1027"),
-    ("pipe_curl_bash", TypeBehavior.PERSISTANCE, 0.85,
-     "Exécution directe depuis URL (curl | bash)", "T1059.004"),
-    ("pipe_wget_bash", TypeBehavior.PERSISTANCE, 0.85,
-     "Exécution directe depuis URL (wget | bash)", "T1059.004"),
-    ("execution_tmp", TypeBehavior.DEFENCE_EVASION, 0.60,
-     "Exécution depuis répertoire temporaire (/tmp, /dev/shm)", "T1036.005"),
-    ("destruction_systeme", TypeBehavior.CHIFFREMENT, 0.95,
-     "Commande destructrice détectée (rm -rf /)", "T1485"),
-    ("lecture_raw_device", TypeBehavior.EXFILTRATION, 0.70,
-     "Lecture directe d'un périphérique brut (dd if=/dev/)", "T1006"),
-    ("tcp_via_bash", TypeBehavior.C2, 0.80,
-     "Connexion TCP directe via Bash (/dev/tcp/)", "T1071.001"),
-    ("udp_via_bash", TypeBehavior.C2, 0.80,
-     "Connexion UDP directe via Bash (/dev/udp/)", "T1071.001"),
-    ("connexion_tor", TypeBehavior.C2, 0.75,
-     "Connexion réseau vers le réseau Tor (port 9001/9050)", "T1090.003"),
-    ("port_suspect", TypeBehavior.C2, 0.55,
-     "Connexion réseau sur port associé à du C2 connu", "T1071"),
-    ("processus_suspect", TypeBehavior.RECONNAISSANCE, 0.65,
-     "Processus offensif ou de reconnaissance détecté", "T1046"),
-    ("port_ephemere_en_ecoute", TypeBehavior.C2, 0.45,
-     "Port éphémère en écoute (bind shell potentiel)", "T1571"),
+    (
+        "setuid_suspect",
+        TypeBehavior.ELEVATION,
+        0.75,
+        "Tentative d'escalade via setuid (chmod +s détecté)",
+        "T1548.001",
+    ),
+    (
+        "permissions_larges",
+        TypeBehavior.ELEVATION,
+        0.50,
+        "Permissions larges appliquées (chmod 777)",
+        "T1548",
+    ),
+    (
+        "encodage_base64",
+        TypeBehavior.DEFENCE_EVASION,
+        0.65,
+        "Encodage base64 détecté dans la ligne de commande",
+        "T1027",
+    ),
+    (
+        "pipe_curl_bash",
+        TypeBehavior.PERSISTANCE,
+        0.85,
+        "Exécution directe depuis URL (curl | bash)",
+        "T1059.004",
+    ),
+    (
+        "pipe_wget_bash",
+        TypeBehavior.PERSISTANCE,
+        0.85,
+        "Exécution directe depuis URL (wget | bash)",
+        "T1059.004",
+    ),
+    (
+        "execution_tmp",
+        TypeBehavior.DEFENCE_EVASION,
+        0.60,
+        "Exécution depuis répertoire temporaire (/tmp, /dev/shm)",
+        "T1036.005",
+    ),
+    (
+        "destruction_systeme",
+        TypeBehavior.CHIFFREMENT,
+        0.95,
+        "Commande destructrice détectée (rm -rf /)",
+        "T1485",
+    ),
+    (
+        "lecture_raw_device",
+        TypeBehavior.EXFILTRATION,
+        0.70,
+        "Lecture directe d'un périphérique brut (dd if=/dev/)",
+        "T1006",
+    ),
+    (
+        "tcp_via_bash",
+        TypeBehavior.C2,
+        0.80,
+        "Connexion TCP directe via Bash (/dev/tcp/)",
+        "T1071.001",
+    ),
+    (
+        "udp_via_bash",
+        TypeBehavior.C2,
+        0.80,
+        "Connexion UDP directe via Bash (/dev/udp/)",
+        "T1071.001",
+    ),
+    (
+        "connexion_tor",
+        TypeBehavior.C2,
+        0.75,
+        "Connexion réseau vers le réseau Tor (port 9001/9050)",
+        "T1090.003",
+    ),
+    (
+        "port_suspect",
+        TypeBehavior.C2,
+        0.55,
+        "Connexion réseau sur port associé à du C2 connu",
+        "T1071",
+    ),
+    (
+        "processus_suspect",
+        TypeBehavior.RECONNAISSANCE,
+        0.65,
+        "Processus offensif ou de reconnaissance détecté",
+        "T1046",
+    ),
+    (
+        "port_ephemere_en_ecoute",
+        TypeBehavior.C2,
+        0.45,
+        "Port éphémère en écoute (bind shell potentiel)",
+        "T1571",
+    ),
 ]
 
 
@@ -133,7 +205,7 @@ class BehaviorAnalyzer:
             return []
 
         # Collecte des contributions par type de behavior
-        contributions: Dict[TypeBehavior, List[tuple]] = {}
+        contributions: Dict[TypeBehavior, List[tuple[float, str, str, str]]] = {}
 
         for trace in traces:
             for tag in trace.tags:
@@ -213,7 +285,9 @@ class BehaviorAnalyzer:
             lignes.append("  Signaux (triés par confiance décroissante) :")
             for signal in signaux:
                 conf_pct = signal.confiance * 100
-                mitre_str = f" [{signal.mitre_technique}]" if signal.mitre_technique else ""
+                mitre_str = (
+                    f" [{signal.mitre_technique}]" if signal.mitre_technique else ""
+                )
                 lignes.append(
                     f"    ◈  {signal.type.value.upper():20s}"
                     f"  {conf_pct:5.1f}%{mitre_str}"
@@ -236,5 +310,6 @@ class BehaviorAnalyzer:
         return [
             t
             for t in traces
-            if t.criticite in (CriticiteTelemetrie.SUSPECT, CriticiteTelemetrie.CRITIQUE)
+            if t.criticite
+            in (CriticiteTelemetrie.SUSPECT, CriticiteTelemetrie.CRITIQUE)
         ]

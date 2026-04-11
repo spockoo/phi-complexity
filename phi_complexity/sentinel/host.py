@@ -21,7 +21,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 
 class EventType(Enum):
@@ -50,7 +50,7 @@ class HostEvent:
     timestamp: float
     source: str
     description: str
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # ──────────────────────────────────────────────
@@ -58,13 +58,13 @@ class HostEvent:
 # ──────────────────────────────────────────────
 
 
-def _lire_proc_status(pid: int) -> dict:
+def _lire_proc_status(pid: int) -> dict[str, str]:
     """
     Lit /proc/{pid}/status et retourne un dict des champs clés.
     Retourne un dict vide si le fichier n'est pas accessible.
     """
     chemin = f"/proc/{pid}/status"
-    result: dict = {}
+    result: dict[str, str] = {}
     try:
         with open(chemin, "r", encoding="utf-8", errors="replace") as f:
             for ligne in f:
@@ -92,11 +92,7 @@ def _collecter_processus_linux() -> List[HostEvent]:
     events: List[HostEvent] = []
     ts = time.time()
     try:
-        pids = [
-            int(nom)
-            for nom in os.listdir("/proc")
-            if nom.isdigit()
-        ]
+        pids = [int(nom) for nom in os.listdir("/proc") if nom.isdigit()]
     except OSError:
         return events
 
@@ -115,8 +111,14 @@ def _collecter_processus_linux() -> List[HostEvent]:
                 metadata={
                     "pid": pid,
                     "nom": nom,
-                    "cmdline": cmdline[:256],  # Tronqué pour éviter les données trop longues
-                    "vmrss_kb": status.get("VmRSS", "0").split()[0] if "VmRSS" in status else "0",
+                    "cmdline": cmdline[
+                        :256
+                    ],  # Tronqué pour éviter les données trop longues
+                    "vmrss_kb": (
+                        status.get("VmRSS", "0").split()[0]
+                        if "VmRSS" in status
+                        else "0"
+                    ),
                 },
             )
         )
@@ -151,10 +153,17 @@ def _collecter_reseau_linux() -> List[HostEvent]:
                 continue
             # État TCP: 01=ESTABLISHED, 0A=LISTEN
             etats_tcp = {
-                "01": "ESTABLISHED", "02": "SYN_SENT", "03": "SYN_RECV",
-                "04": "FIN_WAIT1", "05": "FIN_WAIT2", "06": "TIME_WAIT",
-                "07": "CLOSE", "08": "CLOSE_WAIT", "09": "LAST_ACK",
-                "0A": "LISTEN", "0B": "CLOSING",
+                "01": "ESTABLISHED",
+                "02": "SYN_SENT",
+                "03": "SYN_RECV",
+                "04": "FIN_WAIT1",
+                "05": "FIN_WAIT2",
+                "06": "TIME_WAIT",
+                "07": "CLOSE",
+                "08": "CLOSE_WAIT",
+                "09": "LAST_ACK",
+                "0A": "LISTEN",
+                "0B": "CLOSING",
             }
             etat = etats_tcp.get(etat_hex.upper(), etat_hex)
             events.append(
@@ -221,9 +230,7 @@ def _collecter_reseau_subprocess() -> List[HostEvent]:
     # Essai avec ss (plus moderne), puis netstat
     for cmd in [["ss", "-tnp"], ["netstat", "-tn"]]:
         try:
-            sortie = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=10
-            )
+            sortie = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             for ligne in sortie.stdout.splitlines()[1:]:
                 parties = ligne.split()
                 if len(parties) < 4:
@@ -289,7 +296,7 @@ class HostCollector:
         events.extend(self.collecter_reseau())
         return events
 
-    def resume(self) -> dict:
+    def resume(self) -> dict[str, Any]:
         """Retourne un résumé compact de la collecte (pour logs/rapports)."""
         events = self.collecter_tout()
         nb_proc = sum(1 for e in events if e.type == EventType.PROCESSUS)

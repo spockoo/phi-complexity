@@ -30,7 +30,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from .bayesian import ScoreSentinel
-from .behavior import SignalComportemental, TypeBehavior
+from .behavior import SignalComportemental
 
 
 class NiveauAlerte(Enum):
@@ -260,7 +260,9 @@ class SentinelResponse:
             lignes.append("  Alertes actives :")
             for alerte in alertes[:10]:
                 sym = symboles.get(alerte.niveau, "?")
-                lignes.append(f"    {sym}  [{alerte.niveau.value.upper()}] {alerte.titre}")
+                lignes.append(
+                    f"    {sym}  [{alerte.niveau.value.upper()}] {alerte.titre}"
+                )
                 lignes.append(f"       {alerte.description[:80]}")
         else:
             lignes.append("  ✦  Aucune alerte active. Système en état nominal.")
@@ -272,7 +274,9 @@ class SentinelResponse:
         ]
         return "\n".join(lignes)
 
-    def rapport_markdown(self, alertes: List[Alerte], titre: str = "Rapport Sentinel") -> str:
+    def rapport_markdown(
+        self, alertes: List[Alerte], titre: str = "Rapport Sentinel"
+    ) -> str:
         """Génère un rapport Markdown (pour PR comments, GitHub Issues, etc.)."""
         lignes = [
             f"# 🛡 {titre}",

@@ -231,7 +231,7 @@ def extraire_features(sha: str, cwd: Optional[str] = None) -> FeaturesCommit:
         # Premier commit sans parent
         numstat = _run_git(["diff", "--numstat", sha], cwd)
 
-    lignes = [l for l in numstat.splitlines() if l.strip()]
+    lignes = [line for line in numstat.splitlines() if line.strip()]
     features.fichiers_changes = len(lignes)
 
     for ligne in lignes:
@@ -261,7 +261,9 @@ def extraire_features(sha: str, cwd: Optional[str] = None) -> FeaturesCommit:
 # ──────────────────────────────────────────────
 
 
-def _ratio_de_vraisemblance(feature_value: float, mu_risque: float, mu_safe: float) -> float:
+def _ratio_de_vraisemblance(
+    feature_value: float, mu_risque: float, mu_safe: float
+) -> float:
     """
     Calcule le ratio de vraisemblance L = P(feature | risque) / P(feature | safe)
     en utilisant une approximation log-normale simplifiée.
