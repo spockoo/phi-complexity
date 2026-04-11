@@ -1,7 +1,9 @@
 import ast
 import inspect
+import json
 import os
 import subprocess
+from urllib import error, parse, request
 
 class PhiArchitect:
     """
@@ -51,27 +53,73 @@ class PhiArchitect:
         return True
 
 def handle_github_automation():
-    """Gère le push direct ou la création de PR via API GitHub."""
+    """Crée/met à jour une branche d'évolution puis ouvre une seule PR idempotente."""
     event = os.getenv('GITHUB_EVENT_NAME')
     repo = os.getenv('GITHUB_REPOSITORY')
     token = os.getenv('GITHUB_TOKEN')
     if not token or not repo:
         print('Infos GitHub manquantes.')
         return
+    if event not in ['schedule', 'workflow_dispatch']:
+        print('Événement sans création de PR automatique.')
+        return
+    owner = repo.split('/')[0]
+    branch_name = os.getenv('PHI_AUTOMATION_BRANCH', 'evolution/phi-mutation')
     subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'])
     subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'])
-    if event in ['schedule', 'workflow_dispatch']:
-        branch_name = f"phi-evolution-{os.getenv('GITHUB_RUN_ID')}"
-        subprocess.run(['git', 'checkout', '-b', branch_name])
-        subprocess.run(['git', 'add', '.'])
-        subprocess.run(['git', 'commit', '-m', '🧬 [Cron] Harmonisation vers Ratio Phi'])
-        subprocess.run(['git', 'push', 'origin', branch_name])
-        pr_payload = f'{{"title":"✨ Évolution Structurelle (Phi)","head":"{branch_name}","base":"main","body":"Rééquilibrage automatique."}}'
-        api_url = f'https://github.com{repo}/pulls'
-        subprocess.run(['curl', '-X', 'POST', '-H', f'Authorization: token {token}', '-H', 'Accept: application/vnd.github.v3+json', api_url, '-d', pr_payload])
-        print(f'PR créée sur {branch_name}')
-    else:
-        print('Mutation effectuée pour le workflow de push.')
+    subprocess.run(['git', 'checkout', '-B', branch_name], check=True)
+    subprocess.run(['git', 'add', '.'], check=True)
+    has_changes = subprocess.run(
+        ['git', 'diff', '--cached', '--quiet'],
+        check=False,
+    ).returncode != 0
+    if not has_changes:
+        print('Aucun changement à proposer en PR.')
+        return
+    subprocess.run(['git', 'commit', '-m', '🧬 [Cron] Harmonisation vers Ratio Phi'], check=True)
+    subprocess.run(['git', 'push', '--force-with-lease', 'origin', branch_name], check=True)
+
+    query = parse.urlencode({'state': 'open', 'head': f'{owner}:{branch_name}', 'base': 'main'})
+    with request.urlopen(
+        request.Request(
+            f'https://api.github.com/repos/{repo}/pulls?{query}',
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+            },
+        )
+    ) as response:
+        open_prs = json.loads(response.read().decode('utf-8'))
+    if open_prs:
+        print(f'PR déjà ouverte sur {branch_name}, mise à jour seulement.')
+        return
+
+    payload = json.dumps(
+        {
+            'title': '✨ Évolution Structurelle (Phi)',
+            'head': branch_name,
+            'base': 'main',
+            'body': 'Rééquilibrage automatique et audit continu des commits non fusionnés.',
+        }
+    ).encode('utf-8')
+    try:
+        with request.urlopen(
+            request.Request(
+                f'https://api.github.com/repos/{repo}/pulls',
+                data=payload,
+                method='POST',
+                headers={
+                    'Authorization': f'Bearer {token}',
+                    'Accept': 'application/vnd.github+json',
+                    'Content-Type': 'application/json',
+                    'X-GitHub-Api-Version': '2022-11-28',
+                },
+            )
+        ):
+            print(f'PR créée sur {branch_name}')
+    except error.HTTPError as exc:
+        print(f'Échec création PR: {exc.code} {exc.reason}')
 if __name__ == '__main__':
     architect = PhiArchitect()
     if architect.run_cycle():

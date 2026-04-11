@@ -1,11 +1,13 @@
 name: "Souveraineté Récursive Phi"
 
 on:
-  push:
-    branches: [ main ]
   schedule:
     - cron: '0 0 * * *' # S'exécute chaque nuit à minuit
   workflow_dispatch: # Permet de le lancer manuellement pour tester
+
+concurrency:
+  group: auto-evolution-phi
+  cancel-in-progress: true
 
 jobs:
   phi_evolve:
@@ -29,18 +31,7 @@ jobs:
         id: evolve
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Donne l'accès au script engine.py
+          PHI_AUTOMATION_BRANCH: evolution/phi-mutation
         run: |
-          # Lance le script (qui gère les PR en mode cron ou les modifs en mode push)
+          # Lance le script (idempotent : une seule PR ouverte pour la branche d'évolution)
           python engine.py
-          # Vérifie s'il y a des changements locaux pour le mode push direct
-          echo "changed=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
-
-      - name: Commit & Push Changes (Push mode only)
-        # On ne commit direct que si on est sur un push et qu'il y a des changements
-        if: github.event_name == 'push' && steps.evolve.outputs.changed != '0'
-        run: |
-          git config --local user.email "phi-bot@outlook.fr"
-          git config --local user.name "Phi-Complexity Bot"
-          git add .
-          git commit -m "🧬 evolution: rééquilibrage du ratio mathématique [skip ci]"
-          git push
