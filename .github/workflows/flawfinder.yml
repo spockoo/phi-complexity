@@ -29,10 +29,20 @@ jobs:
       - name: flawfinder_scan
         uses: david-a-wheeler/flawfinder@8e4a779ad59dbfaee5da586aa9210853b701959c
         with:
-          arguments: '--sarif ./'
+          arguments: '--sarif ./phi_complexity ./engine.py'
           output: 'flawfinder_results.sarif'
 
       - name: Upload analysis results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: ${{github.workspace}}/flawfinder_results.sarif
+
+      - name: Install phi-complexity
+        run: pip install -e .
+
+      - name: Security gate (phi shield)
+        run: |
+          phi shield ./phi_complexity \
+            --sarif ${{github.workspace}}/flawfinder_results.sarif \
+            --output .phi/security_audit.json \
+            --min-security-score 70

@@ -38,4 +38,26 @@ Une fois la faille confirmée :
 - Le fichier `.env.example` sert uniquement de modèle et ne doit contenir aucune valeur sensible.
 - Si un token a fuité, révoquez-le immédiatement et régénérez-en un nouveau.
 
+## Écosystème d'Audit Sécurité (Phase 22)
+
+Le dépôt active désormais une chaîne d'audit sécurité unifiée :
+
+- **Séparation démo vs production** : les exemples pédagogiques vulnérables (`examples/`) ne polluent plus le scan Flawfinder principal.
+- **Pipeline unifié** : la commande `phi shield` fusionne :
+  - annotations sécurité de `phi-complexity`,
+  - résultats SARIF externes (ex: Flawfinder).
+- **Score et gate CI** : un score de sécurité est calculé et le workflow échoue si :
+  - le score est sous le seuil (`--min-security-score`),
+  - ou s'il reste des findings bloquants sur la surface production.
+- **Journal d'audit** : chaque exécution `shield` est tracée dans `.phi/audit_trail.jsonl`.
+
+Exemple local :
+
+```bash
+phi shield ./phi_complexity \
+  --sarif flawfinder_results.sarif \
+  --output .phi/security_audit.json \
+  --min-security-score 70
+```
+
 Merci de nous aider à maintenir la souveraineté et l'intégrité mathématique de ce code.

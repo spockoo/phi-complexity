@@ -17,7 +17,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence
 
 # ────────────────────────────────────────────────────────
 # SIGNATURE DES RAPPORTS
@@ -247,3 +247,238 @@ def exporter_sbom(chemin: str) -> str:
         f.write(contenu)
 
     return contenu
+
+
+_NIVEAU_VERS_SEVERITE = {
+    "CRITICAL": "critical",
+    "ERROR": "high",
+    "WARNING": "medium",
+    "NOTE": "low",
+    "INFO": "info",
+}
+
+_SEVERITE_SCORE = {
+    "critical": 28.0,
+    "high": 18.0,
+    "medium": 9.0,
+    "low": 3.0,
+    "info": 1.0,
+}
+
+
+def _normaliser_severite(niveau: str) -> str:
+    return _NIVEAU_VERS_SEVERITE.get(niveau.upper(), "medium")
+
+
+def _surface_fichier(path: str) -> str:
+    normalise = path.replace("\\", "/").lower()
+    return "demo" if "/examples/" in normalise else "production"
+
+
+def _confidence_par_source(source: str, severite: str) -> float:
+    base = 0.82 if source == "sarif" else 0.9
+    bonus = {"critical": 0.08, "high": 0.05, "medium": 0.03, "low": 0.01}.get(
+        severite, 0.0
+    )
+    return round(min(0.99, base + bonus), 2)
+
+
+def _finding_from_phi(path: str, annotation: Dict[str, Any]) -> Dict[str, Any]:
+    categorie = str(annotation.get("categorie", "UNKNOWN"))
+    niveau = str(annotation.get("niveau", "WARNING"))
+    severite = _normaliser_severite(niveau)
+    surface = _surface_fichier(path)
+    message = str(annotation.get("message", ""))
+    recommandation = ""
+    if "Correction :" in message:
+        recommandation = message.split("Correction :", 1)[1].strip()
+
+    return {
+        "source": "phi-complexity",
+        "rule_id": categorie,
+        "severity": severite,
+        "path": path,
+        "line": int(annotation.get("ligne", 0)),
+        "message": message,
+        "context": str(annotation.get("extrait", "")),
+        "surface": surface,
+        "blocking": surface == "production" and severite in {"critical", "high"},
+        "confidence": _confidence_par_source("phi", severite),
+        "exploitability": 0.95 if severite == "critical" else 0.7,
+        "recommendation": recommandation,
+    }
+
+
+def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    findings: List[Dict[str, Any]] = []
+    runs = payload.get("runs", [])
+    if not isinstance(runs, list):
+        return findings
+
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        tool = run.get("tool", {})
+        if not isinstance(tool, dict):
+            tool = {}
+        driver = tool.get("driver", {})
+        if not isinstance(driver, dict):
+            driver = {}
+        source_name = str(driver.get("name", "sarif"))
+        results = run.get("results", [])
+        if not isinstance(results, list):
+            continue
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            locations = result.get("locations", [])
+            uri = ""
+            line = 0
+            if isinstance(locations, list) and locations:
+                first = locations[0]
+                if isinstance(first, dict):
+                    phys = first.get("physicalLocation", {})
+                    if not isinstance(phys, dict):
+                        phys = {}
+                    artifact = phys.get("artifactLocation", {})
+                    if not isinstance(artifact, dict):
+                        artifact = {}
+                    region = phys.get("region", {})
+                    if not isinstance(region, dict):
+                        region = {}
+                    uri = str(artifact.get("uri", ""))
+                    line = int(region.get("startLine", 0))
+
+            msg = result.get("message", {})
+            if isinstance(msg, dict):
+                message = str(msg.get("text", ""))
+            else:
+                message = str(msg)
+
+            level = str(result.get("level", "warning")).upper()
+            severite = _normaliser_severite(level)
+            surface = _surface_fichier(uri)
+            findings.append(
+                {
+                    "source": source_name,
+                    "rule_id": str(result.get("ruleId", "UNKNOWN")),
+                    "severity": severite,
+                    "path": uri,
+                    "line": line,
+                    "message": message,
+                    "context": "",
+                    "surface": surface,
+                    "blocking": surface == "production"
+                    and severite in {"critical", "high"},
+                    "confidence": _confidence_par_source("sarif", severite),
+                    "exploitability": 0.9 if severite in {"critical", "high"} else 0.55,
+                    "recommendation": "",
+                }
+            )
+    return findings
+
+
+def _score_securite(
+    findings: Sequence[Dict[str, Any]], radiances: Sequence[float]
+) -> float:
+    score = 100.0
+    for finding in findings:
+        if finding.get("surface") != "production":
+            continue
+        severite = str(finding.get("severity", "medium"))
+        score -= _SEVERITE_SCORE.get(severite, 5.0)
+
+    for radiance in radiances:
+        if radiance < 70.0:
+            score -= min(15.0, (70.0 - radiance) / 2.0)
+
+    return round(max(0.0, min(100.0, score)), 2)
+
+
+def construire_audit_securite(
+    fichiers: Sequence[str],
+    sarif_path: Optional[str] = None,
+    include_demo: bool = False,
+) -> Dict[str, Any]:
+    """
+    Construit un audit sécurité unifié (phi + SARIF) avec score de risque.
+    """
+    from . import auditer
+
+    findings: List[Dict[str, Any]] = []
+    radiances: List[float] = []
+    erreurs: List[str] = []
+
+    for fichier in fichiers:
+        try:
+            metriques = auditer(fichier)
+            radiances.append(float(metriques.get("radiance", 100.0)))
+            annotations = metriques.get("annotations", [])
+            if isinstance(annotations, list):
+                for annot in annotations:
+                    if isinstance(annot, dict):
+                        findings.append(_finding_from_phi(fichier, annot))
+        except Exception as exc:
+            erreurs.append(f"{fichier}: {exc}")
+
+    if sarif_path:
+        try:
+            findings.extend(_findings_from_sarif(sarif_path))
+        except (OSError, json.JSONDecodeError) as exc:
+            erreurs.append(f"sarif:{sarif_path}: {exc}")
+
+    if not include_demo:
+        findings = [f for f in findings if f.get("surface") != "demo"]
+
+    score = _score_securite(findings, radiances)
+    blocking = [
+        f
+        for f in findings
+        if bool(f.get("blocking")) and f.get("surface") == "production"
+    ]
+    severites: Dict[str, int] = {k: 0 for k in _SEVERITE_SCORE}
+    for finding in findings:
+        sev = str(finding.get("severity", "medium"))
+        severites[sev] = severites.get(sev, 0) + 1
+
+    return {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "summary": {
+            "security_score": score,
+            "findings_total": len(findings),
+            "blocking_findings": len(blocking),
+            "status": "PASS" if len(blocking) == 0 else "FAIL",
+        },
+        "governance": {
+            "severity_distribution": severites,
+            "kpi_false_positive_rate": None,
+            "kpi_mttr_hours": None,
+            "kpi_reopen_rate": None,
+        },
+        "findings": findings,
+        "errors": erreurs,
+    }
+
+
+def exporter_audit_securite(audit: Dict[str, Any], chemin: str) -> str:
+    contenu = json.dumps(audit, indent=2, ensure_ascii=False)
+    dossier = os.path.dirname(chemin)
+    if dossier and not os.path.exists(dossier):
+        os.makedirs(dossier)
+    with open(chemin, "w", encoding="utf-8") as f:
+        f.write(contenu)
+    return contenu
+
+
+def verifier_politique_securite(
+    audit: Dict[str, Any], min_security_score: float
+) -> bool:
+    summary = audit.get("summary", {})
+    if not isinstance(summary, dict):
+        return False
+    score = float(summary.get("security_score", 0.0))
+    blocking = int(summary.get("blocking_findings", 0))
+    return score >= min_security_score and blocking == 0

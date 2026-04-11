@@ -15,6 +15,9 @@ from phi_complexity.securite import (
     JournalAudit,
     generer_sbom,
     exporter_sbom,
+    construire_audit_securite,
+    exporter_audit_securite,
+    verifier_politique_securite,
 )
 
 # ────────────────────────────────────────────────────────
@@ -228,5 +231,87 @@ class TestSBOM:
             chemin = os.path.join(tmpdir, "sub", "sbom.json")
             exporter_sbom(chemin)
             assert os.path.isfile(chemin)
+        finally:
+            shutil.rmtree(tmpdir)
+
+
+class TestAuditSecurite:
+    def test_audit_securite_phi_detecte_cwe134(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            chemin = os.path.join(tmpdir, "vuln.c")
+            with open(chemin, "w", encoding="utf-8") as f:
+                f.write("#include <stdio.h>\nvoid f(char *x) {\n    printf(x);\n}\n")
+            audit = construire_audit_securite([chemin])
+            assert audit["summary"]["findings_total"] >= 1
+            assert audit["summary"]["blocking_findings"] >= 1
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_audit_securite_exclut_demo_par_defaut(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            examples_dir = os.path.join(tmpdir, "examples")
+            os.makedirs(examples_dir)
+            chemin = os.path.join(examples_dir, "demo.c")
+            with open(chemin, "w", encoding="utf-8") as f:
+                f.write("#include <stdio.h>\nvoid f(char *x) {\n    printf(x);\n}\n")
+            audit = construire_audit_securite([chemin], include_demo=False)
+            assert audit["summary"]["findings_total"] == 0
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_audit_securite_sarif_normalise(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            sarif_path = os.path.join(tmpdir, "scan.sarif")
+            payload = {
+                "runs": [
+                    {
+                        "tool": {"driver": {"name": "Flawfinder"}},
+                        "results": [
+                            {
+                                "ruleId": "CWE-134",
+                                "level": "error",
+                                "message": {"text": "Potential format string problem"},
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {"uri": "src/main.c"},
+                                            "region": {"startLine": 12},
+                                        }
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+            with open(sarif_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+            audit = construire_audit_securite([], sarif_path=sarif_path)
+            assert audit["summary"]["findings_total"] == 1
+            finding = audit["findings"][0]
+            assert finding["source"] == "Flawfinder"
+            assert finding["severity"] == "high"
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_exporter_audit_securite_et_politique(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            audit = {
+                "summary": {
+                    "security_score": 84.0,
+                    "findings_total": 0,
+                    "blocking_findings": 0,
+                }
+            }
+            chemin = os.path.join(tmpdir, "security", "audit.json")
+            exporter_audit_securite(audit, chemin)
+            assert os.path.isfile(chemin)
+            assert verifier_politique_securite(audit, 70.0) is True
+            assert verifier_politique_securite(audit, 90.0) is False
         finally:
             shutil.rmtree(tmpdir)
