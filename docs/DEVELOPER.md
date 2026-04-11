@@ -109,13 +109,14 @@ from .mon_backend import MonBackend
 
 #### Dans `analyseur.py` (`_selectionner_backend`) :
 ```python
-if ext in ("x", "xx"):
+if ext in ("xx",):
     return MonBackend(self.fichier)
 ```
 
-#### Dans `cli.py` (`_fichiers_depuis_dossier` et `_collecter_fichiers`) :
+#### Dans `cli.py` (`_EXTENSIONS_SUPPORTEES`) :
+Ajouter l'extension à la constante :
 ```python
-extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s", ".x", ".xx")
+_EXTENSIONS_SUPPORTEES = (".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s", ".xx")
 ```
 
 ### 4. Tests

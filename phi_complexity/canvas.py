@@ -19,7 +19,7 @@ from .core import statut_gnostique, PHI
 
 def _generer_id(texte: str) -> str:
     """Génère un identifiant court et déterministe pour un nœud."""
-    return hashlib.md5(texte.encode()).hexdigest()[:12]
+    return hashlib.sha256(texte.encode()).hexdigest()[:12]
 
 
 def _couleur_statut(radiance: float) -> str:

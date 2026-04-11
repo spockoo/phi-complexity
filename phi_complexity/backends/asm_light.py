@@ -54,7 +54,10 @@ _LABEL = re.compile(r"^([a-zA-Z_][\w.]*)\s*:")
 _DIRECTIVE = re.compile(r"^\s*\.", re.IGNORECASE)
 _COMMENT_LINE = re.compile(r"^\s*([;#@]|//|/\*)")
 
-# Seuils de complexité ASM (basés sur Fibonacci)
+# Poids des branchements dans le calcul de complexité ASM
+# Les branchements sont pondérés ×2 car ils créent des chemins d'exécution
+# alternatifs, doublant l'effort cognitif de compréhension.
+_POIDS_BRANCHEMENT = 2
 _SEUIL_COMPLEXITE_WARNING = 34  # Fibonacci(9)
 _SEUIL_COMPLEXITE_CRITICAL = 55  # Fibonacci(10)
 _SEUIL_BRANCHES_LILITH = 13  # Fibonacci(7) — trop de branchements
@@ -231,7 +234,7 @@ def _analyser_routine(
                 profondeur_courante -= 1
 
     # Complexité = instructions + branches pondérés
-    complexite = nb_instructions + nb_branches * 2
+    complexite = nb_instructions + nb_branches * _POIDS_BRANCHEMENT
 
     nb_lignes = len([l for l in bloc if l.strip()])
 

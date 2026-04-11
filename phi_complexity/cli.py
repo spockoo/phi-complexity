@@ -2,10 +2,15 @@ from __future__ import annotations
 import sys
 import os
 import argparse
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from . import auditer, rapport_console, rapport_markdown, rapport_json
 from .core import VERSION
+
+# Extensions de fichiers supportées par le framework φ-Meta
+_EXTENSIONS_SUPPORTEES: Tuple[str, ...] = (
+    ".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s"
+)
 
 # ────────────────────────────────────────────────────────
 # CONSTRUCTION DU PARSEUR (hermétique, sans effets de bord)
@@ -191,22 +196,20 @@ Exemples :
 
 def _fichiers_depuis_dossier(dossier: str) -> List[str]:
     """Collecte récursivement les fichiers supportés d'un dossier."""
-    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s")
     fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
             os.path.join(racine, nom)
             for nom in noms
-            if nom.lower().endswith(extensions)
+            if nom.lower().endswith(_EXTENSIONS_SUPPORTEES)
         )
     return sorted(fichiers)
 
 
 def _collecter_fichiers(cible: str) -> List[str]:
     """Retourne la liste des fichiers à auditer depuis un chemin."""
-    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s")
     if os.path.isfile(cible):
-        return [cible] if cible.lower().endswith(extensions) else []
+        return [cible] if cible.lower().endswith(_EXTENSIONS_SUPPORTEES) else []
     if os.path.isdir(cible):
         return _fichiers_depuis_dossier(cible)
     return []
