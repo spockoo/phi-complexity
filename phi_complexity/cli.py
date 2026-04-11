@@ -671,9 +671,11 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
         if verifier_politique_securite(audit, args.min_security_score)
         else "FAIL"
     )
+    oos = int(summary.get("out_of_scope_findings", 0))
     print(
         f"  ✦ Shield: {status} | score={score:.2f} | "
         f"findings={summary['findings_total']} | blocking={summary['blocking_findings']}"
+        + (f" | out_of_scope={oos}" if oos else "")
     )
     print(f"  ✦ Audit exporté : {args.output}")
 
@@ -685,6 +687,7 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
             "score": score,
             "status": status,
             "blocking_findings": int(summary["blocking_findings"]),
+            "out_of_scope_findings": oos,
             "sarif": args.sarif or "",
         },
     )

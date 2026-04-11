@@ -324,3 +324,113 @@ class TestAuditSecurite:
             assert verifier_politique_securite(audit, 90.0) is False
         finally:
             shutil.rmtree(tmpdir)
+
+    def test_sarif_c_scanner_python_file_out_of_scope(self):
+        """Flawfinder (C scanner) findings on Python files must be out-of-scope
+        and non-blocking so they do not tank the security score."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            sarif_path = os.path.join(tmpdir, "flawfinder.sarif")
+            payload = {
+                "runs": [
+                    {
+                        "tool": {"driver": {"name": "Flawfinder"}},
+                        "results": [
+                            # Python file — should be out_of_scope, not blocking
+                            {
+                                "ruleId": "FF1009",
+                                "level": "error",
+                                "message": {"text": "open(): Check when opening files"},
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {
+                                                "uri": "phi_complexity/cli.py"
+                                            },
+                                            "region": {"startLine": 10},
+                                        }
+                                    }
+                                ],
+                            },
+                            # C file — should remain blocking (in scope for Flawfinder)
+                            {
+                                "ruleId": "CWE-134",
+                                "level": "error",
+                                "message": {"text": "Format string problem"},
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {"uri": "src/engine.c"},
+                                            "region": {"startLine": 5},
+                                        }
+                                    }
+                                ],
+                            },
+                        ],
+                    }
+                ]
+            }
+            with open(sarif_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+            audit = construire_audit_securite([], sarif_path=sarif_path)
+            findings = audit["findings"]
+            py_finding = next(f for f in findings if f["path"].endswith(".py"))
+            c_finding = next(f for f in findings if f["path"].endswith(".c"))
+
+            # Python file: out-of-scope, not blocking, does not reduce score
+            assert py_finding["out_of_scope"] is True
+            assert py_finding["blocking"] is False
+
+            # C file: in-scope, blocking (production surface, high severity)
+            assert c_finding.get("out_of_scope") is False
+            assert c_finding["blocking"] is True
+
+            # Score should only be penalised for the C finding
+            s = audit["summary"]
+            assert s["out_of_scope_findings"] == 1
+            assert s["blocking_findings"] == 1
+            assert s["security_score"] < 100.0
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_c_scanner_python_only_scan_passes_gate(self):
+        """When Flawfinder scans only Python files (e.g. ./phi_complexity),
+        all findings are out-of-scope → score=100, status=PASS."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            sarif_path = os.path.join(tmpdir, "flawfinder.sarif")
+            results = [
+                {
+                    "ruleId": "FF1009",
+                    "level": "error",
+                    "message": {"text": "open() check"},
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": f"phi_complexity/mod{i}.py"
+                                },
+                                "region": {"startLine": i * 10},
+                            }
+                        }
+                    ],
+                }
+                for i in range(12)
+            ]
+            payload = {
+                "runs": [
+                    {"tool": {"driver": {"name": "Flawfinder"}}, "results": results}
+                ]
+            }
+            with open(sarif_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+            audit = construire_audit_securite([], sarif_path=sarif_path)
+            s = audit["summary"]
+            assert s["blocking_findings"] == 0
+            assert s["out_of_scope_findings"] == 12
+            assert s["security_score"] == 100.0
+            assert s["status"] == "PASS"
+        finally:
+            shutil.rmtree(tmpdir)

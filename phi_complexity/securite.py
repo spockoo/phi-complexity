@@ -284,6 +284,16 @@ _EXPLOITABILITY_STANDARD = round(PHI / (PHI + 0.7), 2)
 _EXPLOITABILITY_HIGH = round(PHI / (PHI + 0.2), 2)
 _EXPLOITABILITY_MEDIUM = round(PHI / (PHI + 1.3), 2)
 
+# Scanner-scope awareness: C-family scanners (Flawfinder, cppcheck …) produce
+# false-positives when run against Python/scripting files.  Findings from such
+# scanners on non-C files are downgraded to non-blocking.
+_C_FAMILY_SCANNERS: frozenset[str] = frozenset(
+    {"flawfinder", "cppcheck", "clang-tidy", "clang_tidy"}
+)
+_C_FAMILY_EXTENSIONS: frozenset[str] = frozenset(
+    {".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".rs", ".asm", ".s"}
+)
+
 
 def _normaliser_severite(niveau: str) -> str:
     return _NIVEAU_VERS_SEVERITE.get(niveau.upper(), "medium")
@@ -389,6 +399,14 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
             level = str(result.get("level", "warning")).upper()
             severite = _normaliser_severite(level)
             surface = _surface_fichier(uri)
+
+            # Scanner-scope guard: C-family scanners produce false-positives
+            # when pointed at Python/scripting files.  Such findings are kept
+            # for traceability but are never marked as blocking.
+            _, ext = os.path.splitext(uri.lower())
+            is_c_scanner = source_name.lower() in _C_FAMILY_SCANNERS
+            out_of_scope = is_c_scanner and ext not in _C_FAMILY_EXTENSIONS
+
             findings.append(
                 {
                     "source": source_name,
@@ -399,8 +417,12 @@ def _findings_from_sarif(path: str) -> List[Dict[str, Any]]:
                     "message": message,
                     "context": "",
                     "surface": surface,
-                    "blocking": surface == "production"
-                    and severite in {"critical", "high"},
+                    "blocking": (
+                        surface == "production"
+                        and severite in {"critical", "high"}
+                        and not out_of_scope
+                    ),
+                    "out_of_scope": out_of_scope,
                     "confidence": _confidence_par_source("sarif", severite),
                     "exploitability": (
                         _EXPLOITABILITY_HIGH
@@ -419,6 +441,10 @@ def _score_securite(
     score = 100.0
     for finding in findings:
         if finding.get("surface") != "production":
+            continue
+        # Out-of-scope findings (e.g. Flawfinder false-positives on Python files)
+        # are kept for traceability but do not penalize the score.
+        if finding.get("out_of_scope"):
             continue
         severite = str(finding.get("severity", "medium"))
         score -= _SEVERITE_SCORE.get(severite, 5.0)
@@ -474,6 +500,7 @@ def construire_audit_securite(
         for f in findings
         if bool(f.get("blocking")) and f.get("surface") == "production"
     ]
+    out_of_scope = [f for f in findings if bool(f.get("out_of_scope"))]
     severites: Dict[str, int] = {k: 0 for k in _SEVERITE_SCORE}
     for finding in findings:
         sev = str(finding.get("severity", "medium"))
@@ -485,6 +512,7 @@ def construire_audit_securite(
             "security_score": score,
             "findings_total": len(findings),
             "blocking_findings": len(blocking),
+            "out_of_scope_findings": len(out_of_scope),
             "status": "PASS" if len(blocking) == 0 else "FAIL",
         },
         "governance": {
