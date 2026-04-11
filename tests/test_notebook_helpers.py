@@ -15,7 +15,6 @@ from phi_complexity.notebook_helpers import (
     charger_harvest,
 )
 
-
 # ────────────────────────────────────────────────────────
 # FIXTURES
 # ────────────────────────────────────────────────────────
@@ -329,10 +328,10 @@ class TestMagicCommands:
         return registered
 
     def test_enregistrer_avec_ipython_actif(self) -> None:
-        """enregistrer_magics enregistre les 3 commandes."""
+        """enregistrer_magics enregistre les 4 commandes."""
         pytest.importorskip("IPython")
         registered = self._setup_magics()
-        assert len(registered) == 3
+        assert len(registered) == 4
 
     def test_phi_check_magic_vide(self, capsys: Any) -> None:
         """phi_check sans argument affiche l'usage."""
@@ -375,3 +374,292 @@ class TestMagicCommands:
         registered = self._setup_magics()
         registered[2]("/tmp/inexistant_xyz_spiral.py")
         assert "Erreur" in capsys.readouterr().out
+
+    def test_enregistrer_avec_ipython_4_magics(self) -> None:
+        """enregistrer_magics enregistre 4 commandes (check, report, spiral, sentinel)."""
+        pytest.importorskip("IPython")
+        registered = self._setup_magics()
+        assert len(registered) == 4
+
+    def test_phi_sentinel_magic_default(self, capsys: Any) -> None:
+        """phi_sentinel sans argument exécute le diagnostic."""
+        pytest.importorskip("IPython")
+        registered = self._setup_magics()
+        registered[3]("")
+        out = capsys.readouterr().out
+        assert "PHI-SENTINEL" in out or "Score" in out
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — diagnostic_systeme
+# ────────────────────────────────────────────────────────
+
+
+class TestDiagnosticSysteme:
+    """Tests pour la fonction diagnostic_systeme."""
+
+    def test_diagnostic_sans_code(self) -> None:
+        from phi_complexity.notebook_helpers import diagnostic_systeme
+
+        result = diagnostic_systeme()
+        assert "events" in result
+        assert "traces" in result
+        assert "stats_telemetrie" in result
+        assert "signaux" in result
+        assert "score" in result
+        assert "alertes" in result
+        assert "rapport_console" in result
+        assert "metriques" in result
+        assert "politique" in result
+        assert result["metriques"] == []
+
+    def test_diagnostic_avec_code(self, fichier_py: str) -> None:
+        from phi_complexity.notebook_helpers import diagnostic_systeme
+
+        result = diagnostic_systeme(cible_code=fichier_py)
+        assert len(result["metriques"]) == 1
+        assert "radiance" in result["metriques"][0]
+
+    def test_diagnostic_avec_score_commit(self) -> None:
+        from phi_complexity.notebook_helpers import diagnostic_systeme
+
+        result = diagnostic_systeme(score_commit=0.5)
+        assert result["score"].score_commit == 0.5
+
+    def test_diagnostic_rapport_console(self) -> None:
+        from phi_complexity.notebook_helpers import diagnostic_systeme
+
+        result = diagnostic_systeme()
+        assert isinstance(result["rapport_console"], str)
+        assert "PHI-SENTINEL" in result["rapport_console"]
+
+    def test_diagnostic_politique(self) -> None:
+        from phi_complexity.notebook_helpers import diagnostic_systeme
+
+        result = diagnostic_systeme()
+        politique = result["politique"]
+        assert "bloquer_pr" in politique
+        assert "escalader" in politique
+        assert "isoler" in politique
+        assert "notifier" in politique
+
+    def test_diagnostic_stats_telemetrie(self) -> None:
+        from phi_complexity.notebook_helpers import diagnostic_systeme
+
+        result = diagnostic_systeme()
+        stats = result["stats_telemetrie"]
+        assert "total" in stats
+        assert "info" in stats
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — tableau_diagnostic
+# ────────────────────────────────────────────────────────
+
+
+class TestTableauDiagnostic:
+    """Tests pour la fonction tableau_diagnostic."""
+
+    def test_tableau_complet(self) -> None:
+        from phi_complexity.notebook_helpers import (
+            diagnostic_systeme,
+            tableau_diagnostic,
+        )
+
+        diag = diagnostic_systeme()
+        rapport = tableau_diagnostic(diag)
+        assert "PHI-SENTINEL" in rapport
+        assert "DIAGNOSTIC SYSTÈME COMPLET" in rapport
+        assert "Télémétrie" in rapport
+
+    def test_tableau_vide(self) -> None:
+        from phi_complexity.notebook_helpers import tableau_diagnostic
+
+        rapport = tableau_diagnostic({})
+        assert "PHI-SENTINEL" in rapport
+        assert "Télémétrie" in rapport
+
+    def test_tableau_avec_politique_actions(self) -> None:
+        from phi_complexity.notebook_helpers import tableau_diagnostic
+
+        diag = {
+            "score": None,
+            "stats_telemetrie": {
+                "total": 0,
+                "info": 0,
+                "attention": 0,
+                "suspect": 0,
+                "critique": 0,
+            },
+            "alertes": [],
+            "signaux": [],
+            "politique": {
+                "bloquer_pr": True,
+                "escalader": True,
+                "isoler": False,
+                "notifier": True,
+            },
+        }
+        rapport = tableau_diagnostic(diag)
+        assert "BLOQUER PR" in rapport
+        assert "ESCALADER" in rapport
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — radar_menaces
+# ────────────────────────────────────────────────────────
+
+
+class TestRadarMenaces:
+    """Tests pour la visualisation radar_menaces."""
+
+    @pytest.fixture(autouse=True)
+    def _check_matplotlib(self) -> None:
+        pytest.importorskip("matplotlib")
+        pytest.importorskip("numpy")
+
+    def test_radar_liste_vide(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from phi_complexity.notebook_helpers import radar_menaces
+
+        ax = radar_menaces([])
+        assert ax is not None
+
+    def test_radar_avec_signaux(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from phi_complexity.sentinel import SignalComportemental, TypeBehavior
+        from phi_complexity.notebook_helpers import radar_menaces
+
+        signaux = [
+            SignalComportemental(
+                type=TypeBehavior.C2,
+                confiance=0.75,
+                description="Test C2",
+                traces_source=["test"],
+                mitre_technique="T1071",
+            ),
+        ]
+        ax = radar_menaces(signaux)
+        assert ax is not None
+
+    def test_radar_depuis_diagnostic(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from phi_complexity.notebook_helpers import radar_menaces
+
+        diag = {"signaux": []}
+        ax = radar_menaces(diag)
+        assert ax is not None
+
+    def test_radar_avec_ax(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from phi_complexity.notebook_helpers import radar_menaces
+
+        fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+        result = radar_menaces([], ax=ax)
+        assert result is ax
+        plt.close(fig)
+
+    def test_radar_import_error(self) -> None:
+        with mock.patch.dict(
+            "sys.modules", {"matplotlib": None, "matplotlib.pyplot": None}
+        ):
+            import phi_complexity.notebook_helpers as nh
+
+            importlib.reload(nh)
+            with pytest.raises(ImportError, match="matplotlib"):
+                nh.radar_menaces([])
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — carte_entropie_penrose
+# ────────────────────────────────────────────────────────
+
+
+class TestCarteEntropiePenrose:
+    """Tests pour la visualisation carte_entropie_penrose."""
+
+    @pytest.fixture(autouse=True)
+    def _check_matplotlib(self) -> None:
+        pytest.importorskip("matplotlib")
+
+    def _metriques_exemple(self) -> list[Dict[str, Any]]:
+        return [
+            {
+                "fichier": "alpha.py",
+                "radiance": 82.0,
+                "fibonacci_entropy": 2.1,
+                "phi_ratio_delta": 0.05,
+            },
+            {
+                "fichier": "beta.py",
+                "radiance": 55.0,
+                "fibonacci_entropy": 3.5,
+                "phi_ratio_delta": 1.2,
+            },
+        ]
+
+    def test_carte_basique(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from phi_complexity.notebook_helpers import carte_entropie_penrose
+
+        ax = carte_entropie_penrose(self._metriques_exemple())
+        assert ax is not None
+
+    def test_carte_liste_vide(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from phi_complexity.notebook_helpers import carte_entropie_penrose
+
+        ax = carte_entropie_penrose([])
+        assert ax is not None
+
+    def test_carte_avec_ax(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from phi_complexity.notebook_helpers import carte_entropie_penrose
+
+        fig, ax = plt.subplots()
+        result = carte_entropie_penrose(self._metriques_exemple(), ax=ax)
+        assert result is ax
+        plt.close(fig)
+
+    def test_carte_phi_delta_zero(self) -> None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from phi_complexity.notebook_helpers import carte_entropie_penrose
+
+        metriques = [
+            {
+                "fichier": "z.py",
+                "radiance": 70,
+                "fibonacci_entropy": 1.0,
+                "phi_ratio_delta": 0.0,
+            },
+        ]
+        ax = carte_entropie_penrose(metriques)
+        assert ax is not None
+
+    def test_carte_import_error(self) -> None:
+        with mock.patch.dict(
+            "sys.modules", {"matplotlib": None, "matplotlib.pyplot": None}
+        ):
+            import phi_complexity.notebook_helpers as nh
+
+            importlib.reload(nh)
+            with pytest.raises(ImportError, match="matplotlib"):
+                nh.carte_entropie_penrose([{"fichier": "x.py"}])
