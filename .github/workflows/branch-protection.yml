@@ -49,7 +49,7 @@ jobs:
             if [[ "$branch" == "copilot/"* ]]; then
               continue
             fi
-            if [[ "$branch" == "main" || "$branch" == "develop" || "$branch" == release/* ]]; then
+            if [[ "$branch" == "main" || "$branch" == "develop" || "$branch" =~ ^release/ ]]; then
               targets+=("$branch")
             fi
           done
