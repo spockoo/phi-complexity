@@ -87,17 +87,34 @@ def detecter_cwe_134(
 ) -> List[Tuple[int, str, str]]:
     """Détecte les appels de fonctions de formatage avec un format non-littéral.
 
-    Retourne une liste de tuples (numéro_ligne_1based, nom_fonction, extrait).
+    Returns:
+        Liste de tuples ``(numéro_ligne, nom_fonction, extrait)`` où :
+        - *numéro_ligne* : numéro de la ligne (1-based) contenant l'appel vulnérable.
+        - *nom_fonction* : nom de la fonction de formatage (ex. ``printf``).
+        - *extrait* : contenu de la ligne (stripped) pour affichage dans l'annotation.
     """
     resultats: List[Tuple[int, str, str]] = []
+    dans_commentaire_bloc = False
 
     for i, ligne in enumerate(lignes):
         ligne_strip = ligne.strip()
-        # Ignorer les commentaires simples
-        if ligne_strip.startswith("//") or ligne_strip.startswith("/*"):
-            continue
 
-        for match in _RE_FORMAT_CALL.finditer(ligne_strip):
+        # Gestion des commentaires bloc /* ... */
+        if dans_commentaire_bloc:
+            if "*/" in ligne_strip:
+                dans_commentaire_bloc = False
+            continue
+        if ligne_strip.startswith("/*"):
+            if "*/" not in ligne_strip:
+                dans_commentaire_bloc = True
+            continue
+        # Ignorer les lignes de commentaire simples
+        if ligne_strip.startswith("//"):
+            continue
+        # Retirer les commentaires inline (// ...) avant analyse
+        code_sans_commentaire = re.sub(r"//.*$", "", ligne_strip)
+
+        for match in _RE_FORMAT_CALL.finditer(code_sans_commentaire):
             nom_func = match.group(1)
             args_bruts = match.group(2)
             idx_format = _FORMAT_FUNCTIONS[nom_func]

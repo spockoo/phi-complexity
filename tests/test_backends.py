@@ -291,7 +291,10 @@ class TestCWE134Detection:
         backend = CRustLightBackend(chemin)
         r = backend.analyser()
         cwe_annots = [a for a in r.annotations if a.categorie == "CWE-134"]
-        # Au moins 3 vulnérabilités dans moteur_c.c
+        # 3 vulnérabilités attendues dans moteur_c.c :
+        #   1. printf(message)          dans journaliser_evenement()
+        #   2. fprintf(stderr, buffer)  dans log_erreur()
+        #   3. sprintf(buffer, buffer)  dans log_erreur()
         assert len(cwe_annots) >= 3
 
     def test_cwe134_commentaire_ignore(self):
@@ -302,6 +305,44 @@ void f() {
     // printf(buf);
     /* fprintf(stderr, buf); */
     printf("%s", "ok");
+}
+"""
+        chemin = _creer_fichier_c(code)
+        try:
+            backend = CRustLightBackend(chemin)
+            r = backend.analyser()
+            cwe_annots = [a for a in r.annotations if a.categorie == "CWE-134"]
+            assert len(cwe_annots) == 0
+        finally:
+            os.unlink(chemin)
+
+    def test_cwe134_commentaire_inline_ignore(self):
+        """printf(buf) en commentaire inline ne déclenche pas de faux positif."""
+        code = """\
+#include <stdio.h>
+void f() {
+    printf("%s", x); // printf(buf) serait dangereux
+}
+"""
+        chemin = _creer_fichier_c(code)
+        try:
+            backend = CRustLightBackend(chemin)
+            r = backend.analyser()
+            cwe_annots = [a for a in r.annotations if a.categorie == "CWE-134"]
+            assert len(cwe_annots) == 0
+        finally:
+            os.unlink(chemin)
+
+    def test_cwe134_commentaire_bloc_multiline(self):
+        """Les commentaires bloc multi-lignes sont correctement ignorés."""
+        code = """\
+#include <stdio.h>
+void f() {
+    /*
+    printf(buf);
+    fprintf(stderr, buf);
+    */
+    printf("%d", 42);
 }
 """
         chemin = _creer_fichier_c(code)
