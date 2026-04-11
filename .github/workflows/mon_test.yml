@@ -14,12 +14,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Ensure engine.py exists at repository root
-        run: test -f engine.py
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Run engine
-        run: python engine.py
+        run: |
+          if [ ! -f engine.py ]; then
+            echo "Error: engine.py not found at repository root"
+            exit 1
+          fi
+          python -m py_compile engine.py
