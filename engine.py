@@ -2,90 +2,55 @@ import ast
 import inspect
 import os
 
-
-class PhiEngine:
+class PhiArchitect:
     """
-    Moteur récursif cherchant l'harmonie entre le flux (contrôle)
-    et la forme (données) selon le nombre d'or.
+    Optimisé pour GitHub : Calcule le ratio d'or et auto-ajuste 
+    sa structure via AST avant le prochain commit.
     """
-
     def __init__(self):
-        self.phi = (1 + 5**0.5) / 2  # 1.61803398875
-        self.target_file = inspect.getfile(self.__class__)
+        self.phi = 1.61803398875
+        # Détection dynamique du fichier même sur le runner GitHub
+        self.filename = inspect.getfile(self.__class__)
 
-    def get_metrics(self, node):
-        """Parcourt l'AST de manière récursive pour compter les types de nœuds."""
-        stats = {"logic": 0, "data": 0}
-
-        for child in ast.walk(node):
-            # Nœuds de contrôle (Complexité logique)
-            if isinstance(child, (ast.If, ast.For, ast.While, ast.Try, ast.With)):
-                stats["logic"] += 1
-            # Nœuds de données/action (Structure)
-            elif isinstance(child, (ast.Assign, ast.Call, ast.BinOp, ast.Constant)):
-                stats["data"] += 1
-        return stats
-
-    def evolve(self):
-        """Analyse le fichier, calcule l'écart et applique une mutation corrective."""
-        if not os.path.exists(self.target_file):
-            return
-
-        with open(self.target_file, "r", encoding="utf-8") as f:
+    def run_cycle(self):
+        with open(self.filename, "r", encoding="utf-8") as f:
             source = f.read()
-
+        
         tree = ast.parse(source)
-        metrics = self.get_metrics(tree)
+        nodes = list(ast.walk(tree))
+        
+        # Séparation stricte Logique (Contrôle) vs Données (Structure)
+        logic_nodes = [n for n in nodes if isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.With))]
+        data_nodes = [n for n in nodes if isinstance(n, (ast.Assign, ast.Constant, ast.List, ast.Dict))]
+        
+        ratio = len(data_nodes) / len(logic_nodes) if logic_nodes else len(data_nodes)
+        diff = self.phi - ratio
 
-        # Calcul du ratio actuel
-        current_ratio = (
-            metrics["data"] / metrics["logic"]
-            if metrics["logic"] > 0
-            else metrics["data"]
-        )
-        diff = self.phi - current_ratio
+        print(f"--- [PHI-ENGINE] Ratio: {ratio:.3f} | Cible: {self.phi:.3f} ---")
 
-        print("--- Rapport d'évolution ---")
-        print(f"Logique: {metrics['logic']} | Données: {metrics['data']}")
-        print(f"Ratio actuel: {current_ratio:.4f} (Cible: {self.phi:.4f})")
+        if abs(diff) < 0.01:
+            print("Harmonie atteinte. Aucune mutation.")
+            return False
 
-        # Stratégie d'auto-amélioration :
-        # Si le ratio est trop bas (trop de logique), on ajoute des constantes de données.
-        # Si le ratio est trop haut, on simplifie (ici via un marqueur de stabilisation).
-        if abs(diff) > 0.001:
-            print(f"Écart de {diff:.4f} détecté. Mutation en cours...")
+        # Mutation par injection de constantes si le ratio est trop bas
+        if diff > 0:
+            new_data = ast.Assign(
+                targets=[ast.Name(id=f"static_sync_{len(data_nodes)}", ctx=ast.Store())],
+                value=ast.Constant(value=round(diff, 4))
+            )
+            # On injecte la donnée au début du module pour l'équilibre
+            tree.body.insert(0, new_data)
+            print(f"Injection de donnée détectée pour combler l'écart de {diff:.3f}")
 
-            with open(self.target_file, "a", encoding="utf-8") as f:
-                if diff > 0:
-                    # Ajoute un "Lest de Données" pour alourdir la structure vers Phi
-                    f.write(
-                        f"\n# PHI_STABILIZER_DATA = {list(range(int(diff * 10)))}\n"
-                    )
-                else:
-                    # Note de simplification pour l'humain ou le prochain cycle
-                    f.write("\n# TODO: Simplifier la logique. Ratio trop élevé.\n")
-            return True
-
-        print("Harmonie Phi atteinte. Aucune mutation requise.")
-        return False
-
+        # Réécriture propre via AST (nettoie les commentaires inutiles au passage)
+        with open(self.filename, "w", encoding="utf-8") as f:
+            f.write(ast.unparse(tree))
+        return True
 
 if __name__ == "__main__":
-    engine = PhiEngine()
-    engine.evolve()
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
-
-# TODO: Simplifier la logique. Ratio trop élevé.
+    architect = PhiArchitect()
+    mutated = architect.run_cycle()
+    
+    # Indique à GitHub Actions si une modification a eu lieu
+    if mutated:
+        print("Mutation complétée. Prêt pour commit.")
