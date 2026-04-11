@@ -9,4 +9,18 @@
 | **⚖️ Responsabilités des Mainteneurs** | Les mainteneurs du projet sont responsables de l'application de ces normes et prendront des mesures correctives justes en cas de comportement inacceptable. Ils ont le droit de supprimer ou rejeter tout contenu (code, commentaires, commits) non conforme à ce Code de Conduite. |
 | **🌐 Portée** | Ce code de conduite s'applique au dépôt GitHub, aux communications liées au projet sur PyPI, et à tout espace public où un individu représente le projet **phi-complexity**. |
 | **📩 Signalement et Application** | Les cas de comportement abusif ou inacceptable peuvent être signalés directement par e-mail à l'adresse suivante :<br>📧 **tiloup777@outlook.fr**<br><br>Toutes les plaintes seront examinées en toute confidentialité. Les mainteneurs s'engagent à répondre et à agir pour protéger la communauté. |
-| **📚 Attribution** | Ce Code de Conduite est adapté du [Contributor Covenant](https://pypi.org/project/phi-complexity), version 0.2.1 |
+| **📚 Attributions & Crédits
+
+ **🔬 Recherche & Fondements Mathématiques
+* **Concept Global :** Ce projet implémente des concepts mathématiques dérivés de **[Nom du chercheur/Théorie]**, visant à quantifier la complexité structurelle des systèmes dynamiques.
+* **Auteur Principal :** **spockoo**, Chercheur Mathématicien et Développeur Open Source.
+* **Projet :** Phi-Complexity — Un cadre d'analyse pour l'étude des mesures de complexité et de la dynamique des systèmes.
+
+ **🛠️ Écosystème Technique & Open Source
+* **Automatisation :** Workflow CI/CD propulsé par **GitHub Actions** et le script d'évolution `engine.py`.
+* **Gouvernance :** Code de conduite adapté à la Souveraineté
+* **Distribution :** Paquet disponible sur [PyPI : phi-complexity](https://pypi.org).
+* **Communauté :** Merci aux contributeurs de l'écosystème Python pour les bibliothèques fondamentales utilisées dans ce projet.
+
+**📄 Licence
+Ce projet est distribué sous les termes de la licence mentionnée dans le fichier `LICENSE`. Toute utilisation académique ou commerciale doit inclure une citation appropriée vers ce dépôt. |
