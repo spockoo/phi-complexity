@@ -7,7 +7,7 @@ name: "🖥️ Couche OS — Compatibilité Multi-Plateforme (φ-Arch)"
 #   · ubuntu-latest  — Noyau Linux (systemd, glibc)
 #   · ubuntu-24.04   — LTS courant (base CI stable)
 #   · macos-latest   — Darwin / XNU kernel (BSD layer)
-#   · macos-13       — Intel x86_64 (compatibilité legacy)
+#   · macos-14       — Apple Silicon ARM (compatibilité legacy)
 #   · windows-latest — NT kernel (MSVC toolchain)
 
 on:
@@ -38,7 +38,7 @@ jobs:
           # ── Darwin layer (XNU / BSD) ──
           - os: macos-latest
             python-version: "3.13"
-          - os: macos-13
+          - os: macos-14
             python-version: "3.12"
 
           # ── NT layer (Windows MSVC) ──
@@ -85,8 +85,8 @@ jobs:
         run: |
           python -c "
           import sys
-          from phi_complexity.core import calculer_radiance
-          from phi_complexity.analyseur import Analyseur
-          from phi_complexity.metriques import calculer_metriques
+          from phi_complexity.core import calculer_sync_index
+          from phi_complexity.analyseur import AnalyseurPhi
+          from phi_complexity.metriques import CalculateurRadiance
           print(f'✓ Imports critiques validés sur {sys.platform} ({sys.version})')
           "
