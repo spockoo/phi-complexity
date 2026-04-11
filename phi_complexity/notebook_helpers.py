@@ -336,6 +336,406 @@ def enregistrer_magics() -> None:
         except Exception as e:
             print(f"Erreur : {e}")
 
+    def _phi_sentinel(line: str) -> None:
+        """%phi_sentinel [dossier] — Diagnostic de sécurité Sentinel."""
+        cible = line.strip() or "."
+        rapport = diagnostic_systeme(cible_code=cible if cible != "." else None)
+        print(rapport["rapport_console"])
+
     _register(_phi_check)
     _register(_phi_report)
     _register(_phi_spiral)
+    _register(_phi_sentinel)
+
+
+# ────────────────────────────────────────────────────────
+# DIAGNOSTIC CYBERSÉCURITÉ (Sentinel + Quasicristaux)
+# ────────────────────────────────────────────────────────
+
+
+def diagnostic_systeme(
+    cible_code: Optional[str] = None,
+    score_commit: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    Exécute un diagnostic de sécurité complet depuis Jupyter.
+
+    Pipeline Sentinel intégral :
+        HostCollector → TelemetryNormalizer → BehaviorAnalyzer
+        → BayesianCorrelator → SentinelResponse
+
+    Si *cible_code* est fourni, les métriques φ du code sont croisées
+    avec les signaux système pour enrichir le rapport.
+
+    Args:
+        cible_code   : Chemin vers un fichier/dossier Python à auditer.
+        score_commit : Score de risque commit externe [0, 1].
+
+    Returns:
+        Dictionnaire avec toutes les couches décomposées :
+        events, traces, signaux, score, alertes, rapport_console, metriques.
+    """
+    from .sentinel import (
+        HostCollector,
+        TelemetryNormalizer,
+        BehaviorAnalyzer,
+        BayesianCorrelator,
+        SentinelResponse,
+    )
+
+    # Couche 1 — Collecte
+    collector = HostCollector()
+    events = collector.collecter_tout()
+
+    # Couche 2 — Normalisation
+    normalizer = TelemetryNormalizer()
+    traces = normalizer.normaliser(events)
+    stats_tel = normalizer.statistiques(traces)
+
+    # Couche 3 — Comportements
+    analyzer = BehaviorAnalyzer()
+    signaux = analyzer.analyser(traces)
+
+    # Couche 4 — Corrélation bayésienne
+    correlator = BayesianCorrelator()
+    score = correlator.calculer_score(
+        signaux=signaux,
+        traces=traces,
+        score_commit=score_commit,
+    )
+
+    # Couche 5 — Réponse
+    responder = SentinelResponse()
+    alertes = responder.generer_alertes(score, signaux)
+    rapport_txt = correlator.rapport_correlation(score)
+
+    # Métriques φ optionnelles
+    metriques: List[Dict[str, Any]] = []
+    if cible_code:
+        metriques = charger_metriques(cible_code)
+
+    return {
+        "events": events,
+        "traces": traces,
+        "stats_telemetrie": stats_tel,
+        "signaux": signaux,
+        "score": score,
+        "alertes": alertes,
+        "rapport_console": rapport_txt,
+        "metriques": metriques,
+        "politique": responder.politique_de_reponse(alertes),
+    }
+
+
+def radar_menaces(
+    signaux_ou_diagnostic: Any,
+    ax: Optional[Any] = None,
+) -> Any:
+    """
+    Génère un radar chart des menaces détectées (MITRE ATT&CK).
+
+    Args:
+        signaux_ou_diagnostic : Liste de SignalComportemental ou dict
+                                retourné par diagnostic_systeme().
+        ax : Axes matplotlib (créé automatiquement si None).
+
+    Returns:
+        L'objet axes matplotlib.
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+    except ImportError as e:
+        raise ImportError(
+            "matplotlib et numpy requis. "
+            "Installez avec : pip install phi-complexity[notebooks]"
+        ) from e
+
+    # Accepte soit la liste directe soit le dict de diagnostic
+    if isinstance(signaux_ou_diagnostic, dict):
+        signaux = signaux_ou_diagnostic.get("signaux", [])
+    else:
+        signaux = signaux_ou_diagnostic
+
+    categories = [
+        "PERSISTANCE",
+        "ELEVATION",
+        "EXFILTRATION",
+        "CHIFFREMENT",
+        "C2",
+        "RECONNAISSANCE",
+        "MOUVEMENT_LAT",
+        "DEFENCE_EVASION",
+        "INJECTION",
+        "ACCES_CREDENTIAL",
+    ]
+
+    # Remplir les confiances par catégorie
+    confiances: Dict[str, float] = {c: 0.0 for c in categories}
+    for signal in signaux:
+        nom = signal.type.value.upper()
+        if nom in confiances:
+            confiances[nom] = max(confiances[nom], signal.confiance)
+
+    valeurs = [confiances[c] for c in categories]
+
+    n = len(categories)
+    angles = np.linspace(0, 2 * np.pi, n, endpoint=False).tolist()
+    valeurs_plot = valeurs + [valeurs[0]]
+    angles_plot = angles + [angles[0]]
+
+    if ax is None:
+        _fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={"projection": "polar"})
+
+    ax.fill(angles_plot, valeurs_plot, color="#FF4136", alpha=0.25)
+    ax.plot(angles_plot, valeurs_plot, color="#FF4136", linewidth=2)
+    ax.scatter(angles, valeurs, color="#FF4136", s=60, zorder=5)
+
+    # Seuils visuels
+    theta_full = np.linspace(0, 2 * np.pi, 100)
+    ax.plot(theta_full, [0.70] * 100, "--", color="orange", alpha=0.5, linewidth=1)
+    ax.plot(theta_full, [0.40] * 100, "--", color="green", alpha=0.4, linewidth=1)
+
+    labels_courts = [c[:12] for c in categories]
+    ax.set_xticks(angles)
+    ax.set_xticklabels(labels_courts, fontsize=8)
+    ax.set_ylim(0, 1)
+    ax.set_title("Radar MITRE ATT&CK — Menaces Détectées", fontsize=12, pad=20)
+
+    return ax
+
+
+def carte_entropie_penrose(
+    metriques_list: List[Dict[str, Any]],
+    ax: Optional[Any] = None,
+) -> Any:
+    """
+    Carte d'entropie inspirée des pavages de Penrose (quasicristaux).
+
+    Chaque fichier est placé dans un espace 2D (radiance × entropie)
+    et coloré selon son score φ. Les zones d'anomalie sont identifiées
+    par les frontières de Penrose : là où l'ordre apériodique se brise,
+    le code présente un risque de dissimulation de complexité.
+
+    Principe quasicristallin : un système sain présente un ordre
+    apériodique (φ-cohérent) ; les outliers signalent des zones
+    où la complexité est dissimulée dans les données.
+
+    Args:
+        metriques_list : Liste de métriques (de charger_metriques ou diagnostic).
+        ax : Axes matplotlib.
+
+    Returns:
+        L'objet axes matplotlib.
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as e:
+        raise ImportError(
+            "matplotlib requis. "
+            "Installez avec : pip install phi-complexity[notebooks]"
+        ) from e
+
+    if ax is None:
+        _fig, ax = plt.subplots(figsize=(10, 8))
+
+    if not metriques_list:
+        ax.text(
+            0.5,
+            0.5,
+            "Aucune métrique à afficher",
+            ha="center",
+            va="center",
+            fontsize=14,
+        )
+        return ax
+
+    # Extraire les coordonnées
+    radiances = [m.get("radiance", 60.0) for m in metriques_list]
+    entropies = [m.get("fibonacci_entropy", 0.0) for m in metriques_list]
+    phi_deltas = [m.get("phi_ratio_delta", 0.0) for m in metriques_list]
+    max_label_len = 15  # Tronquer les noms pour la lisibilité des annotations
+    noms = [
+        os.path.basename(m.get("fichier", "?"))[:max_label_len] for m in metriques_list
+    ]
+
+    # Normaliser les couleurs par phi_ratio_delta
+    max_delta = max(phi_deltas) if phi_deltas and max(phi_deltas) > 0 else 1.0
+    couleurs_norm = [d / max_delta for d in phi_deltas]
+
+    # Grille de Penrose (angle doré 36°)
+    angle_penrose = math.radians(36)
+    for k in range(10):
+        theta = k * angle_penrose
+        longueur = max(max(radiances) if radiances else 100, 100)
+        ax.plot(
+            [50 - longueur * math.cos(theta), 50 + longueur * math.cos(theta)],
+            [0 - longueur * math.sin(theta), 0 + longueur * math.sin(theta)],
+            color="#FFD700",
+            alpha=0.15,
+            linewidth=1,
+        )
+
+    # Frontière φ (seuil Heisenberg-Phi)
+    plancher = HBAR_PHI / 2
+    seuil_entropie = math.log2(PHI**4) if PHI > 1 else 1.0
+    ax.axhline(
+        y=seuil_entropie,
+        color="red",
+        alpha=0.3,
+        linestyle="--",
+        label=f"H_max = log₂(φ⁴) ≈ {seuil_entropie:.2f}",
+    )
+    ax.axvline(
+        x=60,
+        color="orange",
+        alpha=0.3,
+        linestyle="--",
+        label="Seuil Radiance Éveil",
+    )
+    ax.axvline(
+        x=85,
+        color="green",
+        alpha=0.3,
+        linestyle="--",
+        label="Seuil Radiance Hermétique",
+    )
+
+    # Scatter plot
+    cmap = plt.colormaps["RdYlGn_r"]
+    sc = ax.scatter(
+        radiances,
+        entropies,
+        c=couleurs_norm,
+        cmap=cmap,
+        s=80,
+        edgecolors="black",
+        linewidth=0.5,
+        zorder=5,
+    )
+    plt.colorbar(sc, ax=ax, label="Δφ (écart au nombre d'or)", shrink=0.8)
+
+    # Annotations
+    for nom, rad, ent in zip(noms, radiances, entropies):
+        ax.annotate(
+            nom,
+            (rad, ent),
+            fontsize=7,
+            textcoords="offset points",
+            xytext=(5, 5),
+            alpha=0.8,
+        )
+
+    ax.set_xlabel("Radiance (score φ-complexity)", fontsize=11)
+    ax.set_ylabel("Entropie Fibonacci (H_F)", fontsize=11)
+    ax.set_title(
+        "Carte d'Entropie Penrose — Détection d'Anomalies\n"
+        f"(ħ_φ/2 = {plancher:.4f} — seuil quasicristallin)",
+        fontsize=12,
+    )
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(True, alpha=0.2)
+
+    return ax
+
+
+def tableau_diagnostic(
+    diagnostic: Dict[str, Any],
+) -> str:
+    """
+    Génère un tableau ASCII lisible du diagnostic Sentinel complet.
+
+    Args:
+        diagnostic : Dictionnaire retourné par diagnostic_systeme().
+
+    Returns:
+        Rapport formaté en texte.
+    """
+    score = diagnostic.get("score")
+    stats = diagnostic.get("stats_telemetrie", {})
+    alertes = diagnostic.get("alertes", [])
+    signaux = diagnostic.get("signaux", [])
+    politique = diagnostic.get("politique", {})
+
+    lignes = [
+        "╔══════════════════════════════════════════════════════════╗",
+        "║   PHI-SENTINEL — DIAGNOSTIC SYSTÈME COMPLET (NOTEBOOK)  ║",
+        "╚══════════════════════════════════════════════════════════╝",
+        "",
+    ]
+
+    if score is not None:
+        pct = score.score_final * 100
+        symbole = {
+            "FAIBLE": "✅",
+            "MODÉRÉ": "⚠️ ",
+            "ÉLEVÉ": "🔴",
+            "CRITIQUE": "🚨",
+        }.get(score.niveau, "❓")
+        barre_len = 40
+        rempli = int(pct / 100 * barre_len)
+        barre = "█" * rempli + "░" * (barre_len - rempli)
+        lignes += [
+            f"  Score Global : [{barre}] {pct:.1f}%",
+            f"  Niveau       : {symbole}  {score.niveau}",
+            "",
+            "  Décomposition :",
+            f"    ◈  OS Comportemental  : {score.score_os * 100:.1f}%",
+            f"    ◈  Risque Commit      : {score.score_commit * 100:.1f}%",
+            f"    ◈  Télémétrie         : {score.score_telemetrie * 100:.1f}%",
+            "",
+        ]
+
+    lignes += [
+        "  Télémétrie :",
+        f"    Total traces   : {stats.get('total', 0)}",
+        f"    INFO           : {stats.get('info', 0)}",
+        f"    ATTENTION      : {stats.get('attention', 0)}",
+        f"    SUSPECT        : {stats.get('suspect', 0)}",
+        f"    CRITIQUE       : {stats.get('critique', 0)}",
+        "",
+    ]
+
+    if signaux:
+        lignes.append(f"  Signaux MITRE ATT&CK ({len(signaux)}) :")
+        for s in signaux[:5]:
+            mitre = f" [{s.mitre_technique}]" if s.mitre_technique else ""
+            lignes.append(
+                f"    ◈  {s.type.value.upper():20s}  "
+                f"{s.confiance * 100:5.1f}%{mitre}"
+            )
+    else:
+        lignes.append("  ✦  Aucun signal comportemental suspect.")
+
+    lignes.append("")
+
+    if alertes:
+        lignes.append(f"  Alertes ({len(alertes)}) :")
+        for a in alertes[:5]:
+            lignes.append(f"    🔔  [{a.niveau.value.upper()}] {a.titre}")
+    else:
+        lignes.append("  ✦  Aucune alerte active.")
+
+    lignes.append("")
+
+    if politique:
+        actions_str = []
+        if politique.get("bloquer_pr"):
+            actions_str.append("BLOQUER PR")
+        if politique.get("escalader"):
+            actions_str.append("ESCALADER")
+        if politique.get("isoler"):
+            actions_str.append("ISOLER")
+        if politique.get("notifier"):
+            actions_str.append("NOTIFIER")
+        if actions_str:
+            lignes.append(f"  Actions recommandées : {' | '.join(actions_str)}")
+        else:
+            lignes.append("  Actions recommandées : LOG_ONLY")
+
+    lignes += [
+        "",
+        "  ─────────────────────────────────────────────────────────",
+        "  Ancré dans le Morphic Phi Framework — φ-Meta 2026",
+    ]
+    return "\n".join(lignes)
