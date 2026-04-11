@@ -259,6 +259,14 @@ git fetch --all --prune
 git branch -r
 ```
 
+### Pré-requis workflow `branch-protection`
+
+Le workflow `.github/workflows/branch-protection.yml` nécessite :
+
+- un environnement GitHub nommé **`branch-protection`** (Settings → Environments),
+- le secret **`ADMIN_TOKEN`** disponible pour cet environnement/référentiel,
+- idéalement des reviewers d'environnement pour contrôler son exécution manuelle.
+
 ---
 
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*

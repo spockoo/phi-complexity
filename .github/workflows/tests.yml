@@ -108,6 +108,8 @@ jobs:
     name: "ci-gate"
     runs-on: ubuntu-latest
     needs: [test]
+    # Toujours exécuté pour publier un statut explicite même si le job `test`
+    # est annulé ou ignoré, afin d'avoir un check de protection stable.
     if: always()
 
     steps:

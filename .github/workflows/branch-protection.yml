@@ -81,7 +81,7 @@ jobs:
               require_last_push_approval=false
               required_linear_history=false
             fi
-            encoded_branch=$(python -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$branch")
+            encoded_branch=$(jq -rn --arg b "$branch" '$b|@uri')
             echo "Applying branch protection on '$branch'..."
             gh api \
               --method PUT \
