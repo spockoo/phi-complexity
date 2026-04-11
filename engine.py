@@ -72,7 +72,7 @@ def handle_github_automation():
     if len(repo_parts) != 2 or not all(repo_parts):
         print('Format GITHUB_REPOSITORY invalide (attendu: owner/repo).')
         return
-    owner = repo.split('/')[0]
+    owner = repo_parts[0]
     branch_name = os.getenv('PHI_ENGINE_BRANCH', DEFAULT_BRANCH_NAME)
     base_branch = os.getenv('PHI_ENGINE_BASE_BRANCH', DEFAULT_BASE_BRANCH)
     git_user_name = os.getenv('PHI_ENGINE_GIT_USER_NAME', DEFAULT_GIT_USER_NAME)
