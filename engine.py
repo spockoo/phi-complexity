@@ -5,6 +5,14 @@ import os
 import subprocess
 from urllib import error, parse, request
 
+DEFAULT_BRANCH_NAME = 'evolution/phi-mutation'
+DEFAULT_BASE_BRANCH = 'main'
+DEFAULT_GIT_USER_NAME = 'Phi-Architect-Bot'
+DEFAULT_GIT_USER_EMAIL = 'phi-bot@outlook.fr'
+DEFAULT_PR_TITLE = '✨ Évolution Structurelle (Phi)'
+DEFAULT_PR_BODY = "Mutation algorithmique vers le ratio d'or."
+
+
 class PhiArchitect:
     """
     Optimisé pour GitHub : Calcule le ratio d'or et auto-ajuste
@@ -54,17 +62,21 @@ class PhiArchitect:
 
 def handle_github_automation():
     """Gère l'évolution du code, le push ou la création de PR idempotente."""
-    event = os.getenv('GITHUB_EVENT_NAME')
-    repo = os.getenv('GITHUB_REPOSITORY')
-    token = os.getenv('GITHUB_TOKEN')
-    if not token or not repo:
+    event = os.getenv('GITHUB_EVENT_NAME', '')
+    repo = os.getenv('GITHUB_REPOSITORY', '')
+    token = os.getenv('GITHUB_TOKEN', '')
+    if not (token and repo and '/' in repo):
         print('Infos GitHub manquantes (TOKEN ou REPO).')
         return
     owner = repo.split('/')[0]
-    branch_name = 'evolution/phi-mutation'
-    base_branch = 'main'
-    subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'])
-    subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'])
+    branch_name = os.getenv('PHI_ENGINE_BRANCH', DEFAULT_BRANCH_NAME)
+    base_branch = os.getenv('PHI_ENGINE_BASE_BRANCH', DEFAULT_BASE_BRANCH)
+    git_user_name = os.getenv('PHI_ENGINE_GIT_USER_NAME', DEFAULT_GIT_USER_NAME)
+    git_user_email = os.getenv('PHI_ENGINE_GIT_USER_EMAIL', DEFAULT_GIT_USER_EMAIL)
+    pr_title = os.getenv('PHI_ENGINE_PR_TITLE', DEFAULT_PR_TITLE)
+    pr_body = os.getenv('PHI_ENGINE_PR_BODY', DEFAULT_PR_BODY)
+    subprocess.run(['git', 'config', 'user.name', git_user_name], check=False)
+    subprocess.run(['git', 'config', 'user.email', git_user_email], check=False)
     if event == 'push':
         print('Mode Push détecté : Mutation appliquée localement.')
         return
@@ -91,7 +103,7 @@ def handle_github_automation():
         if open_prs:
             print(f"PR déjà existante (# {open_prs[0]['number']}). Mise à jour effectuée.")
             return
-        payload = json.dumps({'title': '✨ Évolution Structurelle (Phi)', 'head': branch_name, 'base': base_branch, 'body': "Mutation algorithmique vers le ratio d'or."}).encode('utf-8')
+        payload = json.dumps({'title': pr_title, 'head': branch_name, 'base': base_branch, 'body': pr_body}).encode('utf-8')
         post_req = request.Request(api_url, data=payload, method='POST')
         post_req.add_header('Authorization', f'token {token}')
         post_req.add_header('Content-Type', 'application/json')
