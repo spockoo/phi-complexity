@@ -36,9 +36,17 @@ jobs:
           output: 'flawfinder_results.sarif'
 
       - name: Upload analysis results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{github.workspace}}/flawfinder_results.sarif
+
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flawfinder-results
+          path: flawfinder_results.sarif
+          retention-days: 7
 
       - name: Install phi-complexity
         run: pip install -e .
@@ -49,3 +57,11 @@ jobs:
             --sarif ${{github.workspace}}/flawfinder_results.sarif \
             --output .phi/security_audit.json \
             --min-security-score 70
+
+      - name: Upload security audit (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: .phi/security_audit.json
+          retention-days: 7
