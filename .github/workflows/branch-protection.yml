@@ -54,6 +54,8 @@ jobs:
             fi
           done
           if [ "${#targets[@]}" -eq 0 ]; then
+            # Filet de sécurité : on protège au minimum `main`
+            # même si aucun pattern ne correspond.
             targets=("main")
           fi
           {
