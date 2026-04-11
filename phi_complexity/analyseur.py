@@ -79,10 +79,13 @@ class AnalyseurPhi:
         """Sélectionne le moteur d'analyse selon l'extension."""
         from .backends.python import PythonBackend
         from .backends.c_rust_light import CRustLightBackend
+        from .backends.asm_light import AsmLightBackend
 
         ext = self.fichier.split(".")[-1].lower()
         if ext in ("c", "cpp", "h", "hpp", "rs"):
             return CRustLightBackend(self.fichier)
+        if ext in ("asm", "s"):
+            return AsmLightBackend(self.fichier)
 
         # Défaut: Python
         return PythonBackend(self.fichier)

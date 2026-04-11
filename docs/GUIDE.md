@@ -470,4 +470,141 @@ phi spiral examples/code_chaotique.py
 
 ---
 
+## Phase 15 — Assembleur (ASM Backend)
+
+phi-complexity supporte désormais l'analyse de code assembleur (`.asm`, `.s`)
+pour x86/x86-64, ARM/AArch64 et RISC-V.
+
+```bash
+# Auditer un fichier assembleur
+phi check boot.asm
+
+# Auditer des fichiers .s (AT&T syntax)
+phi check startup.s
+
+# Rapport complet
+phi report kernel_init.asm --output rapport.md
+```
+
+Voir le [Guide Assembleur](ASSEMBLY.md) pour les détails complets.
+
+---
+
+## Phase 16 — Phi Vault (Mémoire Persistante)
+
+Le **Phi Vault** stocke l'historique complet des audits sous forme de notes
+Markdown interliées (wikilinks `[[fichier]]`), inspiré d'Obsidian.
+
+### Archiver un Audit
+
+```bash
+# Auditer et archiver dans le vault
+phi vault mon_script.py
+
+# Archiver un dossier complet
+phi vault ./src/
+```
+
+Les notes sont stockées dans `.phi/vault/` avec :
+- Des **wikilinks** vers les fonctions (`[[process_data]]`)
+- Des **tags** de statut (`#hermetique`, `#dormant`)
+- Un **journal quotidien** dans `.phi/vault/journal/`
+
+### Graphe de Radiance
+
+```bash
+# Vue ASCII du graphe
+phi graph
+
+# Export DOT pour Graphviz
+phi graph --format dot
+```
+
+### Détection de Régressions
+
+Le vault détecte automatiquement les baisses de radiance > 5 points
+et affiche un avertissement lors de `phi vault`.
+
+---
+
+## Phase 17 — Phi Canvas (Export Obsidian)
+
+Exportez l'architecture de votre code sous forme de **Canvas Obsidian**
+(`.canvas`), avec des nœuds colorés selon le statut gnostique.
+
+```bash
+# Exporter un canvas
+phi canvas ./src/
+
+# Spécifier le fichier de sortie
+phi canvas ./src/ --output architecture.canvas
+```
+
+Le fichier `.canvas` peut être ouvert directement dans Obsidian
+pour une visualisation interactive de l'architecture du code.
+
+**Couleurs des nœuds** :
+- 🟢 Vert : HERMÉTIQUE (Radiance ≥ 85)
+- 🟡 Jaune : EN ÉVEIL (Radiance 60-84)
+- 🔴 Rouge : DORMANT (Radiance < 60)
+
+---
+
+## Phase 18 — Phi Search (Recherche Sémantique)
+
+Recherchez dans le vault par métriques, statut ou catégorie d'annotation.
+
+```bash
+# Chercher les fichiers DORMANT
+phi search --statut DORMANT
+
+# Chercher par intervalle de radiance
+phi search --min-radiance 60 --max-radiance 85
+
+# Chercher par catégorie d'annotation
+phi search --categorie LILITH
+```
+
+---
+
+## Phase 20 — Cybersécurité
+
+### SBOM (Software Bill of Materials)
+
+```bash
+# Générer le SBOM
+phi sbom
+
+# Spécifier le fichier de sortie
+phi sbom --output sbom.json
+```
+
+Le SBOM au format CycloneDX documente tous les modules stdlib utilisés
+par phi-complexity (zéro dépendances tierces).
+
+### Signatures de Rapports
+
+Les rapports peuvent être signés avec SHA-256 via l'API Python :
+
+```python
+from phi_complexity.securite import signer_rapport, verifier_signature
+
+signature = signer_rapport(contenu_rapport)
+assert verifier_signature(contenu_rapport, signature)
+```
+
+### Journal d'Audit
+
+Un journal immuable (append-only) trace toutes les opérations :
+
+```python
+from phi_complexity.securite import JournalAudit
+
+journal = JournalAudit()
+journal.enregistrer("AUDIT", {"fichier": "test.py"})
+assert journal.verifier_integrite()
+```
+
+---
+
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*
