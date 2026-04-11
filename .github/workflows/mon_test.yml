@@ -13,7 +13,7 @@ class PhiArchitect:
     def __init__(self):
         self.phi = 1.61803398875
         self.filename = inspect.getfile(self.__class__)
-        self.complexity_limit = 10 # Seuil d'ingénierie (pas plus de 10 chemins par fonction)
+        self.complexity_limit = 10 # Seuil d'ingénierie professionnel
 
     def clean_merge_markers(self):
         """Supprime les résidus de conflits Git (<<<<, ====, >>>>)."""
@@ -25,7 +25,7 @@ class PhiArchitect:
             f.writelines(clean_lines)
 
     def get_complexity(self, node):
-        """Algorithme de Complexité Cyclomatique (Audit de maintenabilité)."""
+        """Algorithme de Complexité Cyclomatique."""
         complexity = 1
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With, ast.IfExp)):
@@ -33,14 +33,15 @@ class PhiArchitect:
         return complexity
 
     def clean_dead_code(self, tree):
-        """Algorithme : Supprime les variables d'équilibrage devenues obsolètes."""
+        """Algorithme : Supprime les variables d'équilibrage devenues inutiles."""
         source = ast.unparse(tree)
         new_body = []
         for node in tree.body:
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            # Correction : vérification sécurisée de la cible de l'assignation
+            if isinstance(node, ast.Assign) and len(node.targets) > 0 and isinstance(node.targets[0], ast.Name):
                 var_name = node.targets[0].id
                 if var_name.startswith("static_sync_") and source.count(var_name) <= 1:
-                    continue # On ignore cette ligne (code mort)
+                    continue 
             new_body.append(node)
         tree.body = new_body
         return tree
@@ -53,7 +54,7 @@ class PhiArchitect:
         try:
             tree = ast.parse(source)
         except SyntaxError:
-            print("❌ Erreur de syntaxe. L'organisme ne peut pas s'analyser.")
+            print("❌ Erreur de syntaxe dans le fichier source.")
             return False
 
         # 1. Audit de Complexité
@@ -61,7 +62,7 @@ class PhiArchitect:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 comp = self.get_complexity(node)
                 if comp > self.complexity_limit:
-                    print(f"⚠️ Alerte : {node.name} trop complexe ({comp}). Mutation annulée.")
+                    print(f"⚠️ Alerte Complexité : {node.name} ({comp}). Mutation stoppée.")
                     return False
 
         # 2. Analyse du Ratio Phi
@@ -71,13 +72,13 @@ class PhiArchitect:
         
         ratio = len(data) / len(logic) if logic else len(data)
         diff = self.phi - ratio
-        print(f"--- [PHI-ENGINE] Ratio: {ratio:.3f} | Cible: {self.phi:.3f} ---")
+        print(f"--- [PHI-ENGINE] Ratio actuel: {ratio:.3f} | Cible: {self.phi:.3f} ---")
 
         if abs(diff) < 0.01:
-            print("⚖️ Harmonie atteinte.")
+            print("⚖️ Harmonie mathématique atteinte.")
             return False
 
-        # 3. Mutation Structurelle
+        # 3. Mutation
         if diff > 0:
             new_var_name = f"static_sync_{len(data)}"
             new_data = ast.Assign(
@@ -87,7 +88,7 @@ class PhiArchitect:
             tree.body.insert(0, new_data)
             print(f"🧬 Mutation : Injection de {new_var_name}")
 
-        # 4. Optimisation
+        # 4. Nettoyage
         tree = self.clean_dead_code(tree)
 
         with open(self.filename, 'w', encoding='utf-8') as f:
@@ -95,28 +96,31 @@ class PhiArchitect:
         return True
 
 def handle_github_automation():
-    """Gère l'automatisation GitHub (Push ou PR Idempotente)."""
+    """Gère l'automatisation via API REST GitHub."""
     event = os.getenv('GITHUB_EVENT_NAME')
     repo = os.getenv('GITHUB_REPOSITORY')
     token = os.getenv('GITHUB_TOKEN')
-    if not token or not repo: return
+    if not token or not repo: 
+        print("❌ Token ou Repo manquant dans l'environnement.")
+        return
 
     branch_name = "evolution/phi-mutation"
     base_branch = "main"
+    owner = repo.split('/')[0]
 
     subprocess.run(['git', 'config', 'user.name', 'Phi-Architect-Bot'])
     subprocess.run(['git', 'config', 'user.email', 'phi-bot@outlook.fr'])
 
     if event == 'push':
-        print("🚀 Mode Push : Mutation appliquée.")
+        print("🚀 Mode Push : Mutation appliquée localement.")
         return
 
-    # Mode Schedule/Dispatch : Branche et PR
+    # Mode Schedule/Dispatch
     try:
         subprocess.run(['git', 'checkout', '-B', branch_name], check=True)
         subprocess.run(['git', 'add', '.'], check=True)
         if subprocess.run(['git', 'diff', '--cached', '--quiet']).returncode == 0:
-            print("✨ Aucun changement structurel détecté.")
+            print("✨ Aucune mutation structurelle nécessaire.")
             return
         
         subprocess.run(['git', 'commit', '-m', '🧬 evolution: mutation structurelle phi'], check=True)
@@ -125,29 +129,36 @@ def handle_github_automation():
         print(f"❌ Erreur Git : {e}")
         return
 
-    # Check PR existante (Idempotence)
+    # Correction de l'URL pour l'API GitHub
     api_url = f'https://github.com{repo}/pulls'
+    
     try:
-        req = request.Request(f"{api_url}?state=open&head={repo.split('/')[0]}:{branch_name}")
-        req.add_header('Authorization', f'token {token}')
-        with request.urlopen(req) as r:
+        # Vérification PR existante
+        check_req = request.Request(f"{api_url}?state=open&head={owner}:{branch_name}")
+        check_req.add_header('Authorization', f'token {token}')
+        with request.urlopen(check_req) as r:
             if json.loads(r.read().decode()):
-                print("✅ PR déjà ouverte. Mise à jour de la branche terminée.")
+                print("✅ PR déjà ouverte. Mise à jour de la branche effectuée.")
                 return
 
-        # Création PR
+        # Création de la PR
         payload = json.dumps({
             'title': '✨ Évolution Structurelle (Phi)',
             'head': branch_name, 'base': base_branch,
             'body': 'Mutation automatique basée sur le ratio d\'or et l\'audit de complexité.'
         }).encode()
+        
         post_req = request.Request(api_url, data=payload, method='POST')
         post_req.add_header('Authorization', f'token {token}')
         post_req.add_header('Content-Type', 'application/json')
+        
         with request.urlopen(post_req):
             print("🆕 Pull Request créée avec succès.")
+            
+    except error.HTTPError as e:
+        print(f"❌ Erreur API GitHub ({e.code}): {e.reason}")
     except Exception as e:
-        print(f"❌ Erreur API : {e}")
+        print(f"❌ Erreur inattendue : {e}")
 
 if __name__ == '__main__':
     architect = PhiArchitect()
