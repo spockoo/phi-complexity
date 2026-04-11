@@ -31,4 +31,11 @@ Une fois la faille confirmée :
 - Une nouvelle version sera déployée pour stabiliser le ratio $\phi$ et sécuriser les permissions du bot.
 - Vous serez crédité pour la découverte (sauf si vous souhaitez rester anonyme).
 
+## Gestion des Secrets
+
+- Ne commitez jamais un token GitHub (ex: `ADMIN_TOKEN`) dans le dépôt.
+- Utilisez des variables d'environnement ou GitHub Actions Secrets.
+- Le fichier `.env.example` sert uniquement de modèle et ne doit contenir aucune valeur sensible.
+- Si un token a fuité, révoquez-le immédiatement et régénérez-en un nouveau.
+
 Merci de nous aider à maintenir la souveraineté et l'intégrité mathématique de ce code.
