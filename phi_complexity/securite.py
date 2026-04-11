@@ -290,8 +290,10 @@ _EXPLOITABILITY_MEDIUM = round(PHI / (PHI + 1.3), 2)
 _C_FAMILY_SCANNERS: frozenset[str] = frozenset(
     {"flawfinder", "cppcheck", "clang-tidy", "clang_tidy"}
 )
+# Extensions that C/C++ scanners legitimately analyse (Rust/asm excluded —
+# Flawfinder and cppcheck do not process those formats).
 _C_FAMILY_EXTENSIONS: frozenset[str] = frozenset(
-    {".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".rs", ".asm", ".s"}
+    {".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hh"}
 )
 
 
