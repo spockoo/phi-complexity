@@ -30,6 +30,9 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = []  # Zero dépendances tierces — Souveraineté totale
 
+[project.optional-dependencies]
+notebooks = ["jupyter", "matplotlib", "numpy"]
+
 [project.scripts]
 phi = "phi_complexity.cli:main"
 
