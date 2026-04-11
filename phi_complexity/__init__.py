@@ -7,6 +7,9 @@ from .rapport import GenerateurRapport
 from .suture import SutureAgent
 from .oracle import OracleRadiance
 from .harvest import HarvestEngine
+from .vault import PhiVault
+from .canvas import PhiCanvas
+from .search import PhiSearch
 
 
 def auditer(fichier: str) -> Dict[str, Any]:
@@ -86,5 +89,8 @@ __all__ = [
     "SutureAgent",
     "OracleRadiance",
     "HarvestEngine",
+    "PhiVault",
+    "PhiCanvas",
+    "PhiSearch",
     "suture",
 ]

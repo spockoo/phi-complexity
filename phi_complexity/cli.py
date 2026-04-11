@@ -115,6 +115,72 @@ Exemples :
     )
     spiral_parser.add_argument("cible", help="Fichier à visualiser")
 
+    # Phase 16 — Vault (mémoire persistante type Obsidian)
+    vault_parser = subparsers.add_parser(
+        "vault", help="Auditer et enregistrer dans le Phi Vault (Phase 16)."
+    )
+    vault_parser.add_argument("cible", help="Fichier ou dossier à auditer et archiver")
+
+    # Phase 16 — Graph (visualisation du graphe de radiance)
+    graph_parser = subparsers.add_parser(
+        "graph",
+        help="Afficher le graphe de radiance du vault (Phase 16).",
+    )
+    graph_parser.add_argument(
+        "--format",
+        choices=["ascii", "dot"],
+        default="ascii",
+        help="Format de sortie (ascii ou dot)",
+    )
+
+    # Phase 17 — Canvas (export .canvas compatible Obsidian)
+    canvas_parser = subparsers.add_parser(
+        "canvas", help="Exporter un Canvas Obsidian (.canvas) du code audité (Phase 17)."
+    )
+    canvas_parser.add_argument("cible", help="Fichier ou dossier à auditer")
+    canvas_parser.add_argument(
+        "--output",
+        "-o",
+        default=".phi/architecture.canvas",
+        help="Fichier .canvas de sortie (défaut: .phi/architecture.canvas)",
+    )
+
+    # Phase 18 — Search (recherche sémantique dans le vault)
+    search_parser = subparsers.add_parser(
+        "search", help="Recherche sémantique dans le Phi Vault (Phase 18)."
+    )
+    search_parser.add_argument(
+        "--statut",
+        help="Chercher par statut (HERMÉTIQUE, EN ÉVEIL, DORMANT)",
+    )
+    search_parser.add_argument(
+        "--min-radiance",
+        type=float,
+        default=0.0,
+        help="Radiance minimale",
+    )
+    search_parser.add_argument(
+        "--max-radiance",
+        type=float,
+        default=100.0,
+        help="Radiance maximale",
+    )
+    search_parser.add_argument(
+        "--categorie",
+        help="Chercher par catégorie d'annotation (LILITH, SUTURE, FIBONACCI, SOUVERAINETE)",
+    )
+
+    # Phase 20 — SBOM (Software Bill of Materials)
+    sbom_parser = subparsers.add_parser(
+        "sbom", help="Générer le Software Bill of Materials (Phase 20)."
+    )
+    sbom_parser.add_argument(
+        "--output",
+        "-o",
+        default=".phi/sbom.json",
+        help="Fichier SBOM de sortie (défaut: .phi/sbom.json)",
+    )
+
     return parser
 
 
@@ -125,7 +191,7 @@ Exemples :
 
 def _fichiers_depuis_dossier(dossier: str) -> List[str]:
     """Collecte récursivement les fichiers supportés d'un dossier."""
-    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs")
+    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s")
     fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
@@ -138,7 +204,7 @@ def _fichiers_depuis_dossier(dossier: str) -> List[str]:
 
 def _collecter_fichiers(cible: str) -> List[str]:
     """Retourne la liste des fichiers à auditer depuis un chemin."""
-    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs")
+    extensions = (".py", ".c", ".cpp", ".h", ".hpp", ".rs", ".asm", ".s")
     if os.path.isfile(cible):
         return [cible] if cible.lower().endswith(extensions) else []
     if os.path.isdir(cible):
@@ -453,6 +519,91 @@ def _executer_fund() -> None:
     )
 
 
+def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Phase 16 : Audite et enregistre dans le Phi Vault."""
+    from .vault import PhiVault
+
+    vault = PhiVault()
+    for fichier in fichiers:
+        try:
+            metriques = auditer(fichier)
+            regressions = vault.detecter_regressions(metriques)
+            for reg in regressions:
+                print(f"  {reg}")
+            note_path = vault.enregistrer_audit(metriques)
+            radiance = metriques.get("radiance", 0.0)
+            print(f"  ✦ {fichier} → vault ({radiance:.1f}) : {note_path}")
+        except Exception as e:
+            print(f"  ❌ {fichier} : {e}")
+            return 1
+    print(f"\n  ◈ {len(fichiers)} fichier(s) archivé(s) dans le Phi Vault.")
+    return 0
+
+
+def _executer_graph(args: argparse.Namespace) -> int:
+    """Phase 16 : Affiche le graphe de radiance du vault."""
+    from .vault import PhiVault
+
+    vault = PhiVault()
+    fmt = getattr(args, "format", "ascii")
+    if fmt == "dot":
+        print(vault.generer_graph())
+    else:
+        print(vault.generer_graph_ascii())
+    return 0
+
+
+def _executer_canvas(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Phase 17 : Exporte un Canvas Obsidian du code audité."""
+    from .canvas import PhiCanvas
+
+    canvas = PhiCanvas()
+    for fichier in fichiers:
+        try:
+            metriques = auditer(fichier)
+            canvas.ajouter_fichier(metriques)
+        except Exception as e:
+            print(f"  ⚠ {fichier} : {e}")
+
+    sortie = args.output
+    canvas.exporter(sortie)
+    print(f"  ✦ Canvas exporté : {sortie} ({len(canvas.nodes)} nœuds, {len(canvas.edges)} arêtes)")
+    return 0
+
+
+def _executer_search(args: argparse.Namespace) -> int:
+    """Phase 18 : Recherche sémantique dans le vault."""
+    from .search import PhiSearch
+
+    search = PhiSearch()
+
+    if args.statut:
+        resultats = search.chercher_par_statut(args.statut)
+        print(search.rapport_recherche(resultats, f"Statut: {args.statut}"))
+    elif args.categorie:
+        resultats = search.chercher_annotations(args.categorie)
+        print(search.rapport_recherche(resultats, f"Catégorie: {args.categorie}"))
+    else:
+        resultats = search.chercher_par_radiance(args.min_radiance, args.max_radiance)
+        print(
+            search.rapport_recherche(
+                resultats,
+                f"Radiance [{args.min_radiance:.0f}-{args.max_radiance:.0f}]",
+            )
+        )
+    return 0
+
+
+def _executer_sbom(args: argparse.Namespace) -> int:
+    """Phase 20 : Génère le Software Bill of Materials."""
+    from .securite import exporter_sbom
+
+    sortie = args.output
+    exporter_sbom(sortie)
+    print(f"  ✦ SBOM exporté : {sortie}")
+    return 0
+
+
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
@@ -483,6 +634,18 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
     if args.commande == "heal":
         sys.exit(_executer_heal(args))
 
+    # Phase 16 — commandes sans collecte de fichiers
+    if args.commande == "graph":
+        sys.exit(_executer_graph(args))
+
+    # Phase 18 — recherche dans le vault
+    if args.commande == "search":
+        sys.exit(_executer_search(args))
+
+    # Phase 20 — SBOM
+    if args.commande == "sbom":
+        sys.exit(_executer_sbom(args))
+
     # Phase 14 — commandes sans collecte de fichiers préalable
     if args.commande == "spiral":
         fichiers = _collecter_fichiers(args.cible)
@@ -504,6 +667,10 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_oracle(args, fichiers))
     elif args.commande == "harvest":
         sys.exit(_executer_harvest(args, fichiers))
+    elif args.commande == "vault":
+        sys.exit(_executer_vault(args, fichiers))
+    elif args.commande == "canvas":
+        sys.exit(_executer_canvas(args, fichiers))
 
 
 if __name__ == "__main__":
