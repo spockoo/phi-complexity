@@ -68,7 +68,7 @@ def handle_github_automation():
     if not (token and repo):
         print('Infos GitHub manquantes (TOKEN ou REPO).')
         return
-    if '/' not in repo:
+    if repo.count('/') != 1:
         print('Format GITHUB_REPOSITORY invalide (attendu: owner/repo).')
         return
     owner = repo.split('/')[0]
@@ -81,7 +81,7 @@ def handle_github_automation():
     try:
         subprocess.run(['git', 'config', 'user.name', git_user_name], check=True)
         subprocess.run(['git', 'config', 'user.email', git_user_email], check=True)
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         print(f'Erreur configuration Git : {e}')
         return
     if event == 'push':
