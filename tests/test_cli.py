@@ -21,6 +21,7 @@ from phi_complexity.cli import (
     _executer_shield,
     _executer_memory,
     _executer_fund,
+    _executer_vault,
     _afficher_bmad,
     _auditer_un_fichier,
     _construire_parseur,
@@ -593,3 +594,146 @@ class TestCLISubprocess:
             assert "radiance" in data
         finally:
             os.unlink(fichier)
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — Couverture branches manquantes CLI
+# ────────────────────────────────────────────────────────
+
+
+class TestCheckJsonSyntaxError:
+    """Test couvrant la branche SyntaxError dans _executer_check_json (lignes 280-282)."""
+
+    def test_syntax_error_in_json_mode(self):
+        """Fichier avec erreur de syntaxe en mode JSON → erreur capturée."""
+        fichier = creer_fichier("def f(:\n  pass\n")
+        try:
+            args = _construire_parseur().parse_args(
+                ["check", fichier, "--format", "json"]
+            )
+            code = _executer_check_json(args, [fichier])
+            assert code == 1
+        finally:
+            os.unlink(fichier)
+
+
+class TestAuditerUnFichierBranches:
+    """Tests couvrant les branches de _auditer_un_fichier."""
+
+    def test_syntax_error_console(self):
+        """Fichier avec SyntaxError → message d'erreur (lignes 337-339)."""
+        fichier = creer_fichier("def f(:\n  pass\n")
+        try:
+            args = _construire_parseur().parse_args(["check", fichier])
+            code = _auditer_un_fichier(fichier, args)
+            assert code == 1
+        finally:
+            os.unlink(fichier)
+
+
+class TestExecuterSeal:
+    """Test couvrant _executer_seal (lignes 416-429)."""
+
+    def test_seal_execution(self):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = _construire_parseur().parse_args(["seal", fichier])
+            from phi_complexity.cli import _executer_seal
+
+            code = _executer_seal(args)
+            assert code == 0
+        finally:
+            os.unlink(fichier)
+
+    def test_seal_erreur(self):
+        from phi_complexity.cli import _executer_seal
+
+        args = _construire_parseur().parse_args(["seal", "/nonexistent/file.py"])
+        code = _executer_seal(args)
+        assert code == 1
+
+
+class TestExecuterHeal:
+    """Test couvrant _executer_heal (lignes 434-444)."""
+
+    def test_heal_erreur(self):
+        from phi_complexity.cli import _executer_heal
+
+        args = _construire_parseur().parse_args(["heal", "/nonexistent/file.py"])
+        code = _executer_heal(args)
+        assert code == 1
+
+
+class TestExecuterVault:
+    """Test couvrant _executer_vault (lignes 562-578)."""
+
+    def test_vault_fichier(self):
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            args = _construire_parseur().parse_args(["vault", fichier])
+            code = _executer_vault(args, [fichier])
+            assert code == 0
+        finally:
+            os.unlink(fichier)
+
+
+class TestExecuterGraph:
+    """Test couvrant _executer_graph (lignes 583-591)."""
+
+    def test_graph_ascii(self):
+        from phi_complexity.cli import _executer_graph
+
+        args = _construire_parseur().parse_args(["graph"])
+        code = _executer_graph(args)
+        assert code == 0
+
+
+class TestExecuterCanvas:
+    """Test couvrant _executer_canvas (lignes 596-611)."""
+
+    def test_canvas_fichier(self):
+        from phi_complexity.cli import _executer_canvas
+
+        fichier = creer_fichier(CODE_TEST)
+        try:
+            sortie = os.path.join(tempfile.mkdtemp(), "test.canvas")
+            args = _construire_parseur().parse_args(
+                ["canvas", fichier, "--output", sortie]
+            )
+            code = _executer_canvas(args, [fichier])
+            assert code == 0
+            assert os.path.exists(sortie)
+        finally:
+            os.unlink(fichier)
+
+
+class TestExecuterSearch:
+    """Test couvrant _executer_search (lignes 616-634)."""
+
+    def test_search_par_radiance(self):
+        from phi_complexity.cli import _executer_search
+
+        args = _construire_parseur().parse_args(["search"])
+        code = _executer_search(args)
+        assert code == 0
+
+
+class TestExecuterSbom:
+    """Test couvrant _executer_sbom (lignes 639-644)."""
+
+    def test_sbom(self):
+        from phi_complexity.cli import _executer_sbom
+
+        sortie = os.path.join(tempfile.mkdtemp(), "sbom.json")
+        args = _construire_parseur().parse_args(["sbom", "--output", sortie])
+        code = _executer_sbom(args)
+        assert code == 0
+        assert os.path.exists(sortie)
+
+
+class TestExecuterMemoryAkasha:
+    """Test couvrant _executer_memory akasha vide (lignes 505-506)."""
+
+    def test_memory_vide(self):
+        code = _executer_memory()
+        assert code == 0

@@ -529,3 +529,109 @@ class TestMainCLI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — Couverture des branches manquantes
+# ────────────────────────────────────────────────────────
+
+
+class TestRunGit(unittest.TestCase):
+    """Tests couvrant _run_git (lignes 155-165)."""
+
+    def test_run_git_commande_basique(self):
+        """git --version devrait retourner quelque chose."""
+        from phi_complexity.commit_risk import _run_git
+
+        result = _run_git(["--version"])
+        assert "git" in result.lower()
+
+    def test_run_git_erreur_retourne_vide(self):
+        """Commande invalide → retourne '' (lignes 164-165)."""
+        from phi_complexity.commit_risk import _run_git
+
+        result = _run_git(["nonexistent-command-xyz"])
+        assert result == ""
+
+
+class TestRatioVraisemblance(unittest.TestCase):
+    """Tests couvrant _ratio_de_vraisemblance (lignes 274-276)."""
+
+    def test_mu_safe_zero(self):
+        """mu_safe=0 → retourne 1.0 (lignes 274-275)."""
+        from phi_complexity.commit_risk import _ratio_de_vraisemblance
+
+        assert _ratio_de_vraisemblance(1.0, 2.0, 0.0) == 1.0
+
+    def test_ratio_normal(self):
+        """Ratio normal → mu_risque / mu_safe (ligne 276)."""
+        from phi_complexity.commit_risk import _ratio_de_vraisemblance
+
+        assert _ratio_de_vraisemblance(1.0, 4.0, 2.0) == 2.0
+
+
+class TestIdentifierFacteursBranches(unittest.TestCase):
+    """Tests couvrant les branches manquantes de _identifier_facteurs_dominants."""
+
+    def test_facteur_fichiers_changes(self):
+        """Fichiers changés au-dessus du seuil (ligne 360)."""
+        features = FeaturesCommit(sha="x", fichiers_changes=20)
+        facteurs = _identifier_facteurs_dominants(
+            features, {"fichiers_changes": 0.5}, seuil=0.20
+        )
+        assert any("fichiers modifiés" in f.lower() for f in facteurs)
+
+    def test_facteur_mots_suspects(self):
+        """Mots suspects au-dessus du seuil (lignes 367-371)."""
+        features = FeaturesCommit(sha="x", mots_suspects_count=5)
+        facteurs = _identifier_facteurs_dominants(
+            features, {"mots_suspects": 0.5}, seuil=0.20
+        )
+        assert any("mots suspects" in f.lower() for f in facteurs)
+
+    def test_facteur_fichiers_binaires(self):
+        """Fichiers binaires au-dessus du seuil (lignes 372-373)."""
+        features = FeaturesCommit(sha="x", fichiers_binaires=3)
+        facteurs = _identifier_facteurs_dominants(
+            features, {"fichiers_binaires": 0.5}, seuil=0.20
+        )
+        assert any("binaires" in f.lower() for f in facteurs)
+
+    def test_facteur_weekend(self):
+        """Commit le week-end (lignes 377-379)."""
+        features = FeaturesCommit(sha="x", est_weekend=True)
+        facteurs = _identifier_facteurs_dominants(features, {}, seuil=0.20)
+        assert any("week-end" in f.lower() for f in facteurs)
+
+    def test_facteur_hors_heures(self):
+        """Commit hors heures ouvrées (lignes 375-376)."""
+        features = FeaturesCommit(sha="x", hors_heures_bureau=True, heure=3)
+        facteurs = _identifier_facteurs_dominants(features, {}, seuil=0.20)
+        assert any("hors heures" in f.lower() for f in facteurs)
+
+
+class TestExtraireFeaturesBranches(unittest.TestCase):
+    """Tests couvrant les branches de extraire_features (lignes 214-215)."""
+
+    def test_timestamp_parsing_invalide(self):
+        """Timestamp malformé → fallback à 12h (lignes 214-215)."""
+        with patch("phi_complexity.commit_risk._run_git") as mock_git:
+
+            def side_effect(args, cwd=None):
+                if "--format=%ai" in args:
+                    return "not-a-date"
+                if "--format=%ad" in args:
+                    return "1"
+                if "--format=%s" in args:
+                    return "fix: something"
+                if "--format=%an" in args:
+                    return "Dev"
+                if "--numstat" in args:
+                    return "1\t1\tfile.py"
+                if "--name-only" in args:
+                    return "file.py"
+                return "abc123"
+
+            mock_git.side_effect = side_effect
+            features = extraire_features("abc123")
+            assert features.heure == 12
