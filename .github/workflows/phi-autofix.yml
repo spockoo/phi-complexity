@@ -115,7 +115,7 @@ jobs:
           python-version: "3.12"
 
       - name: 📦 Installer phi-complexity
-        run: pip install -e . ruff black
+        run: pip install -e . ruff black mypy pytest pytest-cov
 
       - name: 🔎 Télécharger le diagnostic artifact
         uses: actions/github-script@v7
@@ -159,6 +159,28 @@ jobs:
             const { owner, repo } = context.repo;
             const data = JSON.parse(fs.readFileSync(".phi/ci-auto-diagnostic.json", "utf8"));
             const runId = data.run_id;
+            const SOURCE_WORKFLOW_ALLOWLIST = new Set([
+              ".github/workflows/ci-auto-diagnostic.yml",
+              ".github/workflows/phi-autofix.yml",
+              ".github/workflows/tests.yml"
+            ]);
+
+            function isAllowedSourcePath(path) {
+              if (!path || path.endsWith(".zip")) return false;
+              if (path.endsWith(".py")) return true;
+              if (path === "pyproject.toml") return true;
+              return SOURCE_WORKFLOW_ALLOWLIST.has(path);
+            }
+
+            function listPaths(command) {
+              const raw = execSync(command, { shell: true, encoding: "utf8" }).trim();
+              return raw ? raw.split("\n").map((line) => line.trim()).filter(Boolean) : [];
+            }
+
+            function quotePath(path) {
+              return JSON.stringify(path);
+            }
+
             const DETERMINISTIC_CATALOGUE = {
               QUALITY_GATE: "ruff check --fix . && black .",
               DEPENDENCY_INSTALL: "pip install -e . --upgrade",
@@ -178,34 +200,158 @@ jobs:
                 continue;
               }
               const safeRunId = String(parsedRunId);
-              const branch = `autofix/run-${safeRunId}-${safeCategory.toLowerCase()}`;
+              const branch = `autofix/${safeCategory.toLowerCase()}`;
               try {
-                execSync(`git checkout -b ${branch}`, { stdio: "inherit" });
+                execSync("rm -f diag-artifact.zip", { shell: true });
+                execSync("git fetch origin", { stdio: "inherit", shell: true });
+                try {
+                  execSync(`git checkout -B ${branch} origin/${branch}`, { stdio: "inherit", shell: true });
+                } catch {
+                  execSync("git checkout main", { stdio: "inherit", shell: true });
+                  execSync(`git checkout -B ${branch}`, { stdio: "inherit", shell: true });
+                }
                 const cmd = DETERMINISTIC_CATALOGUE[mutation.category];
                 execSync(cmd, { stdio: "inherit", shell: true });
+                const changedPaths = listPaths("git diff --name-only");
+                const sourcePaths = changedPaths.filter(isAllowedSourcePath);
+                if (sourcePaths.length === 0) {
+                  console.log(
+                    `Aucun changement source applicable pour ${safeCategory}; PR non créée (no-op/artefact-only).`
+                  );
+                  execSync("git reset --hard", { stdio: "inherit", shell: true });
+                  execSync("git clean -fd", { stdio: "inherit", shell: true });
+                  continue;
+                }
+                const disallowedPaths = changedPaths.filter((path) => !isAllowedSourcePath(path));
+                if (disallowedPaths.length > 0) {
+                  console.log(
+                    `Fichiers non autorisés ignorés pour ${safeCategory}: ${disallowedPaths.join(", ")}`
+                  );
+                  execSync(
+                    `git restore --worktree --staged -- ${disallowedPaths.map(quotePath).join(" ")}`,
+                    { stdio: "inherit", shell: true }
+                  );
+                }
+                execSync(`git add -- ${sourcePaths.map(quotePath).join(" ")}`, {
+                  stdio: "inherit",
+                  shell: true
+                });
+                const stagedPaths = listPaths("git diff --cached --name-only");
+                if (stagedPaths.length === 0) {
+                  console.log(`Aucun changement source stageable pour ${safeCategory}; skip.`);
+                  execSync("git reset --hard", { stdio: "inherit", shell: true });
+                  execSync("git clean -fd", { stdio: "inherit", shell: true });
+                  continue;
+                }
+                const stagedDisallowed = stagedPaths.filter((path) => !isAllowedSourcePath(path));
+                if (stagedDisallowed.length > 0) {
+                  throw new Error(`Fichiers non autorisés dans le commit: ${stagedDisallowed.join(", ")}`);
+                }
+                execSync(
+                  "ruff check . && black --check . && python -m mypy phi_complexity --ignore-missing-imports && pytest --cov=phi_complexity --cov-report=term-missing --cov-fail-under=89 -q",
+                  { stdio: "inherit", shell: true }
+                );
                 execSync("git config user.name 'github-actions[bot]'");
                 execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
                 const commitMsg = `🔧 autofix(${safeCategory}): mutation déterministe — run #${safeRunId}`;
-                execSync(
-                  "git add -A && git diff --cached --quiet || git commit --message=" + JSON.stringify(commitMsg),
-                  { shell: true }
-                );
+                execSync("git commit --message=" + JSON.stringify(commitMsg), { stdio: "inherit", shell: true });
                 execSync(`git push origin ${branch}`, { stdio: "inherit" });
-                const pr = await github.rest.pulls.create({
+                const headRef = `${owner}:${branch}`;
+                const existingPrs = await github.paginate(github.rest.pulls.list, {
                   owner,
                   repo,
-                  title: `🔧 [phi:autofix] ${safeCategory} — Run #${safeRunId}`,
-                  head: branch,
+                  state: "open",
+                  head: headRef,
                   base: "main",
-                  body: `## 🧬 Mutation déterministe automatique\n\n- **Catégorie** : ${safeCategory}\n- **Confiance** : ${(mutation.confidence * 100).toFixed(0)}%\n- **Action** : ${mutation.action}\n- **Run source** : https://github.com/${owner}/${repo}/actions/runs/${safeRunId}\n\n> Généré automatiquement par phi-autofix.`,
-                  draft: true
+                  per_page: 100
                 });
-                console.log(`PR créée : ${pr.data.html_url}`);
+                const prBody = `## 🧬 Mutation déterministe automatique\n\n- **Catégorie** : ${safeCategory}\n- **Confiance** : ${(mutation.confidence * 100).toFixed(0)}%\n- **Action** : ${mutation.action}\n- **Run source** : https://github.com/${owner}/${repo}/actions/runs/${safeRunId}\n\n> Généré automatiquement par phi-autofix.`;
+                if (existingPrs.length > 0) {
+                  const existing = existingPrs[0];
+                  await github.rest.pulls.update({
+                    owner,
+                    repo,
+                    pull_number: existing.number,
+                    title: `🔧 [phi:autofix] ${safeCategory} — Run #${safeRunId}`,
+                    body: prBody
+                  });
+                  console.log(`PR mise à jour : ${existing.html_url}`);
+                } else {
+                  const pr = await github.rest.pulls.create({
+                    owner,
+                    repo,
+                    title: `🔧 [phi:autofix] ${safeCategory} — Run #${safeRunId}`,
+                    head: branch,
+                    base: "main",
+                    body: prBody,
+                    draft: true
+                  });
+                  console.log(`PR créée : ${pr.data.html_url}`);
+                }
               } catch (err) {
                 console.error(`Erreur pour ${mutation.category}: ${err.message}`);
               } finally {
                 try {
-                  execSync("git checkout main", { stdio: "inherit" });
+                  execSync("git checkout main", { stdio: "inherit", shell: true });
+                  execSync("git reset --hard", { stdio: "inherit", shell: true });
+                  execSync("git clean -fd", { stdio: "inherit", shell: true });
                 } catch {}
               }
+            }
+
+      - name: 🧹 Gouvernance des PR autofix no-op
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const NOOP_LABEL = "autofix/no-op";
+            function isSourcePath(path) {
+              if (!path || path.endsWith(".zip")) return false;
+              if (path.endsWith(".py")) return true;
+              if (path === "pyproject.toml") return true;
+              return (
+                path === ".github/workflows/ci-auto-diagnostic.yml" ||
+                path === ".github/workflows/phi-autofix.yml" ||
+                path === ".github/workflows/tests.yml"
+              );
+            }
+            try {
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: NOOP_LABEL,
+                color: "c2e0c6",
+                description: "Autofix PR sans changement source exécutable"
+              });
+            } catch {}
+            const openAutofixPrs = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100
+            });
+            for (const pr of openAutofixPrs) {
+              if (pr.user?.login !== "github-actions[bot]") continue;
+              if (!String(pr.title || "").includes("[phi:autofix]")) continue;
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number: pr.number,
+                per_page: 100
+              });
+              const hasSourceChange = files.some((file) => isSourcePath(file.filename));
+              if (hasSourceChange) continue;
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pr.number,
+                labels: [NOOP_LABEL]
+              });
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                state: "closed"
+              });
+              console.log(`PR no-op fermée: ${pr.html_url}`);
             }
