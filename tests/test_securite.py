@@ -10,6 +10,9 @@ import shutil
 from phi_complexity.securite import (
     signer_rapport,
     verifier_signature,
+    signer_attestation,
+    verifier_attestation,
+    RegistreClesAttestation,
     valider_chemin_fichier,
     sanitiser_contenu_asm,
     JournalAudit,
@@ -21,6 +24,10 @@ from phi_complexity.securite import (
     journaliser_conflit_audit,
     resoudre_conflit_par_consensus,
     verifier_politique_securite,
+    calculer_score_risque_global,
+    evaluer_politique_gouvernance,
+    detecter_drift_heuristique,
+    construire_dossier_preuve,
     _est_finding_securite,
 )
 
@@ -195,6 +202,34 @@ class TestJournalAudit:
                 journal.enregistrer(f"OP_{i}", {"i": i})
             entries = journal.lire_journal(limite=3)
             assert len(entries) == 3
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_journal_chainage_prev_hash(self):
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalAudit(workspace_root=workspace)
+            journal.enregistrer("A", {"x": 1})
+            journal.enregistrer("B", {"x": 2})
+            entries = journal.lire_journal()
+            assert entries[0]["prev_hash"] == ""
+            assert entries[1]["prev_hash"] == entries[0]["hash"]
+            assert journal.verifier_integrite() is True
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_journal_chainage_corrompu(self):
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalAudit(workspace_root=workspace)
+            for i in range(4):
+                journal.enregistrer(f"OP_{i}", {"i": i})
+            entries = journal.lire_journal(limite=10)
+            entries[2]["prev_hash"] = "tampered"
+            with open(journal.journal_path, "w", encoding="utf-8") as f:
+                for entry in entries:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            assert journal.verifier_integrite() is False
         finally:
             shutil.rmtree(workspace)
 
@@ -756,6 +791,94 @@ class TestFindingFromPhiBranches:
             assert evenement["resolution"]["consensus_score"] >= 0
         finally:
             shutil.rmtree(workspace)
+
+
+class TestAttestationEtGouvernance:
+    def test_signer_et_verifier_attestation(self):
+        payload = {"run_id": 1, "score": 92.1}
+        attestation = signer_attestation(payload, "secret-test", key_id="k1")
+        assert attestation["algorithm"] == "HMAC-SHA256"
+        assert verifier_attestation(attestation, "secret-test") is True
+        assert verifier_attestation(attestation, "wrong-secret") is False
+        assert (
+            verifier_attestation(attestation, "secret-test", revoked_key_ids=["k1"])
+            is False
+        )
+
+    def test_registre_rotation_et_revocation(self):
+        workspace = tempfile.mkdtemp()
+        try:
+            registre = RegistreClesAttestation(workspace_root=workspace)
+            nouvelle = registre.rotation("k-rotate")
+            assert nouvelle["key_id"] == "k-rotate"
+            active = registre.cle_active()
+            assert active is not None
+            assert active["key_id"] == "k-rotate"
+            registre.revoquer("k-rotate")
+            assert registre.cle_active() is None
+            data = registre.charger()
+            assert "k-rotate" in data["revoked"]
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_score_risque_global_et_policy_profiles(self):
+        score = calculer_score_risque_global(
+            shield_risk=0.2,
+            sentinel_risk=0.1,
+            codeql_risk=0.05,
+            dependencies_risk=0.0,
+        )
+        assert 0.0 <= score["global_security_score"] <= 100.0
+
+        policy_oss = evaluer_politique_gouvernance(
+            global_security_score=score["global_security_score"],
+            blocking_findings=0,
+            profile="oss",
+        )
+        assert policy_oss["status"] == "PASS"
+
+        policy_enterprise = evaluer_politique_gouvernance(
+            global_security_score=72.0,
+            blocking_findings=0,
+            profile="enterprise",
+        )
+        assert policy_enterprise["status"] == "FAIL"
+
+    def test_detecter_drift_heuristique(self):
+        stable = detecter_drift_heuristique([0.4] * 20, window=8, tolerance=0.1)
+        assert stable["drift_detected"] is False
+
+        drift = detecter_drift_heuristique(
+            [0.7] * 20 + [0.2] * 8,
+            window=8,
+            tolerance=0.1,
+        )
+        assert drift["drift_detected"] is True
+
+    def test_detecter_drift_heuristique_baseline_insuffisante(self):
+        result = detecter_drift_heuristique([0.8, 0.7, 0.6, 0.5], window=4)
+        assert result["reason"] == "insufficient_baseline"
+        assert result["drift_detected"] is False
+
+    def test_construire_dossier_preuve_avec_attestation(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            artifact_path = os.path.join(tmpdir, "audit.json")
+            with open(artifact_path, "w", encoding="utf-8") as f:
+                json.dump({"ok": True}, f)
+
+            dossier = construire_dossier_preuve(
+                {"audit": artifact_path, "missing": os.path.join(tmpdir, "404.json")},
+                metadata={"profile": "enterprise"},
+                cle_secrete="secret-test",
+                key_id="k-proof",
+            )
+            assert dossier["proof_bundle"]["artifacts"]["audit"]["exists"] is True
+            assert dossier["proof_bundle"]["artifacts"]["missing"]["exists"] is False
+            assert "attestation" in dossier
+            assert verifier_attestation(dossier["attestation"], "secret-test") is True
+        finally:
+            shutil.rmtree(tmpdir)
 
 
 class TestFindingsFromSarifBranches:

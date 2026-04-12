@@ -13,8 +13,10 @@ Phase 20 du Morphic Phi Framework.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
+import secrets
 import sys
 import time
 from typing import Any, Dict, List, Optional, Sequence
@@ -136,12 +138,40 @@ class JournalAudit:
         if not os.path.exists(self.phi_dir):
             os.makedirs(self.phi_dir)
 
+    def _dernier_hash(self) -> str:
+        """Lit efficacement le hash du dernier événement sans parser tout le journal."""
+        if not os.path.exists(self.journal_path):
+            return ""
+        try:
+            with open(self.journal_path, "rb") as f:
+                f.seek(0, os.SEEK_END)
+                taille = f.tell()
+                if taille == 0:
+                    return ""
+                taille_buffer = min(8192, taille)
+                f.seek(-taille_buffer, os.SEEK_END)
+                extrait = f.read(taille_buffer).decode("utf-8", errors="ignore")
+                lignes = [
+                    ligne.strip() for ligne in extrait.splitlines() if ligne.strip()
+                ]
+                ligne = lignes[-1] if lignes else ""
+            if not ligne:
+                return ""
+            dernier = json.loads(ligne)
+            if not isinstance(dernier, dict):
+                return ""
+            return str(dernier.get("hash", ""))
+        except (OSError, json.JSONDecodeError):
+            return ""
+
     def enregistrer(self, operation: str, details: Dict[str, Any]) -> None:
         """Enregistre un événement dans le journal d'audit (append-only)."""
+        precedent_hash = self._dernier_hash()
         evenement = {
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "operation": operation,
             "details": details,
+            "prev_hash": precedent_hash,
         }
         # Hash de l'événement pour intégrité
         evenement_json = json.dumps(evenement, sort_keys=True, ensure_ascii=False)
@@ -164,13 +194,18 @@ class JournalAudit:
     def verifier_integrite(self) -> bool:
         """Vérifie l'intégrité du journal d'audit."""
         entries = self.lire_journal(10000)
+        hash_precedent = ""
         for entry in entries:
+            prev_hash = str(entry.get("prev_hash", ""))
+            if prev_hash != hash_precedent:
+                return False
             hash_enregistre = entry.pop("hash", "")
             entry_json = json.dumps(entry, sort_keys=True, ensure_ascii=False)
             hash_calcule = hashlib.sha256(entry_json.encode()).hexdigest()
             entry["hash"] = hash_enregistre
             if hash_calcule != hash_enregistre:
                 return False
+            hash_precedent = hash_enregistre
         return True
 
 
@@ -849,3 +884,249 @@ def verifier_politique_securite(
     score = float(summary.get("security_score", 0.0))
     blocking = int(summary.get("blocking_findings", 0))
     return score >= min_security_score and blocking == 0
+
+
+# ────────────────────────────────────────────────────────
+# CRYPTO & GOUVERNANCE (Phase 23+)
+# ────────────────────────────────────────────────────────
+
+# Pondérations de risque inspirées de la décroissance φ :
+# shield (signal le plus déterministe) > sentinel > codeql > dépendances.
+_RISK_WEIGHT_RAW = {
+    "shield": PHI,
+    "sentinel": 1.0,
+    "codeql": 1.0 / PHI,
+    "dependencies": 1.0 / (PHI**2),
+}
+_RISK_WEIGHT_SUM = sum(_RISK_WEIGHT_RAW.values())
+_RISK_WEIGHTS = {k: v / _RISK_WEIGHT_SUM for k, v in _RISK_WEIGHT_RAW.items()}
+
+_POLICY_PROFILES: Dict[str, Dict[str, float]] = {
+    "oss": {"min_score": 70.0, "max_blocking": 0, "sla_critical_h": 72.0},
+    "strict": {"min_score": 82.0, "max_blocking": 0, "sla_critical_h": 24.0},
+    "enterprise": {"min_score": 90.0, "max_blocking": 0, "sla_critical_h": 8.0},
+}
+
+
+def _json_canonique(payload: Dict[str, Any]) -> str:
+    return json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    )
+
+
+def signer_attestation(
+    payload: Dict[str, Any], cle_secrete: str, key_id: str = "local-default"
+) -> Dict[str, Any]:
+    """Signe une attestation JSON avec HMAC-SHA256 (offline-first)."""
+    if not cle_secrete:
+        raise ValueError("Secret key cannot be empty")
+    message = _json_canonique(payload).encode("utf-8")
+    signature = hmac.new(
+        cle_secrete.encode("utf-8"), message, hashlib.sha256
+    ).hexdigest()
+    return {
+        "spec": "phi-attestation/1.0",
+        "algorithm": "HMAC-SHA256",
+        "key_id": key_id,
+        "signed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "payload": payload,
+        "signature": signature,
+    }
+
+
+def verifier_attestation(
+    attestation: Dict[str, Any],
+    cle_secrete: str,
+    revoked_key_ids: Optional[Sequence[str]] = None,
+) -> bool:
+    """Vérifie une attestation et refuse les clés révoquées."""
+    revoked = {str(k) for k in (revoked_key_ids or [])}
+    key_id = str(attestation.get("key_id", ""))
+    if key_id in revoked:
+        return False
+    payload = attestation.get("payload")
+    signature = str(attestation.get("signature", ""))
+    if not isinstance(payload, dict) or not signature or not cle_secrete:
+        return False
+    expected = signer_attestation(payload, cle_secrete, key_id=key_id).get("signature")
+    return hmac.compare_digest(str(expected), signature)
+
+
+class RegistreClesAttestation:
+    """Registre local des clés d'attestation (rotation + révocation)."""
+
+    def __init__(self, workspace_root: str = ".") -> None:
+        self.phi_dir = os.path.join(workspace_root, ".phi")
+        self.path = os.path.join(self.phi_dir, "attestation_keys.json")
+        if not os.path.exists(self.phi_dir):
+            os.makedirs(self.phi_dir)
+
+    def charger(self) -> Dict[str, Any]:
+        if not os.path.exists(self.path):
+            return {"active_key_id": "", "keys": {}, "revoked": []}
+        try:
+            with open(self.path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return {"active_key_id": "", "keys": {}, "revoked": []}
+            return {
+                "active_key_id": str(data.get("active_key_id", "")),
+                "keys": dict(data.get("keys", {})),
+                "revoked": [str(k) for k in data.get("revoked", [])],
+            }
+        except (OSError, json.JSONDecodeError):
+            return {"active_key_id": "", "keys": {}, "revoked": []}
+
+    def _sauver(self, data: Dict[str, Any]) -> None:
+        with open(self.path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def rotation(self, key_id: Optional[str] = None) -> Dict[str, str]:
+        data = self.charger()
+        key_id_final = key_id or f"key-{int(time.time())}"
+        # 32 random bytes => 256 bits entropy (aligned with SHA-256).
+        new_key = secrets.token_hex(32)
+        data["keys"][key_id_final] = new_key
+        data["active_key_id"] = key_id_final
+        self._sauver(data)
+        return {"key_id": key_id_final, "secret": new_key}
+
+    def revoquer(self, key_id: str) -> None:
+        data = self.charger()
+        if key_id not in data["revoked"]:
+            data["revoked"].append(key_id)
+        if data.get("active_key_id") == key_id:
+            data["active_key_id"] = ""
+        self._sauver(data)
+
+    def cle_active(self) -> Optional[Dict[str, str]]:
+        data = self.charger()
+        active = str(data.get("active_key_id", ""))
+        cle = str(data.get("keys", {}).get(active, ""))
+        if not active or not cle:
+            return None
+        return {"key_id": active, "secret": cle}
+
+
+def calculer_score_risque_global(
+    *,
+    shield_risk: float,
+    sentinel_risk: float,
+    codeql_risk: float,
+    dependencies_risk: float,
+) -> Dict[str, Any]:
+    """Fusionne plusieurs signaux de risque [0,1] en score global [0,100]."""
+    composants = {
+        "shield": max(0.0, min(1.0, shield_risk)),
+        "sentinel": max(0.0, min(1.0, sentinel_risk)),
+        "codeql": max(0.0, min(1.0, codeql_risk)),
+        "dependencies": max(0.0, min(1.0, dependencies_risk)),
+    }
+    risque_fusionne = sum(_RISK_WEIGHTS[k] * v for k, v in composants.items())
+    score = round((1.0 - risque_fusionne) * 100.0, 2)
+    return {
+        "global_security_score": score,
+        "global_risk": round(risque_fusionne, 4),
+        "components": composants,
+        "weights": {k: round(v, 4) for k, v in _RISK_WEIGHTS.items()},
+    }
+
+
+def evaluer_politique_gouvernance(
+    *,
+    global_security_score: float,
+    blocking_findings: int,
+    profile: str = "oss",
+) -> Dict[str, Any]:
+    """Applique une politique de gate selon un profil OSS/strict/enterprise."""
+    profil = profile.lower().strip()
+    cfg = _POLICY_PROFILES.get(profil, _POLICY_PROFILES["oss"])
+    pass_score = global_security_score >= float(cfg["min_score"])
+    pass_blocking = blocking_findings <= int(cfg["max_blocking"])
+    status = "PASS" if pass_score and pass_blocking else "FAIL"
+    return {
+        "profile": profil if profil in _POLICY_PROFILES else "oss",
+        "status": status,
+        "reasons": {
+            "score_ok": pass_score,
+            "blocking_ok": pass_blocking,
+        },
+        "thresholds": cfg,
+        "sla": {
+            "critical_max_hours": cfg["sla_critical_h"],
+            "high_max_hours": round(cfg["sla_critical_h"] * PHI, 2),
+            "medium_max_hours": round(cfg["sla_critical_h"] * (PHI**2), 2),
+        },
+    }
+
+
+def detecter_drift_heuristique(
+    scores: Sequence[float], window: int = 12, tolerance: float = 0.15
+) -> Dict[str, Any]:
+    """Détecte une dérive entre baseline et fenêtre récente sur une série [0,1]."""
+    valeurs = [max(0.0, min(1.0, float(v))) for v in scores]
+    if len(valeurs) < max(4, window):
+        return {
+            "drift_detected": False,
+            "reason": "insufficient_history",
+            "baseline": None,
+            "recent": None,
+            "delta": 0.0,
+        }
+    recent = valeurs[-window:]
+    baseline = valeurs[:-window]
+    if not baseline:
+        return {
+            "drift_detected": False,
+            "reason": "insufficient_baseline",
+            "baseline": None,
+            "recent": round(sum(recent) / float(window), 4),
+            "delta": 0.0,
+            "tolerance": round(tolerance, 4),
+        }
+    baseline_mean = sum(baseline) / float(len(baseline))
+    recent_mean = sum(recent) / float(window)
+    delta = recent_mean - baseline_mean
+    return {
+        "drift_detected": abs(delta) >= tolerance,
+        "reason": "delta_exceeds_tolerance" if abs(delta) >= tolerance else "stable",
+        "baseline": round(baseline_mean, 4),
+        "recent": round(recent_mean, 4),
+        "delta": round(delta, 4),
+        "tolerance": round(tolerance, 4),
+    }
+
+
+def construire_dossier_preuve(
+    artefacts: Dict[str, str],
+    *,
+    metadata: Optional[Dict[str, Any]] = None,
+    cle_secrete: Optional[str] = None,
+    key_id: str = "local-default",
+) -> Dict[str, Any]:
+    """Construit un dossier de preuve traçable et optionnellement attesté."""
+    traces: Dict[str, Dict[str, Any]] = {}
+    for nom, chemin in artefacts.items():
+        if not chemin or not os.path.exists(chemin) or not os.path.isfile(chemin):
+            traces[nom] = {"path": chemin, "exists": False}
+            continue
+        with open(chemin, "rb") as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        traces[nom] = {
+            "path": chemin,
+            "exists": True,
+            "sha256": digest,
+            "size": os.path.getsize(chemin),
+        }
+
+    payload = {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "metadata": dict(metadata or {}),
+        "artifacts": traces,
+    }
+    dossier = {"proof_bundle": payload}
+    if cle_secrete:
+        dossier["attestation"] = signer_attestation(
+            payload, cle_secrete=cle_secrete, key_id=key_id
+        )
+    return dossier

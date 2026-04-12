@@ -60,6 +60,34 @@ phi shield ./phi_complexity \
   --min-security-score 70
 ```
 
+## CI Auto-Diagnostic — Mode observabilité vs blocage
+
+Le workflow `ci-auto-diagnostic.yml` supporte maintenant deux modes :
+
+- `PHI_CI_RESONANCE_MODE=observe` (défaut) : mesure + classification, sans blocage.
+- `PHI_CI_RESONANCE_MODE=block` : blocage actif si la résonance passe sous le seuil dynamique.
+
+Variables associées :
+
+- `PHI_CI_RESONANCE_MIN` : plancher du seuil dynamique.
+- `PHI_CI_RESONANCE_MAX` : plafond du seuil dynamique.
+- `PHI_CI_RESONANCE_MARGIN` : marge retranchée à la baseline historique.
+- `PHI_CI_RESONANCE_WINDOW` : taille de fenêtre historique utilisée.
+
+Les faux positifs opérationnels (ex: auto-échec de gate en calibration) sont classés
+`OPERATIONAL_FALSE_POSITIVE` et ne déclenchent pas de blocage en mode dynamique.
+
+## Provenance, attestations et gouvernance
+
+Le module `phi_complexity.securite` inclut maintenant :
+
+- **journal chaîné** (`JournalAudit.prev_hash`) pour l'intégrité append-only ;
+- **attestations signées** offline-first (`signer_attestation` / `verifier_attestation`) ;
+- **rotation/révocation de clés** (`RegistreClesAttestation`) ;
+- **score de risque global unifié** (`calculer_score_risque_global`) ;
+- **politiques de gate** (`evaluer_politique_gouvernance`) avec profils `oss`, `strict`, `enterprise` ;
+- **dossier de preuve** (`construire_dossier_preuve`) pour centraliser les artefacts d'audit.
+
 ## Chasse aux Menaces Éthique (Phase 22+)
 
 Le projet intègre désormais des outils de chasse aux menaces (threat hunting) éthiques :
