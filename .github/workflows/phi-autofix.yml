@@ -164,17 +164,26 @@ jobs:
               ".github/workflows/phi-autofix.yml",
               ".github/workflows/tests.yml"
             ]);
+            // Keep in sync with pyproject.toml/CI coverage gate.
+            const COVERAGE_THRESHOLD = 89;
+            const VALIDATION_CMD =
+              `ruff check . && black --check . && python -m mypy phi_complexity --ignore-missing-imports ` +
+              `&& pytest --cov=phi_complexity --cov-report=term-missing --cov-fail-under=${COVERAGE_THRESHOLD} -q`;
 
             function isAllowedSourcePath(path) {
               if (!path || path.endsWith(".zip")) return false;
-              if (path.endsWith(".py")) return true;
+              if (SOURCE_WORKFLOW_ALLOWLIST.has(path)) return true;
               if (path === "pyproject.toml") return true;
-              return SOURCE_WORKFLOW_ALLOWLIST.has(path);
+              return path.endsWith(".py");
             }
 
             function listPaths(command) {
-              const raw = execSync(command, { shell: true, encoding: "utf8" }).trim();
-              return raw ? raw.split("\n").map((line) => line.trim()).filter(Boolean) : [];
+              try {
+                const raw = execSync(command, { shell: true, encoding: "utf8" }).trim();
+                return raw ? raw.split("\n").map((line) => line.trim()).filter(Boolean) : [];
+              } catch (error) {
+                throw new Error(`Commande git échouée (${command}): ${error.message}`);
+              }
             }
 
             function quotePath(path) {
@@ -247,10 +256,7 @@ jobs:
                 if (stagedDisallowed.length > 0) {
                   throw new Error(`Fichiers non autorisés dans le commit: ${stagedDisallowed.join(", ")}`);
                 }
-                execSync(
-                  "ruff check . && black --check . && python -m mypy phi_complexity --ignore-missing-imports && pytest --cov=phi_complexity --cov-report=term-missing --cov-fail-under=89 -q",
-                  { stdio: "inherit", shell: true }
-                );
+                execSync(VALIDATION_CMD, { stdio: "inherit", shell: true });
                 execSync("git config user.name 'github-actions[bot]'");
                 execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
                 const commitMsg = `🔧 autofix(${safeCategory}): mutation déterministe — run #${safeRunId}`;
@@ -305,15 +311,9 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const NOOP_LABEL = "autofix/no-op";
-            function isSourcePath(path) {
-              if (!path || path.endsWith(".zip")) return false;
-              if (path.endsWith(".py")) return true;
-              if (path === "pyproject.toml") return true;
-              return (
-                path === ".github/workflows/ci-auto-diagnostic.yml" ||
-                path === ".github/workflows/phi-autofix.yml" ||
-                path === ".github/workflows/tests.yml"
-              );
+            function shouldExcludePath(path) {
+              if (!path) return true;
+              return path.endsWith(".zip") || path.startsWith(".phi/");
             }
             try {
               await github.rest.issues.createLabel({
@@ -339,8 +339,8 @@ jobs:
                 pull_number: pr.number,
                 per_page: 100
               });
-              const hasSourceChange = files.some((file) => isSourcePath(file.filename));
-              if (hasSourceChange) continue;
+              const isNoopPr = files.length === 0 || files.every((file) => shouldExcludePath(file.filename));
+              if (!isNoopPr) continue;
               await github.rest.issues.addLabels({
                 owner,
                 repo,
