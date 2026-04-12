@@ -141,6 +141,16 @@ jobs:
                   basis: "runner_state"
                 };
               }
+              if (matchesAny(stepName, ["checkout", "actions/checkout"])) {
+                return {
+                  category: "CHECKOUT_REF",
+                  confidence: 0.9,
+                  priority: 1,
+                  hint: "Échec checkout Git (ref/branche/tag introuvable ou invalide).",
+                  mutation: "Collecter les logs détaillés de checkout, vérifier que la ref cible existe encore puis relancer la CI.",
+                  basis: "failed_step"
+                };
+              }
               if (matchesAny(stepName, ["setup python", "setup node"])) {
                 return {
                   category: "TOOLCHAIN_SETUP",
