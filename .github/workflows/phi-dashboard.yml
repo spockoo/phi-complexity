@@ -2,7 +2,7 @@ name: "📊 Phi Dashboard — Tableau de Bord Hebdomadaire"
 
 on:
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '0 8 * * 1'  # Lundi 08h00 UTC
   workflow_dispatch:
 
 jobs:

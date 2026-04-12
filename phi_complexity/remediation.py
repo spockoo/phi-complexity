@@ -146,6 +146,8 @@ def appliquer_mutation(
             commandes_executees.append(cmd)
             if dry_run:
                 continue
+            # shell=True is safe here: commands come exclusively from the
+            # static CATALOGUE_MUTATIONS, never from external user input.
             proc = subprocess.run(
                 cmd,
                 shell=True,

@@ -566,14 +566,6 @@ jobs:
             }
             body += `> Généré automatiquement par le pipeline φ-Diagnostic.\n`;
             try {
-              await github.rest.issues.addLabels({
-                owner,
-                repo,
-                issue_number: 0,
-                labels: ["phi:needs-autofix"]
-              });
-            } catch {}
-            try {
               await github.rest.issues.createLabel({
                 owner,
                 repo,

@@ -171,22 +171,25 @@ jobs:
                 Object.prototype.hasOwnProperty.call(DETERMINISTIC_CATALOGUE, m.category)
             );
             for (const mutation of applicable) {
-              const branch = `autofix/run-${runId}-${mutation.category.toLowerCase()}`;
+              const safeCategory = mutation.category.replace(/[^A-Z_]/g, "");
+              const safeRunId = String(parseInt(String(runId), 10));
+              const branch = `autofix/run-${safeRunId}-${safeCategory.toLowerCase()}`;
               try {
                 execSync(`git checkout -b ${branch}`, { stdio: "inherit" });
                 const cmd = DETERMINISTIC_CATALOGUE[mutation.category];
                 execSync(cmd, { stdio: "inherit", shell: true });
                 execSync("git config user.name 'github-actions[bot]'");
                 execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
-                execSync(`git add -A && git diff --cached --quiet || git commit -m "🔧 autofix(${mutation.category}): mutation déterministe — run #${runId}"`, { shell: true });
+                const commitMsg = `🔧 autofix(${safeCategory}): mutation déterministe — run #${safeRunId}`;
+                execSync(`git add -A && git diff --cached --quiet || git commit -m "${commitMsg}"`, { shell: true });
                 execSync(`git push origin ${branch}`, { stdio: "inherit" });
                 const pr = await github.rest.pulls.create({
                   owner,
                   repo,
-                  title: `🔧 [phi:autofix] ${mutation.category} — Run #${runId}`,
+                  title: `🔧 [phi:autofix] ${safeCategory} — Run #${safeRunId}`,
                   head: branch,
                   base: "main",
-                  body: `## 🧬 Mutation déterministe automatique\n\n- **Catégorie** : ${mutation.category}\n- **Confiance** : ${(mutation.confidence * 100).toFixed(0)}%\n- **Action** : ${mutation.action}\n- **Run source** : https://github.com/${owner}/${repo}/actions/runs/${runId}\n\n> Généré automatiquement par phi-autofix.`,
+                  body: `## 🧬 Mutation déterministe automatique\n\n- **Catégorie** : ${safeCategory}\n- **Confiance** : ${(mutation.confidence * 100).toFixed(0)}%\n- **Action** : ${mutation.action}\n- **Run source** : https://github.com/${owner}/${repo}/actions/runs/${safeRunId}\n\n> Généré automatiquement par phi-autofix.`,
                   draft: true
                 });
                 console.log(`PR créée : ${pr.data.html_url}`);

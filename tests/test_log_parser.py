@@ -166,7 +166,7 @@ class TestEnrichirDepuisLogs:
         assert result.category == "UNCLASSIFIED"
 
 
-class TestCatalogueSigantures:
+class TestCatalogueSignatures:
     def test_catalogue_has_all_expected_categories(self) -> None:
         categories = {sig.category for sig in CATALOGUE_SIGNATURES}
         expected = {
