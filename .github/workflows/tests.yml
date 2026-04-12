@@ -41,7 +41,7 @@ jobs:
       - name: 📦 Installation des dépendances qualité
         run: |
           python -m pip install --upgrade pip
-          pip install ruff 'black==25.11.0' mypy
+          pip install 'ruff==0.15.10' 'black==25.11.0' 'mypy==1.20.0'
           pip install -e ".[notebooks]" || pip install -e .
           pip install ipython || true
 
@@ -166,7 +166,7 @@ jobs:
             echo ""
             echo "  2. Installer les dépendances :"
             echo "     pip install -e '.[notebooks]' || pip install -e ."
-            echo "     pip install ruff 'black==25.11.0' mypy pytest pytest-cov"
+            echo "     pip install 'ruff==0.15.10' 'black==25.11.0' 'mypy==1.20.0' pytest pytest-cov"
             echo ""
             echo "  3. Reproduire chaque étape CI dans l'ordre :"
             echo "     ruff check ."
