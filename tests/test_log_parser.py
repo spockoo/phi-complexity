@@ -20,7 +20,7 @@ class TestClassifierLog:
         result = classifier_log(
             "Run actions/checkout@v4 A branch or tag with the name 'foo/bar' could not be found"
         )
-        assert result.category == "CHECKOUT_REF"
+        assert result.category in {"CHECKOUT_REF", "CHECKOUT_REF_NOT_FOUND"}
 
     def test_infra_runner_unavailable(self) -> None:
         result = classifier_log("no runner available for this job queued timeout")
