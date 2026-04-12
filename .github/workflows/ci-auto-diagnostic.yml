@@ -48,6 +48,7 @@ jobs:
               "timed_out",
               "action_required"
             ]);
+            const ROOT_CAUSE_CONCLUSIONS = new Set(["failure", "timed_out"]);
 
             function getFailedStep(job) {
               return (job.steps || []).find((s) => s.conclusion === "failure") || null;
@@ -99,9 +100,11 @@ jobs:
               }
             );
 
-            const failedJobs = jobs.filter(
-              (job) => PROBLEM_CONCLUSIONS.has(job.conclusion)
+            const problemJobs = jobs.filter((job) => PROBLEM_CONCLUSIONS.has(job.conclusion));
+            const rootCauseJobs = problemJobs.filter((job) =>
+              ROOT_CAUSE_CONCLUSIONS.has(job.conclusion)
             );
+            const failedJobs = rootCauseJobs.length > 0 ? rootCauseJobs : problemJobs;
 
             function classifyJob(job) {
               const failedStep = getFailedStep(job);
