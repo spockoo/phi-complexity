@@ -13,10 +13,20 @@ permissions:
 
 jobs:
   classify-failures:
-    if: ${{ github.event.workflow_run.conclusion != 'success' }}
     runs-on: ubuntu-latest
+    env:
+      PHI_CI_RESONANCE_MIN: ${{ vars.PHI_CI_RESONANCE_MIN || '0.35' }}
 
     steps:
+      - name: ♻️ Restore historical CI memory
+        uses: actions/cache/restore@v4
+        with:
+          path: .phi/ci-history.jsonl
+          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}
+          restore-keys: |
+            ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-
+            ci-auto-diagnostic-history-${{ github.repository }}-
+
       - name: 🔎 Classifier les causes probables
         uses: actions/github-script@v7
         with:
@@ -34,6 +44,14 @@ jobs:
 
             function getFailedStep(job) {
               return (job.steps || []).find((s) => s.conclusion === "failure") || null;
+            }
+
+            function getDurationSeconds(job) {
+              if (!job.started_at || !job.completed_at) return 0;
+              const start = new Date(job.started_at).getTime();
+              const end = new Date(job.completed_at).getTime();
+              if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
+              return Math.round((end - start) / 1000);
             }
 
             const jobs = await github.paginate(
@@ -54,6 +72,8 @@ jobs:
             function classifyJob(job) {
               const failedStep = getFailedStep(job);
               const stepName = (failedStep?.name || "").toLowerCase();
+              const jobName = (job.name || "").toLowerCase();
+              const corpus = `${jobName} ${stepName}`;
               const runnerId =
                 job.runner_id === null || job.runner_id === undefined
                   ? 0
@@ -62,47 +82,99 @@ jobs:
               if (runnerId === 0 && (!job.steps || job.steps.length === 0)) {
                 return {
                   category: "INFRA_RUNNER_UNAVAILABLE",
-                  hint:
-                    "Label runner indisponible/non supporté. Vérifier runs-on dans la matrice."
+                  confidence: 0.97,
+                  priority: 1,
+                  hint: "Label runner indisponible/non supporté. Vérifier runs-on dans la matrice.",
+                  mutation: "Réduire la matrice au couple os/version supporté puis réactiver graduellement."
                 };
               }
-              if (stepName.includes("setup python")) {
+              if (corpus.includes("setup python") || corpus.includes("setup node")) {
                 return {
                   category: "TOOLCHAIN_SETUP",
-                  hint:
-                    "Échec setup Python/version. Vérifier versions supportées par actions/setup-python."
+                  confidence: 0.93,
+                  priority: 1,
+                  hint: "Échec setup toolchain/version. Vérifier versions supportées et cache toolchain.",
+                  mutation: "Épingler la version de runtime et désactiver temporairement le cache pour isoler."
                 };
               }
-              if (stepName.includes("installation")) {
+              if (corpus.includes("install") || corpus.includes("installation") || corpus.includes("pip")) {
                 return {
                   category: "DEPENDENCY_INSTALL",
-                  hint:
-                    "Échec installation dépendances. Vérifier pip, contraintes version, extras."
+                  confidence: 0.92,
+                  priority: 1,
+                  hint: "Échec installation dépendances. Vérifier contraintes version/verrouillage et index réseau.",
+                  mutation: "Régénérer le verrouillage de dépendances et ajouter retry exponentiel sur install."
                 };
               }
-              if (stepName.includes("imports critiques")) {
+              if (corpus.includes("permission") || corpus.includes("token") || corpus.includes("forbidden")) {
+                return {
+                  category: "PERMISSIONS",
+                  confidence: 0.9,
+                  priority: 1,
+                  hint: "Permissions insuffisantes (token/ACL). Vérifier permissions du workflow et secrets.",
+                  mutation: "Ajouter les permissions minimales requises au job et vérifier secrets disponibles."
+                };
+              }
+              if (corpus.includes("network") || corpus.includes("timeout") || corpus.includes("dns")) {
+                return {
+                  category: "NETWORK_TRANSIENT",
+                  confidence: 0.82,
+                  priority: 2,
+                  hint: "Instabilité réseau probable (timeouts/DNS).",
+                  mutation: "Introduire retries idempotents avec backoff et miroir de registry."
+                };
+              }
+              if (corpus.includes("imports critiques") || corpus.includes("import smoke")) {
                 return {
                   category: "API_CONTRACT_DRIFT",
-                  hint:
-                    "Imports critiques cassés. Mettre à jour le smoke-test selon l'API exportée."
+                  confidence: 0.95,
+                  priority: 1,
+                  hint: "Imports critiques cassés. Mettre à jour le smoke-test selon l'API exportée.",
+                  mutation: "Aligner l'API publique et le test de contrat import après revue des exports."
                 };
               }
-              if (stepName.includes("test") || stepName.includes("pytest")) {
+              if (corpus.includes("mypy") || corpus.includes("type check")) {
                 return {
-                  category: "TEST_FAILURE",
-                  hint: "Échec tests. Examiner stacktrace et régression fonctionnelle."
+                  category: "TYPE_CHECK",
+                  confidence: 0.95,
+                  priority: 1,
+                  hint: "Échec vérification de types (mypy).",
+                  mutation: "Corriger les annotations/types manquants ou isoler imports optionnels en mode typé."
                 };
               }
-              if (["mypy", "ruff", "black"].some((tool) => stepName.includes(tool))) {
+              if (corpus.includes("ruff") || corpus.includes("black") || corpus.includes("lint")) {
                 return {
                   category: "QUALITY_GATE",
-                  hint:
-                    "Échec qualité (lint/format/type). Reproduire localement les checks."
+                  confidence: 0.95,
+                  priority: 2,
+                  hint: "Échec qualité (lint/format). Reproduire localement les checks.",
+                  mutation: "Appliquer le formatage/lint en local et verrouiller la version des outils."
+                };
+              }
+              if (corpus.includes("pytest") || corpus.includes("test")) {
+                return {
+                  category: "TEST_REGRESSION",
+                  confidence: 0.88,
+                  priority: 1,
+                  hint: "Échec tests. Examiner stacktrace et régression fonctionnelle.",
+                  mutation: "Isoler le test fautif, reproduire localement, corriger puis ajouter garde anti-régression."
+                };
+              }
+              if (job.conclusion === "timed_out") {
+                return {
+                  category: "TIMEOUT_CAPACITY",
+                  confidence: 0.8,
+                  priority: 2,
+                  hint: "Job expiré. Capacité runner ou suite trop longue.",
+                  mutation: "Scinder le job en segments et activer cache pour réduire la durée."
                 };
               }
               return {
                 category: "UNCLASSIFIED",
-                hint: "Cause non classée automatiquement. Inspection manuelle nécessaire."
+                confidence: 0.55,
+                priority: 3,
+                hint: "Cause non classée automatiquement. Inspection manuelle nécessaire.",
+                mutation: "Collecter les logs détaillés et enrichir la taxonomie avec ce nouveau motif."
               };
             }
 
@@ -116,10 +188,131 @@ jobs:
                 runner_label: (job.labels || []).join(", "),
                 failed_step: failedStep ? failedStep.name : null,
                 category: cls.category,
+                confidence: cls.confidence,
+                priority: cls.priority,
                 hint: cls.hint,
+                mutation: cls.mutation,
+                duration_seconds: getDurationSeconds(job),
                 url: job.html_url
               };
             });
+
+            const durations = jobs
+              .map((job) => ({
+                job_name: job.name,
+                conclusion: job.conclusion,
+                duration_seconds: getDurationSeconds(job),
+                url: job.html_url
+              }))
+              .sort((a, b) => b.duration_seconds - a.duration_seconds);
+
+            const healthSnapshot = {
+              total_jobs: jobs.length,
+              successful_jobs: jobs.filter((j) => j.conclusion === "success").length,
+              failed_jobs: failedJobs.length,
+              slow_jobs: durations.filter((d) => d.duration_seconds > 0).slice(0, 5),
+              fragile_zones: durations
+                .filter((d) => d.duration_seconds >= 300 || d.conclusion === "timed_out")
+                .slice(0, 5)
+            };
+
+            const fs = require("fs");
+            fs.mkdirSync(".phi", { recursive: true });
+
+            const historyPath = ".phi/ci-history.jsonl";
+            const historyLines = fs.existsSync(historyPath)
+              ? fs
+                  .readFileSync(historyPath, "utf8")
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+              : [];
+            const history = historyLines
+              .map((line) => {
+                try {
+                  return JSON.parse(line);
+                } catch {
+                  return null;
+                }
+              })
+              .filter(Boolean);
+
+            const motifCounter = new Map();
+            for (const entry of history) {
+              for (const d of entry.diagnostics || []) {
+                const key = `${d.category || "UNCLASSIFIED"}::${d.failed_step || "-"}`;
+                motifCounter.set(key, (motifCounter.get(key) || 0) + 1);
+              }
+            }
+            const recurrentPatterns = [...motifCounter.entries()]
+              .filter(([, count]) => count >= 2)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([key, occurrences]) => {
+                const [category, failed_step] = key.split("::");
+                return { category, failed_step, occurrences };
+              });
+
+            const repeatedNow = diagnostics.filter((d) =>
+              recurrentPatterns.some(
+                (rp) => rp.category === d.category && (rp.failed_step || "-") === (d.failed_step || "-")
+              )
+            ).length;
+            const repeatability = diagnostics.length === 0 ? 0 : repeatedNow / diagnostics.length;
+            const failureRate = jobs.length === 0 ? 0 : diagnostics.length / jobs.length;
+            const categoryCounts = Object.values(
+              diagnostics.reduce((acc, d) => {
+                acc[d.category] = (acc[d.category] || 0) + 1;
+                return acc;
+              }, {})
+            );
+            const totalCategoryCount = categoryCounts.reduce((a, b) => a + b, 0);
+            const mean = categoryCounts.length === 0 ? 0 : totalCategoryCount / categoryCounts.length;
+            const variance =
+              categoryCounts.length <= 1
+                ? 0
+                // Population variance: we analyze all failure categories from the current run.
+                : categoryCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / categoryCounts.length;
+            const normalizedVariance = diagnostics.length === 0 ? 0 : Math.min(1, variance / diagnostics.length);
+            // φ-inspired weighting:
+            // - 0.62 approximates 1/φ (0.618...), dominant stability signal through failure rate.
+            // - 0.23 + 0.15 = 0.38 approximates 1 - 1/φ (0.382...).
+            const RESONANCE_WEIGHTS = {
+              failureRate: 0.62,
+              variance: 0.23,
+              repeatability: 0.15
+            };
+            const ciResonanceScore = Math.max(
+              0,
+              Math.min(
+                1,
+                1 -
+                  (
+                    RESONANCE_WEIGHTS.failureRate * failureRate +
+                    RESONANCE_WEIGHTS.variance * normalizedVariance +
+                    RESONANCE_WEIGHTS.repeatability * repeatability
+                  )
+              )
+            );
+
+            const categoryBest = new Map();
+            const rankedDiagnostics = [...diagnostics].sort(
+              (a, b) => a.priority - b.priority || b.confidence - a.confidence
+            );
+            for (const d of rankedDiagnostics) {
+              if (!categoryBest.has(d.category)) {
+                categoryBest.set(d.category, d);
+              }
+            }
+            const proposedMutations = [...categoryBest.values()]
+              .sort((a, b) => a.priority - b.priority || b.confidence - a.confidence)
+              .slice(0, 7)
+              .map((d) => ({
+                priority: d.priority,
+                category: d.category,
+                confidence: d.confidence,
+                action: d.mutation
+              }));
 
             const output = {
               repository: `${owner}/${repo}`,
@@ -128,14 +321,41 @@ jobs:
               run_attempt: run.run_attempt,
               run_conclusion: run.conclusion,
               detected_failures: diagnostics.length,
+              health_snapshot: healthSnapshot,
+              ci_resonance: {
+                score: Number(ciResonanceScore.toFixed(4)),
+                threshold: Number(process.env.PHI_CI_RESONANCE_MIN || 0.35),
+                components: {
+                  failure_rate: Number(failureRate.toFixed(4)),
+                  normalized_variance: Number(normalizedVariance.toFixed(4)),
+                  repeatability: Number(repeatability.toFixed(4))
+                }
+              },
+              recurrent_patterns: recurrentPatterns,
+              proposed_mutations: proposedMutations,
               diagnostics
             };
-
-            const fs = require("fs");
-            fs.mkdirSync(".phi", { recursive: true });
             fs.writeFileSync(
               ".phi/ci-auto-diagnostic.json",
               JSON.stringify(output, null, 2)
+            );
+
+            const historyEntry = {
+              analyzed_at: new Date().toISOString(),
+              workflow: run.name,
+              run_id: run.id,
+              run_attempt: run.run_attempt,
+              run_conclusion: run.conclusion,
+              ci_resonance: output.ci_resonance,
+              diagnostics
+            };
+            history.push(historyEntry);
+            // Keep 200 entries to balance trend visibility with artifact size and parsing cost.
+            const HISTORY_RETENTION_LIMIT = 200;
+            const trimmedHistory = history.slice(-HISTORY_RETENTION_LIMIT);
+            fs.writeFileSync(
+              historyPath,
+              trimmedHistory.map((entry) => JSON.stringify(entry)).join("\n") + "\n"
             );
 
             let summary = `## 🧠 CI Auto-Diagnostic\n\n`;
@@ -143,14 +363,45 @@ jobs:
             summary += `- Run: ${run.html_url}\n`;
             summary += `- Conclusion: **${run.conclusion}**\n`;
             summary += `- Échecs détectés: **${diagnostics.length}**\n\n`;
+            summary += `### ☼ Health Snapshot\n`;
+            summary += `- Jobs totaux: **${healthSnapshot.total_jobs}**\n`;
+            summary += `- Jobs succès: **${healthSnapshot.successful_jobs}**\n`;
+            summary += `- Jobs en échec: **${healthSnapshot.failed_jobs}**\n`;
+            summary += `- CI Resonance: **${(output.ci_resonance.score * 100).toFixed(1)}%** (seuil: ${(output.ci_resonance.threshold * 100).toFixed(1)}%)\n\n`;
+
+            if (healthSnapshot.slow_jobs.length > 0) {
+              summary += `#### Jobs les plus lents\n`;
+              summary += `| Job | Durée (s) | Conclusion |\n`;
+              summary += `|---|---:|---|\n`;
+              for (const j of healthSnapshot.slow_jobs) {
+                summary += `| [${j.job_name}](${j.url}) | ${j.duration_seconds} | ${j.conclusion || "-"} |\n`;
+              }
+              summary += `\n`;
+            }
 
             if (diagnostics.length === 0) {
-              summary += "Aucun job en échec classifiable.\n";
+              summary += "Aucun job en échec classifiable. Snapshot santé généré pour suivi préventif.\n";
             } else {
-              summary += "| Job | Catégorie | Étape en échec | Piste |\n";
-              summary += "|---|---|---|---|\n";
+              summary += `### 🧩 Classification des échecs\n`;
+              summary += "| Job | Catégorie | Confiance | Étape en échec | Piste |\n";
+              summary += "|---|---|---:|---|---|\n";
               for (const d of diagnostics) {
-                summary += `| [${d.job_name}](${d.url}) | ${d.category} | ${d.failed_step || "-"} | ${d.hint} |\n`;
+                summary += `| [${d.job_name}](${d.url}) | ${d.category} | ${(d.confidence * 100).toFixed(0)}% | ${d.failed_step || "-"} | ${d.hint} |\n`;
+              }
+              summary += `\n### 🧬 Mutations proposées (prêtes pour issue/PR)\n`;
+              summary += "| Priorité | Catégorie | Confiance | Mutation |\n";
+              summary += "|---:|---|---:|---|\n";
+              for (const m of proposedMutations) {
+                summary += `| ${m.priority} | ${m.category} | ${(m.confidence * 100).toFixed(0)}% | ${m.action} |\n`;
+              }
+            }
+
+            if (recurrentPatterns.length > 0) {
+              summary += `\n### 🔁 Motifs récurrents (mémoire CI)\n`;
+              summary += "| Catégorie | Étape | Occurrences |\n";
+              summary += "|---|---|---:|\n";
+              for (const p of recurrentPatterns) {
+                summary += `| ${p.category} | ${p.failed_step || "-"} | ${p.occurrences} |\n`;
               }
             }
 
@@ -160,5 +411,33 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ci-auto-diagnostic-${{ github.event.workflow_run.id }}-attempt-${{ github.event.workflow_run.run_attempt }}
-          path: .phi/ci-auto-diagnostic.json
+          path: |
+            .phi/ci-auto-diagnostic.json
+            .phi/ci-history.jsonl
           retention-days: 14
+
+      - name: 💾 Save historical CI memory
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .phi/ci-history.jsonl
+          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ hashFiles('.phi/ci-history.jsonl') }}
+
+      - name: 🛡️ CI resonance gate
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          with open(".phi/ci-auto-diagnostic.json", encoding="utf-8") as fh:
+              data = json.load(fh)
+
+          resonance = float(data.get("ci_resonance", {}).get("score", 1.0))
+          threshold = float(os.environ.get("PHI_CI_RESONANCE_MIN", "0.35"))
+          print(f"CI resonance={resonance:.4f} | threshold={threshold:.4f}")
+          if resonance < threshold:
+              print("CI resonance sous le seuil: échec volontaire pour déclencher une correction prioritaire.")
+              sys.exit(1)
+          print("CI resonance au-dessus du seuil.")
+          PY
