@@ -174,7 +174,25 @@ class JournalAudit:
         return True
 
 
-_CAPTURE_MAX_CHARS = 4000
+_CAPTURE_MAX_CHARS = (
+    4000  # Garde un journal JSONL compact tout en conservant le contexte utile.
+)
+_STDERR_LINE_SATURATION = (
+    8  # Fibonacci(6) : au-delà, le bruit marginal apporte peu d'information.
+)
+_OUTPUT_NOISE_NORMALIZER = (
+    3.0 + PHI
+)  # φ + 3 ≈ 4.618 équilibre erreurs, outils détectés et bruit stderr.
+_CONSENSUS_WEIGHT_RAW = {
+    "phidelia_signal": PHI,
+    "lilith_pressure": 1.0,
+    "output_noise": 1.0 / PHI,
+    "blocking_pressure": 1.0 / (PHI**2),
+}
+_CONSENSUS_WEIGHT_SUM = sum(_CONSENSUS_WEIGHT_RAW.values())
+_CONSENSUS_WEIGHTS = {
+    cle: valeur / _CONSENSUS_WEIGHT_SUM for cle, valeur in _CONSENSUS_WEIGHT_RAW.items()
+}
 _ACTIONS_CONSENSUS = (
     (
         "black",
@@ -253,19 +271,22 @@ def resoudre_conflit_par_consensus(
 
     stderr_lines = len(stderr.splitlines()) if stderr else 0
     erreurs_count = len(errors) + capture.lower().count("error:")
+    stderr_contribution = min(stderr_lines, _STDERR_LINE_SATURATION) / float(
+        _STDERR_LINE_SATURATION
+    )
     output_noise = min(
         1.0,
-        (erreurs_count + len(actions) + min(stderr_lines, 8) / 4.0) / 10.0,
+        (erreurs_count + len(actions) + stderr_contribution) / _OUTPUT_NOISE_NORMALIZER,
     )
     lilith_pressure = min(1.0, lilith_variance / (PHI**2 * 100.0))
     phidelia_signal = radiance / 100.0
     blocking_pressure = min(1.0, blocking_findings / PHI)
 
     consensus_brut = (
-        0.45 * phidelia_signal
-        + 0.30 * (1.0 - lilith_pressure)
-        + 0.15 * (1.0 - output_noise)
-        + 0.10 * (1.0 - blocking_pressure)
+        _CONSENSUS_WEIGHTS["phidelia_signal"] * phidelia_signal
+        + _CONSENSUS_WEIGHTS["lilith_pressure"] * (1.0 - lilith_pressure)
+        + _CONSENSUS_WEIGHTS["output_noise"] * (1.0 - output_noise)
+        + _CONSENSUS_WEIGHTS["blocking_pressure"] * (1.0 - blocking_pressure)
     )
     consensus_score = round(max(0.0, min(100.0, consensus_brut * 100.0)), 2)
 

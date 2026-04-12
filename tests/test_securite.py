@@ -211,9 +211,7 @@ class TestJournalConflits:
                     "lilith_variance": 12.0,
                     "blocking_findings": 0,
                 },
-                sorties={
-                    "stderr": "would reformat tests/test_backends.py\nblack --check ."
-                },
+                sorties={"stderr": "would reformat tests/example.py\nblack --check ."},
             )
             assert evenement["source"] == "ci-gate"
             assert evenement["resolution"]["decision"] in {
@@ -241,7 +239,7 @@ class TestJournalConflits:
         )
         actions = " ".join(resolution["actions"]).lower()
         assert "black" in actions
-        assert "pytest" in actions or "couverture" in actions
+        assert "pytest" in actions
         assert resolution["consensus_score"] >= 45.0
 
     def test_journaliser_conflit_audit_extrait_les_invariants(self):
