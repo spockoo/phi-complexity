@@ -32,22 +32,29 @@ jobs:
         run: |
           if [ -z "$GH_TOKEN" ]; then
             echo "::warning::ADMIN_TOKEN not configured — skipping default setup check."
-            echo "If CodeQL fails with 'default setup is enabled', configure ADMIN_TOKEN."
+            echo "If CodeQL fails with 'default setup is enabled', add ADMIN_TOKEN as a repository secret."
             exit 0
           fi
           # Check current default setup state
-          state=$(gh api /repos/${{ github.repository }}/code-scanning/default-setup \
-            --jq '.state' 2>/dev/null || echo "unknown")
+          api_output=$(gh api /repos/${{ github.repository }}/code-scanning/default-setup 2>&1) || {
+            echo "::warning::Could not query default setup: $api_output"
+            echo "Continuing — the analyze step will report if default setup is still enabled."
+            exit 0
+          }
+          state=$(echo "$api_output" | jq -r '.state // "unknown"')
           echo "Current CodeQL default setup state: $state"
           if [ "$state" = "configured" ]; then
             echo "Disabling default setup to allow advanced configuration..."
-            gh api --method PATCH /repos/${{ github.repository }}/code-scanning/default-setup \
-              --field state=not-configured || {
-                echo "::warning::Could not disable default setup. Ensure ADMIN_TOKEN has admin permissions."
+            disable_output=$(gh api --method PATCH \
+              /repos/${{ github.repository }}/code-scanning/default-setup \
+              --field state=not-configured 2>&1) || {
+                echo "::warning::Could not disable default setup: $disable_output"
+                echo "Ensure ADMIN_TOKEN has 'Code scanning alerts: Write' or admin permissions."
+                exit 0
               }
             echo "✅ Default CodeQL setup disabled."
           else
-            echo "✅ Default setup already disabled or not configured."
+            echo "✅ Default setup already disabled (state=$state)."
           fi
 
   analyze:
