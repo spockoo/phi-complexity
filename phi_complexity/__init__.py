@@ -10,6 +10,7 @@ from .harvest import HarvestEngine
 from .vault import PhiVault
 from .canvas import PhiCanvas
 from .search import PhiSearch
+from .fingerprint import FingerprintEngine, PhiFingerprint, similitude_cosinus
 
 
 def auditer(fichier: str) -> Dict[str, Any]:
@@ -92,5 +93,8 @@ __all__ = [
     "PhiVault",
     "PhiCanvas",
     "PhiSearch",
+    "FingerprintEngine",
+    "PhiFingerprint",
+    "similitude_cosinus",
     "suture",
 ]

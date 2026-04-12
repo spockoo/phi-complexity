@@ -130,6 +130,27 @@ class HarvestEngine:
         self.exporter(vecteur)
         return vecteur
 
+    def collecter_fingerprint(self, fichier: str) -> Dict[str, Any]:
+        """
+        Collecte un vecteur enrichi avec le φ-fingerprint du fichier.
+
+        Le fingerprint capture la structure géométrique invariante
+        du fichier (source ou binaire) pour la détection de variants.
+        """
+        from .fingerprint import FingerprintEngine
+
+        vecteur = self.collecter(fichier)
+        engine = FingerprintEngine()
+        fp = engine.calculer(fichier)
+        vecteur["fingerprint"] = fp.to_dict()
+        return vecteur
+
+    def collecter_et_exporter_fingerprint(self, fichier: str) -> Dict[str, Any]:
+        """Collecte avec fingerprint et exporte en une seule opération."""
+        vecteur = self.collecter_fingerprint(fichier)
+        self.exporter(vecteur)
+        return vecteur
+
     def compter_vecteurs(self) -> int:
         """Retourne le nombre de vecteurs actuellement collectés."""
         if not os.path.exists(self.sortie):
