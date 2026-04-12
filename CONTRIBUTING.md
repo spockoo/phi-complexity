@@ -10,7 +10,7 @@ Merci de l'intérêt que vous portez à **Phi-Complexity**. En tant que projet �
 Toute modification des algorithmes de calcul de complexité doit être accompagnée, si possible, d'une explication théorique ou d'une référence à une publication scientifique dans la description de la Pull Request.
 
 ### 2. Le Bot de Synchronisation
-Le projet utilise un système d'évolution automatisé via `engine.py`. 
+Le projet utilise un système d'évolution automatisé via `engine.py`.
 * Ne modifiez pas directement les fichiers générés automatiquement par le bot.
 * Si vous souhaitez modifier la logique d'évolution, proposez vos changements sur le fichier `engine.py` lui-même.
 
