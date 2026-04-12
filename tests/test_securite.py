@@ -254,6 +254,8 @@ class TestJournalConflits:
                     "status": "FAIL",
                 },
                 "findings": [
+                    # Ce fixture doit conserver un finding LILITH pour vérifier
+                    # l'extraction d'une variance non nulle.
                     {"rule_id": "LILITH", "severity": "high"},
                     {"rule_id": "CWE-134", "severity": "critical"},
                 ],

@@ -238,9 +238,12 @@ def _actions_depuis_sorties(texte: str) -> List[str]:
     actions: List[str] = []
     seen = set()
     for motif, action in _ACTIONS_CONSENSUS:
-        if motif in texte_normalise and action not in seen:
-            actions.append(action)
-            seen.add(action)
+        if motif not in texte_normalise:
+            continue
+        if action in seen:
+            continue
+        actions.append(action)
+        seen.add(action)
     return actions
 
 
@@ -260,7 +263,9 @@ def resoudre_conflit_par_consensus(
     lilith_variance = max(0.0, float(invariants.get("lilith_variance", 0.0)))
     blocking_findings = max(0, int(invariants.get("blocking_findings", 0)))
 
-    stdout = _normaliser_sortie_capturee(sorties.get("stdout", ""))
+    stdout = _normaliser_sortie_capturee(
+        sorties.get("stdout", sorties.get("summary", ""))
+    )
     stderr = _normaliser_sortie_capturee(sorties.get("stderr", ""))
     errors_raw = sorties.get("errors", [])
     if isinstance(errors_raw, Sequence) and not isinstance(errors_raw, (str, bytes)):
@@ -384,9 +389,13 @@ def journaliser_conflit_audit(
     """Construit et journalise un conflit à partir d'un audit sécurité."""
     summary = audit.get("summary", {})
     findings = audit.get("findings", [])
-    lilith_count = sum(
-        1 for finding in findings if str(finding.get("rule_id", "")).upper() == "LILITH"
-    )
+    lilith_count = 0
+    for finding in findings:
+        rule_id = finding.get("rule_id", "")
+        if not isinstance(rule_id, str):
+            rule_id = str(rule_id)
+        if rule_id.upper() == "LILITH":
+            lilith_count += 1
     invariants = {
         "radiance": float(summary.get("security_score", 0.0)),
         "security_score": float(summary.get("security_score", 0.0)),

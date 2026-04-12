@@ -696,7 +696,7 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
         conflit = journaliser_conflit_audit(
             audit=audit,
             sorties={
-                "stdout": f"Shield: {status} | score={score:.2f}",
+                "summary": f"Shield: {status} | score={score:.2f}",
                 "stderr": "\n".join(audit.get("errors", [])),
                 "errors": audit.get("errors", []),
             },
