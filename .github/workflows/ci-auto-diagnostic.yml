@@ -22,7 +22,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .phi/ci-history.jsonl
-          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_number }}
+          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}
           restore-keys: |
             ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-
             ci-auto-diagnostic-history-${{ github.repository }}-
@@ -266,15 +266,17 @@ jobs:
                 return acc;
               }, {})
             );
-            const mean = categoryCounts.length === 0 ? 0 : categoryCounts.reduce((a, b) => a + b, 0) / categoryCounts.length;
+            const totalCategoryCount = categoryCounts.reduce((a, b) => a + b, 0);
+            const mean = categoryCounts.length === 0 ? 0 : totalCategoryCount / categoryCounts.length;
             const variance =
               categoryCounts.length <= 1
                 ? 0
-                : categoryCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / (categoryCounts.length - 1);
+                // Population variance: we analyze all failure categories from the current run.
+                : categoryCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / categoryCounts.length;
             const normalizedVariance = diagnostics.length === 0 ? 0 : Math.min(1, variance / diagnostics.length);
             // φ-inspired weighting:
-            // - 0.62 ~= 1/φ (dominant stability signal through failure rate),
-            // - 0.23 and 0.15 are secondary harmonics summing to 0.38 ~= 1 - 1/φ.
+            // - 0.62 approximates 1/φ (0.618...), dominant stability signal through failure rate.
+            // - 0.23 + 0.15 = 0.38 approximates 1 - 1/φ (0.382...).
             const RESONANCE_WEIGHTS = {
               failureRate: 0.62,
               variance: 0.23,
@@ -294,7 +296,10 @@ jobs:
             );
 
             const categoryBest = new Map();
-            for (const d of diagnostics.sort((a, b) => a.priority - b.priority || b.confidence - a.confidence)) {
+            const rankedDiagnostics = [...diagnostics].sort(
+              (a, b) => a.priority - b.priority || b.confidence - a.confidence
+            );
+            for (const d of rankedDiagnostics) {
               if (!categoryBest.has(d.category)) {
                 categoryBest.set(d.category, d);
               }
@@ -345,8 +350,7 @@ jobs:
               diagnostics
             };
             history.push(historyEntry);
-            // Keep ~200 entries (~months of frequent runs) to preserve trend visibility
-            // while bounding artifact size and JSON parsing cost.
+            // Keep 200 entries to balance trend visibility with artifact size and parsing cost.
             const HISTORY_RETENTION_LIMIT = 200;
             const trimmedHistory = history.slice(-HISTORY_RETENTION_LIMIT);
             fs.writeFileSync(
@@ -417,7 +421,7 @@ jobs:
         if: always()
         with:
           path: .phi/ci-history.jsonl
-          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_number }}
+          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ hashFiles('.phi/ci-history.jsonl') }}
 
       - name: 🛡️ CI resonance gate
         run: |
