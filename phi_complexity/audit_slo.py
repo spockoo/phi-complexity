@@ -262,10 +262,14 @@ def estimer_efficacite_dev_depuis_historique(
             diag_total += 1
             if diag.get("category") in quality_categories:
                 quality_hits += 1
-    qualite_livraison = 1.0 if diag_total == 0 else max(0.0, 1.0 - (quality_hits / diag_total))
+    qualite_livraison = (
+        1.0 if diag_total == 0 else max(0.0, 1.0 - (quality_hits / diag_total))
+    )
 
     mttr = calculer_mttr(historique)
-    vitesse_correction = 1.0 if mttr is None else max(0.0, min(1.0, 1.0 - (mttr / 172800.0)))
+    vitesse_correction = (
+        1.0 if mttr is None else max(0.0, min(1.0, 1.0 - (mttr / 172800.0)))
+    )
 
     return calculer_efficacite_dev(
         stabilite_ci=stabilite_ci,

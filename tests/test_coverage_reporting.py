@@ -77,7 +77,9 @@ def test_sparkline_core(tmp_path: Path) -> None:
         {"analyzed_at": "2026-01-08T00:00:00Z", "core": {"ratio": 0.60}},
         {"analyzed_at": "2026-01-15T00:00:00Z", "core": {"ratio": 0.90}},
     ]
-    history_path.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    history_path.write_text(
+        "\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8"
+    )
     history = charger_historique_couverture(str(history_path))
     spark = sparkline_couverture_core(history, n=10)
     assert len(spark) == 3
