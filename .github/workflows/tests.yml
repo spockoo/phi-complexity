@@ -144,13 +144,18 @@ jobs:
     steps:
       - name: ✅ Gate des checks requis
         run: |
-          if [ "${{ needs.quality.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+          quality_result="${{ needs.quality.result }}"
+          test_result="${{ needs.test.result }}"
+
+          # Politique explicite: tout état différent de "success"
+          # (failure, cancelled, skipped, etc.) fait échouer la gate.
+          if [ "$quality_result" != "success" ] || [ "$test_result" != "success" ]; then
             echo "╔══════════════════════════════════════════════════════╗"
             echo "║  φ-CI GATE — ÉCHEC DÉTECTÉ                          ║"
             echo "╚══════════════════════════════════════════════════════╝"
             echo ""
-            echo "  Job quality : result=${{ needs.quality.result }}"
-            echo "  Job test : result=${{ needs.test.result }}"
+            echo "  Job quality : result=$quality_result"
+            echo "  Job test    : result=$test_result"
             echo "  SHA      : ${{ github.sha }}"
             echo "  Branche  : ${{ github.ref_name }}"
             echo ""
