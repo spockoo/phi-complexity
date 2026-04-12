@@ -32,8 +32,10 @@ jobs:
     steps:
       - name: 🔍 Check ADMIN_TOKEN
         env:
-          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN || vars.ADMIN_TOKEN }}
+          ADMIN_TOKEN_SECRET: ${{ secrets.ADMIN_TOKEN }}
+          ADMIN_TOKEN_VAR: ${{ vars.ADMIN_TOKEN }}
         run: |
+          ADMIN_TOKEN="${ADMIN_TOKEN_SECRET:-$ADMIN_TOKEN_VAR}"
           if [ -z "$ADMIN_TOKEN" ]; then
             echo "❌ ADMIN_TOKEN is not configured (secret or variable)."
             echo ""
@@ -58,6 +60,9 @@ jobs:
             echo "   disponible comme secret de dépôt. Vous devez copier la valeur du PAT"
             echo "   et la coller manuellement dans les secrets du dépôt (étape 2)."
             exit 1
+          fi
+          if [ -z "$ADMIN_TOKEN_SECRET" ] && [ -n "$ADMIN_TOKEN_VAR" ]; then
+            echo "::warning::ADMIN_TOKEN is sourced from repository variable. Use a repository secret when possible."
           fi
           echo "✅ ADMIN_TOKEN is available."
 
