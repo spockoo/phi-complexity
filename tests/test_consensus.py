@@ -447,10 +447,7 @@ class TestProprietesRPR:
         ]
         r = m.calculer_consensus(signaux)
         if len(r.historique) >= 3:
-            deltas = [
-                abs(r.historique[i + 1] - r.historique[i])
-                for i in range(len(r.historique) - 1)
-            ]
+            deltas = [abs(b - a) for a, b in zip(r.historique, r.historique[1:])]
             # Le score converge : les derniers deltas sont faibles
             assert deltas[-1] < 1e-4
 

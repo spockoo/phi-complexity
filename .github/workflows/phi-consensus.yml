@@ -288,7 +288,7 @@ jobs:
           CONF_CRYPTO: ${{ needs.crypto.outputs.confiance }}
         run: |
           python -c "
-          import os, json, re, sys
+          import os, json, sys
 
           from phi_complexity.consensus import (
               MoteurConsensus,
@@ -299,11 +299,8 @@ jobs:
           def safe_float(val, default=0.0):
               if val is None:
                   return default
-              val = str(val).strip()
-              if not val or not re.match(r'^[0-9.]+$', val):
-                  return default
               try:
-                  return float(val)
+                  return float(str(val).strip())
               except (ValueError, TypeError):
                   return default
 
