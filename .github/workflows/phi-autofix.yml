@@ -1,0 +1,200 @@
+name: "🔧 Phi AutoFix — Remédiation Déterministe"
+
+on:
+  workflow_run:
+    workflows:
+      - "🧠 CI Auto-Diagnostic — Classification des échecs (φ-Diagnostic)"
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run ID du ci-auto-diagnostic à traiter"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  check-mutations:
+    runs-on: ubuntu-latest
+    outputs:
+      has_mutations: ${{ steps.check.outputs.has_mutations }}
+      artifact_run_id: ${{ steps.check.outputs.artifact_run_id }}
+    steps:
+      - name: 🔎 Trouver et télécharger le diagnostic artifact
+        id: download
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let targetRunId;
+            if (context.eventName === "workflow_dispatch" && context.payload.inputs?.run_id) {
+              targetRunId = parseInt(context.payload.inputs.run_id, 10);
+            } else if (context.payload.workflow_run) {
+              targetRunId = context.payload.workflow_run.id;
+            } else {
+              core.setFailed("Impossible de déterminer le run_id source.");
+              return;
+            }
+            core.exportVariable("ARTIFACT_RUN_ID", String(targetRunId));
+            const artifacts = await github.paginate(
+              github.rest.actions.listWorkflowRunArtifacts,
+              { owner, repo, run_id: targetRunId, per_page: 100 }
+            );
+            const diagArtifact = artifacts.find((a) =>
+              a.name.startsWith("ci-auto-diagnostic-")
+            );
+            if (!diagArtifact) {
+              console.log("Aucun artifact ci-auto-diagnostic trouvé.");
+              core.setOutput("found", "false");
+              return;
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              owner,
+              repo,
+              artifact_id: diagArtifact.id,
+              archive_format: "zip"
+            });
+            const fs = require("fs");
+            fs.writeFileSync("diag-artifact.zip", Buffer.from(download.data));
+            core.setOutput("found", "true");
+            core.setOutput("artifact_id", String(diagArtifact.id));
+
+      - name: 📦 Extraire l'artifact
+        run: |
+          if [ -f diag-artifact.zip ]; then
+            unzip -o diag-artifact.zip -d .phi/
+          fi
+
+      - name: 🔍 Vérifier les mutations applicables
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const diagPath = ".phi/ci-auto-diagnostic.json";
+            const runId = process.env.ARTIFACT_RUN_ID || "0";
+            core.setOutput("artifact_run_id", runId);
+            if (!fs.existsSync(diagPath)) {
+              console.log("Fichier de diagnostic absent.");
+              core.setOutput("has_mutations", "false");
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync(diagPath, "utf8"));
+            const DETERMINISTIC_CATALOGUE = new Set([
+              "QUALITY_GATE",
+              "DEPENDENCY_INSTALL",
+              "TYPE_CHECK",
+              "TEST_REGRESSION"
+            ]);
+            const applicable = (data.proposed_mutations || []).filter(
+              (m) =>
+                m.confidence >= 0.85 &&
+                DETERMINISTIC_CATALOGUE.has(m.category)
+            );
+            console.log(`Mutations applicables: ${applicable.length}`);
+            core.setOutput("has_mutations", applicable.length > 0 ? "true" : "false");
+
+  propose-autofix:
+    needs: check-mutations
+    if: needs.check-mutations.outputs.has_mutations == 'true'
+    runs-on: ubuntu-latest
+    environment: phi-autofix
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Installer phi-complexity
+        run: pip install -e . ruff black
+
+      - name: 🔎 Télécharger le diagnostic artifact
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runId = parseInt("${{ needs.check-mutations.outputs.artifact_run_id }}", 10);
+            const artifacts = await github.paginate(
+              github.rest.actions.listWorkflowRunArtifacts,
+              { owner, repo, run_id: runId, per_page: 100 }
+            );
+            const diagArtifact = artifacts.find((a) =>
+              a.name.startsWith("ci-auto-diagnostic-")
+            );
+            if (!diagArtifact) {
+              core.setFailed("Artifact non trouvé.");
+              return;
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              owner,
+              repo,
+              artifact_id: diagArtifact.id,
+              archive_format: "zip"
+            });
+            const fs = require("fs");
+            fs.mkdirSync(".phi", { recursive: true });
+            fs.writeFileSync("diag-artifact.zip", Buffer.from(download.data));
+
+      - name: 📦 Extraire le diagnostic
+        run: unzip -o diag-artifact.zip -d .phi/
+
+      - name: 🔧 Appliquer les mutations déterministes
+        id: apply
+        uses: actions/github-script@v7
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const fs = require("fs");
+            const { execSync } = require("child_process");
+            const { owner, repo } = context.repo;
+            const data = JSON.parse(fs.readFileSync(".phi/ci-auto-diagnostic.json", "utf8"));
+            const runId = data.run_id;
+            const DETERMINISTIC_CATALOGUE = {
+              QUALITY_GATE: "ruff check --fix . && black .",
+              DEPENDENCY_INSTALL: "pip install -e . --upgrade",
+              TYPE_CHECK: "python -m mypy phi_complexity/ --ignore-missing-imports || true",
+              TEST_REGRESSION: "python -m pytest tests/ -x --no-header -q || true"
+            };
+            const applicable = (data.proposed_mutations || []).filter(
+              (m) =>
+                m.confidence >= 0.85 &&
+                Object.prototype.hasOwnProperty.call(DETERMINISTIC_CATALOGUE, m.category)
+            );
+            for (const mutation of applicable) {
+              const branch = `autofix/run-${runId}-${mutation.category.toLowerCase()}`;
+              try {
+                execSync(`git checkout -b ${branch}`, { stdio: "inherit" });
+                const cmd = DETERMINISTIC_CATALOGUE[mutation.category];
+                execSync(cmd, { stdio: "inherit", shell: true });
+                execSync("git config user.name 'github-actions[bot]'");
+                execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
+                execSync(`git add -A && git diff --cached --quiet || git commit -m "🔧 autofix(${mutation.category}): mutation déterministe — run #${runId}"`, { shell: true });
+                execSync(`git push origin ${branch}`, { stdio: "inherit" });
+                const pr = await github.rest.pulls.create({
+                  owner,
+                  repo,
+                  title: `🔧 [phi:autofix] ${mutation.category} — Run #${runId}`,
+                  head: branch,
+                  base: "main",
+                  body: `## 🧬 Mutation déterministe automatique\n\n- **Catégorie** : ${mutation.category}\n- **Confiance** : ${(mutation.confidence * 100).toFixed(0)}%\n- **Action** : ${mutation.action}\n- **Run source** : https://github.com/${owner}/${repo}/actions/runs/${runId}\n\n> Généré automatiquement par phi-autofix.`,
+                  draft: true
+                });
+                console.log(`PR créée : ${pr.data.html_url}`);
+              } catch (err) {
+                console.error(`Erreur pour ${mutation.category}: ${err.message}`);
+              } finally {
+                try {
+                  execSync("git checkout main", { stdio: "inherit" });
+                } catch {}
+              }
+            }
