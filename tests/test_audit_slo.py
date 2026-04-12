@@ -42,7 +42,7 @@ def _make_entree(
 
 
 def _write_jsonl(entries: List[Dict[str, Any]]) -> str:
-    fd, path = tempfile.mkstemp(suffix=".jsonl", dir=os.getcwd())
+    fd, path = tempfile.mkstemp(suffix=".jsonl")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             for entry in entries:

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -127,7 +128,10 @@ def appliquer_mutation(
 
     En mode dry_run, enregistre les commandes sans les exécuter.
     Déclenche le rollback si une commande échoue.
+    Le répertoire est résolu en chemin absolu pour prévenir les traversées de chemin.
     """
+    cwd = str(Path(repertoire).resolve())
+
     if not plan.applicable:
         return ResultatMutation(
             categorie=plan.categorie,
@@ -153,25 +157,32 @@ def appliquer_mutation(
                 shell=True,
                 capture_output=True,
                 text=True,
-                cwd=repertoire,
+                cwd=cwd,
             )
             sortie_parts.append(proc.stdout + proc.stderr)
             if proc.returncode != 0:
+                rollback_ok = True
                 for rb_cmd in regle.rollback_commandes:
-                    subprocess.run(
+                    rb_proc = subprocess.run(
                         rb_cmd,
                         shell=True,
                         capture_output=True,
                         text=True,
-                        cwd=repertoire,
+                        cwd=cwd,
                     )
+                    if rb_proc.returncode != 0:
+                        rollback_ok = False
+                        sortie_parts.append(rb_proc.stdout + rb_proc.stderr)
+                erreur_msg = f"Commande échouée: {cmd}"
+                if regle.rollback_commandes and not rollback_ok:
+                    erreur_msg += " (rollback partiel)"
                 return ResultatMutation(
                     categorie=plan.categorie,
                     succes=False,
                     commandes_executees=commandes_executees,
                     sortie="".join(sortie_parts),
                     rollback_effectue=len(regle.rollback_commandes) > 0,
-                    erreur=f"Commande échouée: {cmd}",
+                    erreur=erreur_msg,
                 )
 
     return ResultatMutation(

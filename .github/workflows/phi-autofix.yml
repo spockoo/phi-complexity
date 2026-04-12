@@ -172,7 +172,12 @@ jobs:
             );
             for (const mutation of applicable) {
               const safeCategory = mutation.category.replace(/[^A-Z_]/g, "");
-              const safeRunId = String(parseInt(String(runId), 10));
+              const parsedRunId = parseInt(String(runId), 10);
+              if (!Number.isFinite(parsedRunId) || parsedRunId <= 0) {
+                console.error(`run_id invalide: ${runId}`);
+                continue;
+              }
+              const safeRunId = String(parsedRunId);
               const branch = `autofix/run-${safeRunId}-${safeCategory.toLowerCase()}`;
               try {
                 execSync(`git checkout -b ${branch}`, { stdio: "inherit" });
@@ -181,7 +186,10 @@ jobs:
                 execSync("git config user.name 'github-actions[bot]'");
                 execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
                 const commitMsg = `🔧 autofix(${safeCategory}): mutation déterministe — run #${safeRunId}`;
-                execSync(`git add -A && git diff --cached --quiet || git commit -m "${commitMsg}"`, { shell: true });
+                execSync(
+                  "git add -A && git diff --cached --quiet || git commit --message=" + JSON.stringify(commitMsg),
+                  { shell: true }
+                );
                 execSync(`git push origin ${branch}`, { stdio: "inherit" });
                 const pr = await github.rest.pulls.create({
                   owner,

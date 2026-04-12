@@ -62,6 +62,8 @@ jobs:
             const quality_score = qualityFailed ? 0.0 : 1.0;
 
             const verdict_score =
+              // φ-weighted: 0.618 ≈ 1/φ (dominant CI signal),
+              // 0.236 ≈ 1/φ² (security), 0.146 ≈ 1/φ³ (quality). Sum = 1.
               0.618 * ci_score + 0.236 * security_score + 0.146 * quality_score;
 
             let verdict, emoji;
