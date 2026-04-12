@@ -97,6 +97,25 @@ jobs:
       - name: 🧪 Tests avec couverture
         run: pytest --cov=phi_complexity --cov-report=xml --cov-fail-under=89
 
+      - name: 🧩 Générer la couverture cœur vs optionnelle
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from phi_complexity.coverage_reporting import (
+              calculer_snapshot_couverture,
+              rapport_couverture_markdown,
+          )
+
+          snapshot = calculer_snapshot_couverture("coverage.xml")
+          os.makedirs(".phi", exist_ok=True)
+          with open(".phi/coverage-summary.json", "w", encoding="utf-8") as fh:
+              json.dump(snapshot.to_dict(), fh, ensure_ascii=False, indent=2)
+          with open(".phi/coverage-summary.md", "w", encoding="utf-8") as fh:
+              fh.write(rapport_couverture_markdown(snapshot))
+          PY
+
       - name: 📊 Upload artefact couverture
         if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -104,6 +123,23 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 7
+
+      - name: 📊 Upload artefact couverture segmentée
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: |
+            .phi/coverage-summary.json
+            .phi/coverage-summary.md
+          retention-days: 14
+
+      - name: 📋 Publier le résumé couverture
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        run: |
+          if [ -f .phi/coverage-summary.md ]; then
+            cat .phi/coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ─────────────────────────────────────────────────────────────
   # COUCHE 3 — Pre-release bleeding edge (CPython dev)
