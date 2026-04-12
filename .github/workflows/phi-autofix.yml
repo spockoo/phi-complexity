@@ -183,7 +183,22 @@ jobs:
                 execSync(`git checkout -b ${branch}`, { stdio: "inherit" });
                 const cmd = DETERMINISTIC_CATALOGUE[mutation.category];
                 execSync(cmd, { stdio: "inherit", shell: true });
-                execSync("rm -f diag-artifact.zip && rm -rf .phi", { shell: true });
+                const path = require("path");
+                const diagZipPath = path.join(process.cwd(), "diag-artifact.zip");
+                if (fs.existsSync(diagZipPath)) {
+                  fs.unlinkSync(diagZipPath);
+                }
+                const diagDirPath = path.join(process.cwd(), ".phi");
+                if (fs.existsSync(diagDirPath)) {
+                  const diagStats = fs.lstatSync(diagDirPath);
+                  if (diagStats.isSymbolicLink()) {
+                    throw new Error("Refus de supprimer un lien symbolique .phi");
+                  }
+                  if (!diagStats.isDirectory()) {
+                    throw new Error("Le chemin .phi attendu comme dossier a un type inattendu");
+                  }
+                  fs.rmSync(diagDirPath, { recursive: true, force: true });
+                }
                 execSync("git config user.name 'github-actions[bot]'");
                 execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
                 const commitMsg = `🔧 autofix(${safeCategory}): mutation déterministe — run #${safeRunId}`;
