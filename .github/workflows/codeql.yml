@@ -20,8 +20,39 @@ on:
     - cron: '16 3 * * 4'
 
 jobs:
+  disable-default-setup:
+    name: Disable CodeQL default setup
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: 🔧 Disable default CodeQL setup
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN || vars.ADMIN_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::ADMIN_TOKEN not configured — skipping default setup check."
+            echo "If CodeQL fails with 'default setup is enabled', configure ADMIN_TOKEN."
+            exit 0
+          fi
+          # Check current default setup state
+          state=$(gh api /repos/${{ github.repository }}/code-scanning/default-setup \
+            --jq '.state' 2>/dev/null || echo "unknown")
+          echo "Current CodeQL default setup state: $state"
+          if [ "$state" = "configured" ]; then
+            echo "Disabling default setup to allow advanced configuration..."
+            gh api --method PATCH /repos/${{ github.repository }}/code-scanning/default-setup \
+              --field state=not-configured || {
+                echo "::warning::Could not disable default setup. Ensure ADMIN_TOKEN has admin permissions."
+              }
+            echo "✅ Default CodeQL setup disabled."
+          else
+            echo "✅ Default setup already disabled or not configured."
+          fi
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: disable-default-setup
     # Runner size impacts CodeQL analysis time. To learn more, please see:
     #   - https://gh.io/recommended-hardware-resources-for-running-codeql
     #   - https://gh.io/supported-runners-and-hardware-resources
@@ -69,7 +100,6 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
-        config-file: .github/codeql/codeql-config.yml
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -100,4 +130,3 @@ jobs:
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
-        config-file: .github/codeql/codeql-config.yml
