@@ -183,6 +183,7 @@ jobs:
                 execSync(`git checkout -b ${branch}`, { stdio: "inherit" });
                 const cmd = DETERMINISTIC_CATALOGUE[mutation.category];
                 execSync(cmd, { stdio: "inherit", shell: true });
+                execSync("rm -f diag-artifact.zip && rm -rf .phi", { shell: true });
                 execSync("git config user.name 'github-actions[bot]'");
                 execSync("git config user.email '41898282+github-actions[bot]@users.noreply.github.com'");
                 const commitMsg = `🔧 autofix(${safeCategory}): mutation déterministe — run #${safeRunId}`;
