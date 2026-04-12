@@ -5,7 +5,7 @@ name: 🔒 Configure Branch Protection
 #
 # PRÉREQUIS : Un Personal Access Token (PAT) avec la permission
 #             "Administration: Read & write" doit être stocké dans
-#             les secrets du dépôt sous le nom ADMIN_TOKEN.
+#             les secrets (recommandé) ou variables du dépôt sous le nom ADMIN_TOKEN.
 
 on:
   workflow_dispatch: # Déclenchement manuel depuis l'onglet Actions
@@ -26,16 +26,16 @@ jobs:
     name: Apply branch protection set
     runs-on: ubuntu-latest
     # Requiert un environnement `branch-protection` configuré côté dépôt
-    # (reviewers/approvals éventuels + accès au secret ADMIN_TOKEN).
+    # (reviewers/approvals éventuels + accès à ADMIN_TOKEN).
     environment: branch-protection
 
     steps:
-      - name: 🔍 Check ADMIN_TOKEN secret
+      - name: 🔍 Check ADMIN_TOKEN
         env:
-          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN || vars.ADMIN_TOKEN }}
         run: |
           if [ -z "$ADMIN_TOKEN" ]; then
-            echo "❌ ADMIN_TOKEN secret is not configured."
+            echo "❌ ADMIN_TOKEN is not configured (secret or variable)."
             echo ""
             echo "📋 Configuration en 3 étapes :"
             echo ""
@@ -44,14 +44,15 @@ jobs:
             echo "      → Repository access : Only select repositories → ${{ github.repository }}"
             echo "      → Permissions → Repository permissions → Administration : Read and write"
             echo ""
-            echo "   2️⃣  Ajouter le PAT comme secret du dépôt :"
+            echo "   2️⃣  Ajouter le PAT comme secret (recommandé) ou variable du dépôt :"
             echo "      → https://github.com/${{ github.repository }}/settings/secrets/actions"
             echo "      → 'New repository secret' → Name: ADMIN_TOKEN → Value: votre PAT"
+            echo "      → (ou Variables: https://github.com/${{ github.repository }}/settings/variables/actions)"
             echo ""
             echo "   3️⃣  Configurer l'environnement 'branch-protection' :"
             echo "      → https://github.com/${{ github.repository }}/settings/environments"
             echo "      → Créer l'environnement 'branch-protection' s'il n'existe pas"
-            echo "      → Vérifier que le secret ADMIN_TOKEN est accessible dans cet environnement"
+            echo "      → Vérifier que ADMIN_TOKEN est accessible dans cet environnement"
             echo ""
             echo "⚠️  Note : Un PAT configuré sur votre profil GitHub n'est PAS automatiquement"
             echo "   disponible comme secret de dépôt. Vous devez copier la valeur du PAT"
@@ -63,7 +64,7 @@ jobs:
       - name: 🎯 Resolve protected branch targets
         id: targets
         env:
-          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN || vars.ADMIN_TOKEN }}
         run: |
           mapfile -t all_branches < <(
             gh api --paginate /repos/${{ github.repository }}/branches --jq '.[].name'
@@ -90,7 +91,7 @@ jobs:
 
       - name: 🔒 Apply protection on targets
         env:
-          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN || vars.ADMIN_TOKEN }}
         run: |
           while IFS= read -r branch; do
             [ -z "$branch" ] && continue
