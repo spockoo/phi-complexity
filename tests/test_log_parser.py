@@ -31,10 +31,18 @@ class TestClassifierLog:
 
     def test_checkout_ref_not_found(self) -> None:
         result = classifier_log(
-            "A branch or tag with the name "
-            "'copilot/refactor-harvest-py-fibonacci-entropy' could not be found"
+            "A branch or tag with the name 'feature/test-branch' could not be found"
         )
         assert result.category == "CHECKOUT_REF_NOT_FOUND"
+
+    def test_checkout_ref_not_found_variations(self) -> None:
+        logs = [
+            "fatal: couldn't find remote ref copilot/missing-branch",
+            "fatal: reference is not a tree: 1234567890abcdef",
+            "Unable to checkout requested ref in detached HEAD mode",
+        ]
+        for log in logs:
+            assert classifier_log(log).category == "CHECKOUT_REF_NOT_FOUND"
 
     def test_permissions(self) -> None:
         result = classifier_log(

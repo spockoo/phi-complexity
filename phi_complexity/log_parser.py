@@ -88,12 +88,12 @@ CATALOGUE_SIGNATURES: List[PatternSignature] = [
     PatternSignature(
         category="CHECKOUT_REF_NOT_FOUND",
         patterns=[
-            r"a branch or tag with the name .* could not be found",
+            r"(?i)a branch or tag with the name .* could not be found",
             r"fatal: couldn't find remote ref",
             r"fatal: reference is not a tree",
-            r"unable to checkout.*ref",
+            r"(?i)unable to checkout (?:requested )?ref(?:erence)?(?:\s|:)",
         ],
-        confidence_base=0.80,
+        confidence_base=0.85,
         priority=1,
         hint="Référence git introuvable au checkout (branche/tag/sha).",
         mutation="Vérifier que la branche existe encore côté remote et aligner la référence checkout (head_ref/sha).",
