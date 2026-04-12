@@ -436,7 +436,8 @@ class TestElfLightBackend:
         nop_sled = b"\x90" * 32 + b"\xc3"
         idx = elf.find(nop_sled)
         if idx >= 0:
-            elf = elf[:idx] + shellcode + b"\x90" * (33 - len(shellcode)) + elf[idx + 33 :]
+            pad_len = max(0, 33 - len(shellcode))
+            elf = elf[:idx] + shellcode + b"\x90" * pad_len + elf[idx + 33 :]
 
         chemin = _creer_fichier_temp(elf, suffix=".elf")
         try:

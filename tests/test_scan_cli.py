@@ -187,7 +187,7 @@ class TestExecuterScan:
         captured = capsys.readouterr()
         assert "erreur" in captured.out.lower() or "❌" in captured.out
 
-    def test_scan_resume_affiché(self, capsys):
+    def test_scan_resume_affiche(self, capsys):
         """Le résumé final est affiché en mode console."""
         f = _creer_fichier_temp(CODE_SIMPLE)
         try:

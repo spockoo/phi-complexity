@@ -164,7 +164,7 @@ class FingerprintEngine:
         """
         # [0] Branch ratio : ratio de complexité relative
         phi_ratio = float(m.get("phi_ratio", 1.0))
-        branch_ratio = min(1.0, abs(1.0 / phi_ratio - 1.0 / PHI) if phi_ratio > 0 else 1.0)
+        branch_ratio = min(1.0, abs(1.0 / phi_ratio - 1.0 / PHI) if phi_ratio > 1e-9 else 1.0)
 
         # [1] Entropie moyenne normalisée
         entropy_mean = min(1.0, float(m.get("shannon_entropy", 0.0)) / _NORM_ENTROPIE)

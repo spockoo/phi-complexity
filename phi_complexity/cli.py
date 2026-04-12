@@ -303,7 +303,8 @@ def _collecter_fichiers_scan(cible: str) -> List[str]:
     """Retourne la liste des fichiers à scanner (source + binaire)."""
     toutes = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
     if os.path.isfile(cible):
-        return [cible] if cible.lower().endswith(toutes) else [cible]
+        # Accept any file for scanning (even without known extension)
+        return [cible]
     if os.path.isdir(cible):
         return _fichiers_depuis_dossier_scan(cible)
     return []

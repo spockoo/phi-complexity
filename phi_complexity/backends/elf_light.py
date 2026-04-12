@@ -5,7 +5,7 @@ Analyse "Light" des formats ELF (Linux), PE (Windows) et Mach-O (macOS).
 Extrait les métriques structurelles des sections pour l'analyse antivirale.
 Zéro dépendances externes — Souveraineté totale.
 
-Phase 16 du Morphic Phi Framework.
+Phase 24 du Morphic Phi Framework.
 """
 
 from __future__ import annotations
