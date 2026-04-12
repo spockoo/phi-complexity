@@ -186,7 +186,12 @@ class TestMutationsPourRapport:
 class TestCatalogueMutations:
     def test_has_all_expected_categories(self) -> None:
         categories = {r.categorie for r in CATALOGUE_MUTATIONS}
-        expected = {"QUALITY_GATE", "DEPENDENCY_INSTALL", "TEST_REGRESSION", "TYPE_CHECK"}
+        expected = {
+            "QUALITY_GATE",
+            "DEPENDENCY_INSTALL",
+            "TEST_REGRESSION",
+            "TYPE_CHECK",
+        }
         assert expected == categories
 
     def test_all_rules_have_commands(self) -> None:
@@ -198,5 +203,7 @@ class TestCatalogueMutations:
             assert 0.0 < rule.confidence_threshold < 1.0
 
     def test_quality_gate_has_rollback(self) -> None:
-        quality_rules = [r for r in CATALOGUE_MUTATIONS if r.categorie == "QUALITY_GATE"]
+        quality_rules = [
+            r for r in CATALOGUE_MUTATIONS if r.categorie == "QUALITY_GATE"
+        ]
         assert any(len(r.rollback_commandes) > 0 for r in quality_rules)

@@ -30,7 +30,9 @@ class TestClassifierLog:
         assert result.category == "DEPENDENCY_INSTALL"
 
     def test_permissions(self) -> None:
-        result = classifier_log("permission denied: 403 forbidden resource not accessible")
+        result = classifier_log(
+            "permission denied: 403 forbidden resource not accessible"
+        )
         assert result.category == "PERMISSIONS"
 
     def test_network_transient(self) -> None:
@@ -42,7 +44,9 @@ class TestClassifierLog:
         assert result.category == "API_CONTRACT_DRIFT"
 
     def test_type_check(self) -> None:
-        result = classifier_log("error: [assignment] found 3 errors in 2 files incompatible type")
+        result = classifier_log(
+            "error: [assignment] found 3 errors in 2 files incompatible type"
+        )
         assert result.category == "TYPE_CHECK"
 
     def test_quality_gate(self) -> None:
@@ -62,7 +66,9 @@ class TestClassifierLog:
         assert result.category == "CI_GATE_CASCADE"
 
     def test_unclassified_when_no_match(self) -> None:
-        result = classifier_log("some completely random log with no known patterns here")
+        result = classifier_log(
+            "some completely random log with no known patterns here"
+        )
         assert result.category == "UNCLASSIFIED"
         assert result.confidence == 0.55
         assert result.matched_patterns == []
@@ -161,7 +167,9 @@ class TestEnrichirDepuisLogs:
             mutation="",
             matched_patterns=[],
         )
-        result = enrichir_depuis_logs(unclassified, "random log without known patterns here")
+        result = enrichir_depuis_logs(
+            unclassified, "random log without known patterns here"
+        )
         assert result.category == "UNCLASSIFIED"
 
 
