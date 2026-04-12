@@ -53,9 +53,20 @@ jobs:
                 with:
                     distribution: temurin
                     java-version: '17'
-            -   name: Verify Java Version
+            -   name: Verify and Enforce Java Version
                 run: |
-                    JAVA_VER=$(java -version 2>&1 | head -1 | awk -F '"' '{print $2}' | cut -d. -f1)
+                    echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+                    echo "CODE_SCAN_JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+                    echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
+                    export PATH="$JAVA_HOME/bin:$PATH"
+                    echo "JAVA_HOME is set to: $JAVA_HOME"
+                    echo "java binary: $(command -v java)"
+                    java -version
+                    if [ "$(command -v java)" != "$JAVA_HOME/bin/java" ]; then
+                      echo "❌ java does not resolve to JAVA_HOME/bin/java"
+                      exit 1
+                    fi
+                    JAVA_VER=$("$JAVA_HOME/bin/java" -XshowSettings:properties -version 2>&1 | awk -F ' = ' '/java.specification.version/ {print $2; exit}')
                     echo "☕ Java version détectée : $JAVA_VER"
                     if [ "$JAVA_VER" -lt 17 ]; then
                       echo "❌ Java $JAVA_VER < 17 — incompatible avec SonarScanner"
@@ -67,9 +78,9 @@ jobs:
                 with:
                     path: |
                         ~/.sonar
-                    key: ${{ runner.os }}-sonar-${{ hashFiles('**/*.py', '**/*.yml') }}
+                    key: ${{ runner.os }}-sonar-java17-${{ hashFiles('**/*.py', '**/*.yml') }}
                     restore-keys: |
-                        ${{ runner.os }}-sonar-
+                        ${{ runner.os }}-sonar-java17-
             -   name: Run Analysis
                 uses: codescan-io/codescan-scanner-action@5b2e8c5683ef6a5adc8fa3b7950bb07debccce12
                 with:
