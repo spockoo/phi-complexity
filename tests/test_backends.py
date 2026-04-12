@@ -282,7 +282,7 @@ class TestCWE134Detection:
             os.unlink(chemin)
 
     def test_cwe134_sur_moteur_c_exemple(self):
-        """Le fichier examples/moteur_c.c contient des vulnérabilités CWE-134."""
+        """Le fichier examples/moteur_c.c corrigé ne contient plus de CWE-134."""
         chemin = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "examples", "moteur_c.c"
         )
@@ -291,11 +291,11 @@ class TestCWE134Detection:
         backend = CRustLightBackend(chemin)
         r = backend.analyser()
         cwe_annots = [a for a in r.annotations if a.categorie == "CWE-134"]
-        # 3 vulnérabilités attendues dans moteur_c.c :
-        #   1. printf(message)          dans journaliser_evenement()
-        #   2. fprintf(stderr, buffer)  dans log_erreur()
-        #   3. sprintf(buffer, buffer)  dans log_erreur()
-        assert len(cwe_annots) >= 3
+        # Après correction (Phase 22), le fichier utilise uniquement des
+        # formats littéraux — zéro CWE-134 attendu.
+        assert (
+            len(cwe_annots) == 0
+        ), f"CWE-134 détecté dans moteur_c.c corrigé: {cwe_annots}"
 
     def test_cwe134_commentaire_ignore(self):
         """Les lignes de commentaire ne déclenchent pas de faux positifs."""

@@ -174,6 +174,250 @@ class JournalAudit:
         return True
 
 
+# Garde un journal JSONL compact tout en conservant le contexte utile.
+_CAPTURE_MAX_CHARS = 4000
+# Fibonacci(6) = 8: beyond this, marginal noise adds little signal.
+_STDERR_LINE_SATURATION = 8
+# φ + 3 ≈ 4.618 équilibre erreurs, outils détectés et bruit stderr.
+_OUTPUT_NOISE_NORMALIZER = 3.0 + PHI
+_LILITH_VARIANCE_NORMALIZER = PHI**2 * 100.0
+_BLOCKING_FINDINGS_NORMALIZER = PHI
+_CONSENSUS_AUTO_RESOLVE_THRESHOLD = round((PHI / (PHI + 0.63)) * 100.0, 2)
+_CONSENSUS_REVIEW_THRESHOLD = round((1.0 / (PHI + 0.6)) * 100.0, 2)
+_CONSENSUS_WEIGHT_RAW = {
+    "phidelia_signal": PHI,
+    "lilith_pressure": 1.0,
+    "output_noise": 1.0 / PHI,
+    "blocking_pressure": 1.0 / (PHI**2),
+}
+_CONSENSUS_WEIGHT_SUM = sum(_CONSENSUS_WEIGHT_RAW.values())
+_CONSENSUS_WEIGHTS = {
+    cle: valeur / _CONSENSUS_WEIGHT_SUM for cle, valeur in _CONSENSUS_WEIGHT_RAW.items()
+}
+_ACTIONS_CONSENSUS = (
+    (
+        "black",
+        "Appliquer Black sur les fichiers signalés puis relancer `black --check .`.",
+    ),
+    ("ruff", "Exécuter `ruff check .` puis corriger les diagnostics remontés."),
+    (
+        "mypy",
+        "Exécuter `mypy phi_complexity --ignore-missing-imports` et corriger le typage.",
+    ),
+    (
+        "pytest",
+        "Relancer `pytest --cov=phi_complexity --cov-fail-under=89` et compléter les cas manquants.",
+    ),
+    (
+        "coverage",
+        "Examiner le rapport de couverture et renforcer les branches sous le seuil de 89%.",
+    ),
+    (
+        "pip install",
+        "Rejouer l'installation locale des dépendances avant de relancer la CI.",
+    ),
+)
+
+
+def _normaliser_sortie_capturee(valeur: Any) -> str:
+    if valeur is None:
+        return ""
+    if isinstance(valeur, str):
+        texte = valeur
+    elif isinstance(valeur, Sequence) and not isinstance(
+        valeur, (str, bytes, bytearray)
+    ):
+        texte = "\n".join(str(item) for item in valeur)
+    else:
+        texte = str(valeur)
+    return texte.strip()[:_CAPTURE_MAX_CHARS]
+
+
+def _actions_depuis_sorties(texte: str) -> List[str]:
+    texte_normalise = texte.lower()
+    actions: List[str] = []
+    seen = set()
+    for motif, action in _ACTIONS_CONSENSUS:
+        if motif not in texte_normalise:
+            continue
+        if action in seen:
+            continue
+        actions.append(action)
+        seen.add(action)
+    return actions
+
+
+def resoudre_conflit_par_consensus(
+    invariants: Optional[Dict[str, Any]] = None,
+    sorties: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Compute a resolution consensus from Lilith/Phidélia invariants and
+    outputs captured in CI or security audit flows.
+    """
+    invariants = dict(invariants or {})
+    sorties = dict(sorties or {})
+
+    radiance = float(invariants.get("radiance", invariants.get("security_score", 0.0)))
+    radiance = max(0.0, min(100.0, radiance))
+    lilith_variance = max(0.0, float(invariants.get("lilith_variance", 0.0)))
+    blocking_findings = max(0, int(invariants.get("blocking_findings", 0)))
+
+    stdout = _normaliser_sortie_capturee(
+        sorties.get("stdout", sorties.get("summary", ""))
+    )
+    stderr = _normaliser_sortie_capturee(sorties.get("stderr", ""))
+    errors_raw = sorties.get("errors", [])
+    if isinstance(errors_raw, Sequence) and not isinstance(errors_raw, (str, bytes)):
+        errors = [str(item) for item in errors_raw]
+    elif errors_raw:
+        errors = [str(errors_raw)]
+    else:
+        errors = []
+
+    erreurs_capturees = _normaliser_sortie_capturee(errors)
+    capture = "\n".join(part for part in (stdout, stderr, erreurs_capturees) if part)
+    actions = _actions_depuis_sorties(capture)
+
+    stderr_lines = len(stderr.splitlines()) if stderr else 0
+    erreurs_count = len(errors) + capture.lower().count("error:")
+    stderr_contribution = min(stderr_lines, _STDERR_LINE_SATURATION) / float(
+        _STDERR_LINE_SATURATION
+    )
+    output_noise = min(
+        1.0,
+        (erreurs_count + len(actions) + stderr_contribution) / _OUTPUT_NOISE_NORMALIZER,
+    )
+    lilith_pressure = min(1.0, lilith_variance / _LILITH_VARIANCE_NORMALIZER)
+    phidelia_signal = radiance / 100.0
+    blocking_pressure = min(1.0, blocking_findings / _BLOCKING_FINDINGS_NORMALIZER)
+
+    consensus_brut = (
+        _CONSENSUS_WEIGHTS["phidelia_signal"] * phidelia_signal
+        + _CONSENSUS_WEIGHTS["lilith_pressure"] * (1.0 - lilith_pressure)
+        + _CONSENSUS_WEIGHTS["output_noise"] * (1.0 - output_noise)
+        + _CONSENSUS_WEIGHTS["blocking_pressure"] * (1.0 - blocking_pressure)
+    )
+    consensus_score = round(max(0.0, min(100.0, consensus_brut * 100.0)), 2)
+
+    if (
+        blocking_findings == 0
+        and consensus_score >= _CONSENSUS_AUTO_RESOLVE_THRESHOLD
+        and erreurs_count <= 1
+    ):
+        decision = "AUTO_RESOLVE"
+    elif consensus_score >= _CONSENSUS_REVIEW_THRESHOLD:
+        decision = "REVIEW"
+    else:
+        decision = "ESCALATE"
+
+    if not actions and blocking_findings:
+        actions.append("Corriger les findings bloquants avant toute relance de la CI.")
+    if not actions and erreurs_count:
+        actions.append(
+            "Rejouer localement les étapes en échec pour isoler la cause racine."
+        )
+
+    return {
+        "consensus_score": consensus_score,
+        "decision": decision,
+        "signals": {
+            "phidelia_signal": round(phidelia_signal, 4),
+            "lilith_pressure": round(lilith_pressure, 4),
+            "output_noise": round(output_noise, 4),
+            "blocking_pressure": round(blocking_pressure, 4),
+        },
+        "captured_output": {
+            "stdout": stdout,
+            "stderr": stderr,
+            "errors": errors,
+        },
+        "actions": actions,
+    }
+
+
+class JournalConflits:
+    """Append-only journal of conflicts and their resolution consensus."""
+
+    def __init__(self, workspace_root: str = ".") -> None:
+        self.phi_dir = os.path.join(workspace_root, ".phi")
+        self.journal_path = os.path.join(self.phi_dir, "conflicts.jsonl")
+        if not os.path.exists(self.phi_dir):
+            os.makedirs(self.phi_dir)
+
+    def enregistrer_conflit(
+        self,
+        source: str,
+        invariants: Dict[str, Any],
+        sorties: Optional[Dict[str, Any]] = None,
+        contexte: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        resolution = resoudre_conflit_par_consensus(invariants, sorties)
+        evenement = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "source": source,
+            "invariants": dict(invariants),
+            "resolution": resolution,
+            "contexte": dict(contexte or {}),
+        }
+        evenement_hashable = json.dumps(evenement, sort_keys=True, ensure_ascii=False)
+        evenement["hash"] = hashlib.sha256(evenement_hashable.encode()).hexdigest()
+        evenement_json = json.dumps(evenement, sort_keys=True, ensure_ascii=False)
+
+        with open(self.journal_path, "a", encoding="utf-8") as f:
+            f.write(evenement_json + "\n")
+        return evenement
+
+    def lire_journal(self, limite: int = 50) -> List[Dict[str, Any]]:
+        if not os.path.exists(self.journal_path):
+            return []
+        try:
+            with open(self.journal_path, "r", encoding="utf-8") as f:
+                lignes = [json.loads(line) for line in f if line.strip()]
+            return lignes[-limite:]
+        except (json.JSONDecodeError, OSError):
+            return []
+
+
+def journaliser_conflit_audit(
+    audit: Dict[str, Any],
+    sorties: Optional[Dict[str, Any]] = None,
+    workspace_root: str = ".",
+    source: str = "phi-shield",
+    contexte: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build and journal a conflict from a security audit."""
+    summary = audit.get("summary", {})
+    findings = audit.get("findings", [])
+    lilith_count = 0
+    for finding in findings:
+        rule_id = finding.get("rule_id", "")
+        if not isinstance(rule_id, str):
+            rule_id = str(rule_id)
+        if rule_id.upper() == "LILITH":
+            lilith_count += 1
+    invariants = {
+        "radiance": float(summary.get("security_score", 0.0)),
+        "security_score": float(summary.get("security_score", 0.0)),
+        "blocking_findings": int(summary.get("blocking_findings", 0)),
+        "out_of_scope_findings": int(summary.get("out_of_scope_findings", 0)),
+        "lilith_variance": round(lilith_count * (PHI**2), 4),
+    }
+    journal = JournalConflits(workspace_root=workspace_root)
+    contexte_audit = {
+        "findings_total": int(summary.get("findings_total", 0)),
+        "errors_total": len(audit.get("errors", [])),
+    }
+    if contexte:
+        contexte_audit.update(contexte)
+    return journal.enregistrer_conflit(
+        source=source,
+        invariants=invariants,
+        sorties=sorties,
+        contexte=contexte_audit,
+    )
+
+
 # ────────────────────────────────────────────────────────
 # SBOM — SOFTWARE BILL OF MATERIALS
 # ────────────────────────────────────────────────────────
