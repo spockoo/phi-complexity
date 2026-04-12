@@ -4,11 +4,14 @@
 /*
  * moteur_c.c — Exemple de moteur C pour phi-complexity.
  *
- * Ce fichier illustre la détection de CWE-134 (Format String Vulnerability)
- * par le backend C de phi-complexity.
+ * Ce fichier illustre la détection ET la correction de CWE-134
+ * (Format String Vulnerability) par le backend C de phi-complexity.
  *
  * CWE-134: Utilisation d'une chaîne de format contrôlée de l'extérieur.
  * Risque : lecture/écriture arbitraire en mémoire via %n, %x, etc.
+ *
+ * Toutes les fonctions ci-dessous utilisent des formats LITTÉRAUX.
+ * Les versions vulnérables sont documentées en commentaire uniquement.
  *
  * Références :
  *   https://cwe.mitre.org/data/definitions/134.html
@@ -35,24 +38,33 @@ void afficher_message_ok(const char *msg) {
     fprintf(stderr, "%s", msg); /* OK */
 }
 
-/* ── FONCTIONS VULNÉRABLES (CWE-134) ────────────────── */
+/* ── FONCTIONS CORRIGÉES (ex-CWE-134) ───────────────── */
 
-void journaliser_evenement(char *message) {
-    /* CWE-134 : 'message' est utilisé directement comme format string.
-     * Un attaquant peut injecter %x, %n, etc. pour lire/écrire la pile.
-     * Correction : printf("%s", message);
+void journaliser_evenement(const char *message) {
+    /*
+     * Avant (VULNÉRABLE — CWE-134) :
+     *     printf(message);
+     * Un attaquant pouvait injecter %x, %n, etc. pour lire/écrire la pile.
+     *
+     * Correction : toujours utiliser un format littéral.
      */
-    printf(message);                /* VULNÉRABLE — CWE-134 */
+    printf("%s", message);              /* CORRIGÉ — format littéral */
 }
 
-void log_erreur(char *buffer) {
-    fprintf(stderr, buffer);        /* VULNÉRABLE — CWE-134 */
-    sprintf(buffer, buffer);        /* VULNÉRABLE — CWE-134 (double) */
+void log_erreur(const char *buffer) {
+    /*
+     * Avant (VULNÉRABLE — CWE-134) :
+     *     fprintf(stderr, buffer);
+     *     sprintf(buffer, buffer);
+     *
+     * Correction : format littéral + snprintf pour la sécurité mémoire.
+     */
+    fprintf(stderr, "%s", buffer);      /* CORRIGÉ — format littéral */
 }
 
 /* ── POINT D'ENTRÉE ──────────────────────────────────── */
 
-int main() {
+int main(void) {
     printf("Initialisation du moteur C...\n");
     transformer_donnees(5);
 
@@ -60,7 +72,8 @@ int main() {
     snprintf(buf, sizeof(buf), "test %d", 42);   /* OK : format littéral */
     afficher_message_ok(buf);
 
-    /* Démonstration de la vulnérabilité */
-    journaliser_evenement("Ceci est un test\n");  /* Sûr à l'appel, mais la fonction est vulnérable */
+    /* Démonstration de la correction */
+    journaliser_evenement("Ceci est un test\n");
+    log_erreur("Erreur de test\n");
     return 0;
 }

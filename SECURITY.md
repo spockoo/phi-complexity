@@ -60,4 +60,30 @@ phi shield ./phi_complexity \
   --min-security-score 70
 ```
 
+## Chasse aux Menaces Éthique (Phase 22+)
+
+Le projet intègre désormais des outils de chasse aux menaces (threat hunting) éthiques :
+
+### Workflows de sécurité
+
+| Workflow | Fichier | Description |
+|---|---|---|
+| Flawfinder | `flawfinder.yml` | Scan C/C++ (production uniquement, hors exemples) |
+| Dependency Review | `security.yml` | Revue des dépendances sur les PR |
+| Threat Hunter | `threat-hunter.yml` | Chasse automatisée (CWE + Sentinel + IoC) |
+| Sentinel SARIF | `sentinel-sarif.yml` | Export findings vers GitHub Security tab |
+| Commit Risk | `commit-risk.yml` | Analyse bayésienne du risque par commit |
+
+### Modules de détection
+
+- **phi_complexity/backends/c_rust_light.py** : Détection CWE-134 (format string) en C/C++/Rust.
+- **phi_complexity/sentinel/** : Pipeline comportemental en 5 couches (host → telemetry → behavior → bayesian → response).
+- **phi_complexity/securite.py** : Signatures SHA-256, journal d'audit immuable, SBOM.
+
+### Philosophie
+
+> L'intelligence artificielle doit être un bouclier, pas une épée.
+> Toute détection est documentée, explicable et partageable (IoC OSS).
+> Aucune donnée identifiante n'est collectée. Souveraineté totale.
+
 Merci de nous aider à maintenir la souveraineté et l'intégrité mathématique de ce code.
