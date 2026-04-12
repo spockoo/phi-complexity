@@ -13,13 +13,8 @@ from __future__ import annotations
 
 import json
 import os
-import struct
-import sys
 import tempfile
 import textwrap
-from unittest.mock import patch
-
-import pytest
 
 from phi_complexity.cli import (
     _construire_parseur,

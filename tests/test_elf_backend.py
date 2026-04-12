@@ -20,8 +20,6 @@ import os
 import struct
 import tempfile
 
-import pytest
-
 from phi_complexity.backends.elf_light import (
     ElfLightBackend,
     _calculer_entropie_shannon,
@@ -32,8 +30,6 @@ from phi_complexity.backends.elf_light import (
     _parser_pe,
     _parser_macho,
     _analyser_section,
-    _SEUIL_ENTROPIE_CRITICAL,
-    _SEUIL_ENTROPIE_WARNING,
 )
 
 
@@ -155,7 +151,7 @@ def _creer_pe_minimal() -> bytes:
     section += struct.pack("<I", 0x60000020)  # Characteristics: EXEC|READ|CODE
 
     # .text data
-    text_data = b"\xCC" * 32  # INT3 breakpoints
+    text_data = b"\xcc" * 32  # INT3 breakpoints
 
     return dos + pe_sig + coff + section + text_data
 
@@ -396,9 +392,7 @@ class TestElfLightBackend:
         try:
             backend = ElfLightBackend(chemin)
             resultat = backend.analyser()
-            assert any(
-                "non reconnu" in a.message for a in resultat.annotations
-            )
+            assert any("non reconnu" in a.message for a in resultat.annotations)
         finally:
             _safe_unlink(chemin)
 
@@ -427,9 +421,6 @@ class TestElfLightBackend:
         # Create an ELF with shellcode directly embedded in .text section
         # We build a new ELF with shellcode in the text data
         shellcode = b"\x90" * 10 + b"\xcd\x80" + b"\x0f\x05" + b"\xc3"
-        # Replace the text_data in the ELF creation
-        import struct as _s
-
         elf = _creer_elf_minimal_64()
         # The .text data in _creer_elf_minimal_64 is b"\x90"*32 + b"\xc3"
         # Find the NOP sled in the binary and replace it

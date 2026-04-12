@@ -17,8 +17,6 @@ import os
 import tempfile
 import textwrap
 
-import pytest
-
 from phi_complexity.fingerprint import (
     FingerprintEngine,
     PhiFingerprint,

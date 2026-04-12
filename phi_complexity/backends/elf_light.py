@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 import os
 import struct
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from ..analyseur import Annotation, MetriqueFonction, ResultatAnalyse
 from ..core import distance_fibonacci
@@ -37,9 +37,9 @@ _MACHO_MAGIC_64_BE = b"\xfe\xed\xfa\xcf"
 
 _SEUIL_ENTROPIE_CRITICAL = 7.0
 _SEUIL_ENTROPIE_WARNING = 6.5
-_SEUIL_SECTIONS_WARNING = 34   # Fibonacci(9)
+_SEUIL_SECTIONS_WARNING = 34  # Fibonacci(9)
 _SEUIL_SECTIONS_CRITICAL = 55  # Fibonacci(10)
-_SEUIL_SECTIONS_LILITH = 13   # Fibonacci(7)
+_SEUIL_SECTIONS_LILITH = 13  # Fibonacci(7)
 
 # ────────────────────────────────────────────────────────
 # SHELLCODE SIGNATURES
@@ -187,24 +187,16 @@ def _parser_elf(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
             if len(donnees) < 0x40:
                 return sections, has_symtab
             e_shoff = struct.unpack_from(f"{endian}Q", donnees, 0x28)[0]
-            e_shentsize = struct.unpack_from(
-                f"{endian}H", donnees, 0x3A
-            )[0]
+            e_shentsize = struct.unpack_from(f"{endian}H", donnees, 0x3A)[0]
             e_shnum = struct.unpack_from(f"{endian}H", donnees, 0x3C)[0]
-            e_shstrndx = struct.unpack_from(
-                f"{endian}H", donnees, 0x3E
-            )[0]
+            e_shstrndx = struct.unpack_from(f"{endian}H", donnees, 0x3E)[0]
         else:
             if len(donnees) < 0x34:
                 return sections, has_symtab
             e_shoff = struct.unpack_from(f"{endian}I", donnees, 0x20)[0]
-            e_shentsize = struct.unpack_from(
-                f"{endian}H", donnees, 0x2E
-            )[0]
+            e_shentsize = struct.unpack_from(f"{endian}H", donnees, 0x2E)[0]
             e_shnum = struct.unpack_from(f"{endian}H", donnees, 0x30)[0]
-            e_shstrndx = struct.unpack_from(
-                f"{endian}H", donnees, 0x32
-            )[0]
+            e_shstrndx = struct.unpack_from(f"{endian}H", donnees, 0x32)[0]
 
         if e_shoff == 0 or e_shnum == 0 or e_shentsize == 0:
             return sections, has_symtab
@@ -217,16 +209,16 @@ def _parser_elf(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
                 sh_offset = struct.unpack_from(
                     f"{endian}Q", donnees, strtab_offset + 24
                 )[0]
-                sh_size = struct.unpack_from(
-                    f"{endian}Q", donnees, strtab_offset + 32
-                )[0]
+                sh_size = struct.unpack_from(f"{endian}Q", donnees, strtab_offset + 32)[
+                    0
+                ]
             else:
                 sh_offset = struct.unpack_from(
                     f"{endian}I", donnees, strtab_offset + 16
                 )[0]
-                sh_size = struct.unpack_from(
-                    f"{endian}I", donnees, strtab_offset + 20
-                )[0]
+                sh_size = struct.unpack_from(f"{endian}I", donnees, strtab_offset + 20)[
+                    0
+                ]
             end = sh_offset + sh_size
             if end <= len(donnees):
                 strtab_data = donnees[sh_offset:end]
@@ -237,37 +229,37 @@ def _parser_elf(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
                 break
 
             if is_64:
-                sh_name_idx = struct.unpack_from(
-                    f"{endian}I", donnees, offset_entree
-                )[0]
-                sh_type = struct.unpack_from(
-                    f"{endian}I", donnees, offset_entree + 4
-                )[0]
-                sh_flags = struct.unpack_from(
-                    f"{endian}Q", donnees, offset_entree + 8
-                )[0]
+                sh_name_idx = struct.unpack_from(f"{endian}I", donnees, offset_entree)[
+                    0
+                ]
+                sh_type = struct.unpack_from(f"{endian}I", donnees, offset_entree + 4)[
+                    0
+                ]
+                sh_flags = struct.unpack_from(f"{endian}Q", donnees, offset_entree + 8)[
+                    0
+                ]
                 sh_offset = struct.unpack_from(
                     f"{endian}Q", donnees, offset_entree + 24
                 )[0]
-                sh_size = struct.unpack_from(
-                    f"{endian}Q", donnees, offset_entree + 32
-                )[0]
+                sh_size = struct.unpack_from(f"{endian}Q", donnees, offset_entree + 32)[
+                    0
+                ]
             else:
-                sh_name_idx = struct.unpack_from(
-                    f"{endian}I", donnees, offset_entree
-                )[0]
-                sh_type = struct.unpack_from(
-                    f"{endian}I", donnees, offset_entree + 4
-                )[0]
-                sh_flags = struct.unpack_from(
-                    f"{endian}I", donnees, offset_entree + 8
-                )[0]
+                sh_name_idx = struct.unpack_from(f"{endian}I", donnees, offset_entree)[
+                    0
+                ]
+                sh_type = struct.unpack_from(f"{endian}I", donnees, offset_entree + 4)[
+                    0
+                ]
+                sh_flags = struct.unpack_from(f"{endian}I", donnees, offset_entree + 8)[
+                    0
+                ]
                 sh_offset = struct.unpack_from(
                     f"{endian}I", donnees, offset_entree + 16
                 )[0]
-                sh_size = struct.unpack_from(
-                    f"{endian}I", donnees, offset_entree + 20
-                )[0]
+                sh_size = struct.unpack_from(f"{endian}I", donnees, offset_entree + 20)[
+                    0
+                ]
 
             if sh_type in (_SHT_SYMTAB, _SHT_DYNSYM):
                 has_symtab = True
@@ -337,9 +329,7 @@ def _parser_pe(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
         nb_sections = struct.unpack_from("<H", donnees, coff_offset + 2)[0]
         ptr_symtab = struct.unpack_from("<I", donnees, coff_offset + 8)[0]
         nb_symbols = struct.unpack_from("<I", donnees, coff_offset + 12)[0]
-        optional_hdr_size = struct.unpack_from(
-            "<H", donnees, coff_offset + 16
-        )[0]
+        optional_hdr_size = struct.unpack_from("<H", donnees, coff_offset + 16)[0]
 
         if ptr_symtab != 0 and nb_symbols != 0:
             has_symtab = True
@@ -354,23 +344,15 @@ def _parser_pe(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
                 break
 
             nom_raw = donnees[entry : entry + 8]
-            nom = nom_raw.split(b"\x00", 1)[0].decode(
-                "ascii", errors="replace"
-            )
+            nom = nom_raw.split(b"\x00", 1)[0].decode("ascii", errors="replace")
 
             taille_raw = struct.unpack_from("<I", donnees, entry + 16)[0]
             offset_raw = struct.unpack_from("<I", donnees, entry + 20)[0]
-            characteristics = struct.unpack_from(
-                "<I", donnees, entry + 36
-            )[0]
+            characteristics = struct.unpack_from("<I", donnees, entry + 36)[0]
 
             taille = taille_raw if taille_raw > 0 else 0
             end = offset_raw + taille
-            raw = (
-                donnees[offset_raw:end]
-                if taille > 0 and end <= len(donnees)
-                else b""
-            )
+            raw = donnees[offset_raw:end] if taille > 0 and end <= len(donnees) else b""
 
             sections.append(
                 _SectionInfo(
@@ -378,9 +360,7 @@ def _parser_pe(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
                     offset=offset_raw,
                     taille=taille,
                     donnees=raw,
-                    executable=bool(
-                        characteristics & _PE_SCN_MEM_EXECUTE
-                    ),
+                    executable=bool(characteristics & _PE_SCN_MEM_EXECUTE),
                     writable=bool(characteristics & _PE_SCN_MEM_WRITE),
                     flags=characteristics,
                 )
@@ -423,9 +403,7 @@ def _parser_macho(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
                 break
 
             cmd = struct.unpack_from(f"{endian}I", donnees, pos)[0]
-            cmdsize = struct.unpack_from(
-                f"{endian}I", donnees, pos + 4
-            )[0]
+            cmdsize = struct.unpack_from(f"{endian}I", donnees, pos + 4)[0]
 
             if cmdsize < 8:
                 break
@@ -434,11 +412,7 @@ def _parser_macho(donnees: bytes) -> Tuple[List[_SectionInfo], bool]:
                 has_symtab = True
 
             if cmd in (_LC_SEGMENT, _LC_SEGMENT_64):
-                sections.extend(
-                    _parser_macho_segment(
-                        donnees, pos, endian, is_64
-                    )
-                )
+                sections.extend(_parser_macho_segment(donnees, pos, endian, is_64))
 
             pos += cmdsize
     except (struct.error, IndexError):
@@ -458,15 +432,11 @@ def _parser_macho_segment(
 
     try:
         if is_64:
-            nsects = struct.unpack_from(
-                f"{endian}I", donnees, pos + 64
-            )[0]
+            nsects = struct.unpack_from(f"{endian}I", donnees, pos + 64)[0]
             sect_start = pos + 72
             sect_size = 80
         else:
-            nsects = struct.unpack_from(
-                f"{endian}I", donnees, pos + 48
-            )[0]
+            nsects = struct.unpack_from(f"{endian}I", donnees, pos + 48)[0]
             sect_start = pos + 56
             sect_size = 68
 
@@ -476,46 +446,24 @@ def _parser_macho_segment(
                 break
 
             nom_raw = donnees[sect_pos : sect_pos + 16]
-            nom = nom_raw.split(b"\x00", 1)[0].decode(
-                "ascii", errors="replace"
-            )
+            nom = nom_raw.split(b"\x00", 1)[0].decode("ascii", errors="replace")
 
             if is_64:
-                offset = struct.unpack_from(
-                    f"{endian}I", donnees, sect_pos + 48
-                )[0]
-                taille = struct.unpack_from(
-                    f"{endian}Q", donnees, sect_pos + 40
-                )[0]
-                flags = struct.unpack_from(
-                    f"{endian}I", donnees, sect_pos + 76
-                )[0]
+                offset = struct.unpack_from(f"{endian}I", donnees, sect_pos + 48)[0]
+                taille = struct.unpack_from(f"{endian}Q", donnees, sect_pos + 40)[0]
+                flags = struct.unpack_from(f"{endian}I", donnees, sect_pos + 76)[0]
             else:
-                offset = struct.unpack_from(
-                    f"{endian}I", donnees, sect_pos + 40
-                )[0]
-                taille = struct.unpack_from(
-                    f"{endian}I", donnees, sect_pos + 32
-                )[0]
-                flags = struct.unpack_from(
-                    f"{endian}I", donnees, sect_pos + 64
-                )[0]
+                offset = struct.unpack_from(f"{endian}I", donnees, sect_pos + 40)[0]
+                taille = struct.unpack_from(f"{endian}I", donnees, sect_pos + 32)[0]
+                flags = struct.unpack_from(f"{endian}I", donnees, sect_pos + 64)[0]
 
             # Protection: lire du segment parent
             if is_64:
-                initprot = struct.unpack_from(
-                    f"{endian}I", donnees, pos + 52
-                )[0]
-                maxprot = struct.unpack_from(
-                    f"{endian}I", donnees, pos + 48
-                )[0]
+                initprot = struct.unpack_from(f"{endian}I", donnees, pos + 52)[0]
+                maxprot = struct.unpack_from(f"{endian}I", donnees, pos + 48)[0]
             else:
-                initprot = struct.unpack_from(
-                    f"{endian}I", donnees, pos + 40
-                )[0]
-                maxprot = struct.unpack_from(
-                    f"{endian}I", donnees, pos + 36
-                )[0]
+                initprot = struct.unpack_from(f"{endian}I", donnees, pos + 40)[0]
+                maxprot = struct.unpack_from(f"{endian}I", donnees, pos + 36)[0]
 
             prot = initprot | maxprot
             executable = bool(prot & _VM_PROT_EXECUTE)
@@ -653,9 +601,7 @@ class ElfLightBackend(AnalyseurBackend):
             metrique, annotations = _analyser_section(section)
             resultat.fonctions.append(metrique)
             resultat.annotations.extend(annotations)
-            entropies.append(
-                _calculer_entropie_shannon(section.donnees)
-            )
+            entropies.append(_calculer_entropie_shannon(section.donnees))
 
         # Entropie globale du fichier
         if entropies:
@@ -666,25 +612,17 @@ class ElfLightBackend(AnalyseurBackend):
             tailles = [f.nb_lignes for f in resultat.fonctions]
             taille_max = max(tailles)
             moyenne = sum(tailles) / len(tailles)
-            resultat.phi_ratio = (
-                taille_max / moyenne if moyenne > 0 else 0.0
-            )
+            resultat.phi_ratio = taille_max / moyenne if moyenne > 0 else 0.0
 
             for f in resultat.fonctions:
-                f.phi_ratio = (
-                    f.nb_lignes / moyenne if moyenne > 0 else 1.0
-                )
+                f.phi_ratio = f.nb_lignes / moyenne if moyenne > 0 else 1.0
 
-            resultat.oudjat = max(
-                resultat.fonctions, key=lambda f: f.complexite
-            )
+            resultat.oudjat = max(resultat.fonctions, key=lambda f: f.complexite)
 
         return resultat
 
 
-def _parser_par_format(
-    donnees: bytes, fmt: str
-) -> Tuple[List[_SectionInfo], bool]:
+def _parser_par_format(donnees: bytes, fmt: str) -> Tuple[List[_SectionInfo], bool]:
     """Dispatch le parsing selon le format détecté."""
     if fmt == "elf":
         return _parser_elf(donnees)
@@ -706,9 +644,7 @@ def _analyser_section(
 
     # Complexité = entropie normalisée × log2(taille + 1).
     # Le +1 évite log2(0) et assure la continuité pour les petites sections.
-    complexite = int(
-        entropie * math.log2(taille + 1)
-    ) if taille > 0 else 0
+    complexite = int(entropie * math.log2(taille + 1)) if taille > 0 else 0
 
     metrique = MetriqueFonction(
         nom=section.nom or "<sans-nom>",
@@ -767,10 +703,7 @@ def _analyser_section(
                         f"Indicateur d'injection potentielle."
                     ),
                     niveau="CRITICAL",
-                    extrait=(
-                        f"{section.nom} "
-                        f"offsets={offsets_shellcode[:5]}"
-                    ),
+                    extrait=(f"{section.nom} " f"offsets={offsets_shellcode[:5]}"),
                     categorie="SUTURE",
                 )
             )

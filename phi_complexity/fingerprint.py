@@ -24,9 +24,9 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from .core import PHI, SEQUENCE_FIBONACCI, distance_fibonacci
+from .core import PHI
 
 # ────────────────────────────────────────────────────────
 # CONSTANTES DE NORMALISATION
@@ -164,7 +164,9 @@ class FingerprintEngine:
         """
         # [0] Branch ratio : ratio de complexité relative
         phi_ratio = float(m.get("phi_ratio", 1.0))
-        branch_ratio = min(1.0, abs(1.0 / phi_ratio - 1.0 / PHI) if phi_ratio > 1e-9 else 1.0)
+        branch_ratio = min(
+            1.0, abs(1.0 / phi_ratio - 1.0 / PHI) if phi_ratio > 1e-9 else 1.0
+        )
 
         # [1] Entropie moyenne normalisée
         entropy_mean = min(1.0, float(m.get("shannon_entropy", 0.0)) / _NORM_ENTROPIE)
@@ -189,9 +191,15 @@ class FingerprintEngine:
 
         # [7] Ratio de complexité (oudjat_complexite / moyenne)
         oudjat = m.get("oudjat") or {}
-        oudjat_c = float(oudjat.get("complexite", 0)) if isinstance(oudjat, dict) else 0.0
+        oudjat_c = (
+            float(oudjat.get("complexite", 0)) if isinstance(oudjat, dict) else 0.0
+        )
         nb_fonctions = max(1, int(m.get("nb_fonctions", 1)))
-        complexity_ratio = min(1.0, oudjat_c / (_NORM_COMPLEXITY / nb_fonctions)) if oudjat_c > 0 else 0.0
+        complexity_ratio = (
+            min(1.0, oudjat_c / (_NORM_COMPLEXITY / nb_fonctions))
+            if oudjat_c > 0
+            else 0.0
+        )
 
         return [
             branch_ratio,
@@ -225,10 +233,7 @@ class FingerprintEngine:
         poids = [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 5.0, 3.0]
         total_poids = sum(poids)
 
-        distance_sq = sum(
-            p * (v - i) ** 2
-            for v, i, p in zip(vecteur, ideal, poids)
-        )
+        distance_sq = sum(p * (v - i) ** 2 for v, i, p in zip(vecteur, ideal, poids))
         return min(1.0, math.sqrt(distance_sq / total_poids))
 
     def _classifier(self, score: float) -> str:

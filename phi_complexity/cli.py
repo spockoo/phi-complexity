@@ -2,10 +2,13 @@ from __future__ import annotations
 import sys
 import os
 import argparse
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from . import auditer, rapport_console, rapport_markdown, rapport_json
 from .core import VERSION
+
+if TYPE_CHECKING:
+    from .fingerprint import PhiFingerprint
 
 # Extensions de fichiers supportées par le framework φ-Meta
 _EXTENSIONS_SUPPORTEES: Tuple[str, ...] = (
@@ -292,16 +295,13 @@ def _fichiers_depuis_dossier_scan(dossier: str) -> List[str]:
     fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
-            os.path.join(racine, nom)
-            for nom in noms
-            if nom.lower().endswith(toutes)
+            os.path.join(racine, nom) for nom in noms if nom.lower().endswith(toutes)
         )
     return sorted(fichiers)
 
 
 def _collecter_fichiers_scan(cible: str) -> List[str]:
     """Retourne la liste des fichiers à scanner (source + binaire)."""
-    toutes = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
     if os.path.isfile(cible):
         # Accept any file for scanning (even without known extension)
         return [cible]
@@ -823,7 +823,7 @@ def _executer_scan(args: argparse.Namespace, fichiers: List[str]) -> int:
     return 1 if nb_suspects > 0 else 0
 
 
-def _afficher_scan_console(fichier: str, fp: "PhiFingerprint") -> None:
+def _afficher_scan_console(fichier: str, fp: PhiFingerprint) -> None:
     """Affiche le résultat d'un scan en mode console."""
     symboles = {
         "SAIN": "✅",
@@ -847,27 +847,17 @@ def _afficher_scan_console(fichier: str, fp: "PhiFingerprint") -> None:
 
 def _afficher_scan_resume(total: int, suspects: int) -> None:
     """Affiche le résumé final du scan."""
-    print(
-        "\n╔══════════════════════════════════════════════════╗"
-    )
-    print(
-        "║   PHI-SENTINEL — SCAN ANTIVIRAL UNIVERSEL         ║"
-    )
-    print(
-        "╚══════════════════════════════════════════════════╝"
-    )
+    print("\n╔══════════════════════════════════════════════════╗")
+    print("║   PHI-SENTINEL — SCAN ANTIVIRAL UNIVERSEL         ║")
+    print("╚══════════════════════════════════════════════════╝")
     print(f"\n  ◈  Fichiers scannés   : {total}")
     print(f"  ✅ Sains              : {total - suspects}")
     if suspects > 0:
         print(f"  ⚠  Suspects/Malveillants : {suspects}")
     else:
         print("  ✦  Aucune menace détectée.")
-    print(
-        "\n  ─────────────────────────────────────────────────"
-    )
-    print(
-        "  Ancré dans le Morphic Phi Framework — φ-Meta 2026"
-    )
+    print("\n  ─────────────────────────────────────────────────")
+    print("  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
 
 
 # ────────────────────────────────────────────────────────
