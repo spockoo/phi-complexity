@@ -155,6 +155,7 @@ jobs:
         with:
           script: |
             const fs = require("fs");
+            const path = require("path");
             const { execSync } = require("child_process");
             const { owner, repo } = context.repo;
             const data = JSON.parse(fs.readFileSync(".phi/ci-auto-diagnostic.json", "utf8"));
@@ -190,6 +191,23 @@ jobs:
               return JSON.stringify(path);
             }
 
+            function cleanupDiagnosticTemps() {
+              const diagZipPath = path.join(process.cwd(), "diag-artifact.zip");
+              if (fs.existsSync(diagZipPath)) {
+                fs.unlinkSync(diagZipPath);
+              }
+              const diagDirPath = path.join(process.cwd(), ".phi");
+              if (fs.existsSync(diagDirPath)) {
+                const diagStats = fs.lstatSync(diagDirPath);
+                if (diagStats.isSymbolicLink()) {
+                  throw new Error("Refus de supprimer un lien symbolique .phi");
+                }
+                if (!diagStats.isDirectory()) {
+                  throw new Error("Le chemin .phi attendu comme dossier a un type inattendu");
+                }
+                fs.rmSync(diagDirPath, { recursive: true, force: true });
+              }
+            }
             const DETERMINISTIC_CATALOGUE = {
               QUALITY_GATE: "ruff check --fix . && black .",
               DEPENDENCY_INSTALL: "pip install -e . --upgrade",
@@ -221,6 +239,7 @@ jobs:
                 }
                 const cmd = DETERMINISTIC_CATALOGUE[mutation.category];
                 execSync(cmd, { stdio: "inherit", shell: true });
+                cleanupDiagnosticTemps();
                 const changedPaths = listPaths("git diff --name-only");
                 const sourcePaths = changedPaths.filter(isAllowedSourcePath);
                 if (sourcePaths.length === 0) {
