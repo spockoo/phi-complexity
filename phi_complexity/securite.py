@@ -176,7 +176,7 @@ class JournalAudit:
 
 # Garde un journal JSONL compact tout en conservant le contexte utile.
 _CAPTURE_MAX_CHARS = 4000
-# Fibonacci(6) : au-delà, le bruit marginal apporte peu d'information.
+# Fibonacci(6) = 8: beyond this, marginal noise adds little signal.
 _STDERR_LINE_SATURATION = 8
 # φ + 3 ≈ 4.618 équilibre erreurs, outils détectés et bruit stderr.
 _OUTPUT_NOISE_NORMALIZER = 3.0 + PHI
@@ -252,8 +252,8 @@ def resoudre_conflit_par_consensus(
     sorties: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Calcule un consensus de résolution à partir des invariants Lilith/Phidélia
-    et des sorties capturées en CI ou en audit.
+    Compute a resolution consensus from Lilith/Phidélia invariants and
+    outputs captured in CI or security audit flows.
     """
     invariants = dict(invariants or {})
     sorties = dict(sorties or {})
@@ -337,7 +337,7 @@ def resoudre_conflit_par_consensus(
 
 
 class JournalConflits:
-    """Journal append-only des conflits et de leur consensus de résolution."""
+    """Append-only journal of conflicts and their resolution consensus."""
 
     def __init__(self, workspace_root: str = ".") -> None:
         self.phi_dir = os.path.join(workspace_root, ".phi")
@@ -386,7 +386,7 @@ def journaliser_conflit_audit(
     source: str = "phi-shield",
     contexte: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Construit et journalise un conflit à partir d'un audit sécurité."""
+    """Build and journal a conflict from a security audit."""
     summary = audit.get("summary", {})
     findings = audit.get("findings", [])
     lilith_count = 0
