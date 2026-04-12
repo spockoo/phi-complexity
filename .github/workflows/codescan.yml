@@ -93,6 +93,8 @@ jobs:
           contents: read
           actions: read
         runs-on: ubuntu-latest
+        env:
+          COVERAGE_THRESHOLD: "89"
         steps:
             -   name: 📥 Checkout
                 uses: actions/checkout@v4
@@ -119,7 +121,7 @@ jobs:
                            --cov=phi_complexity \
                            --cov-report=json:.phi/coverage.json \
                            --cov-report=term-missing \
-                           --cov-fail-under=89 \
+                           --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
                            -p no:randomly \
                            -x
 
@@ -150,7 +152,7 @@ jobs:
                     print(f'  Lignes manquées   : {miss}')
                     print()
 
-                    seuil = 89.0
+                    seuil = float(os.environ.get('COVERAGE_THRESHOLD', '89'))
                     modules_faibles = []
                     for fichier, info in data['files'].items():
                         pct = info['summary']['percent_covered']
