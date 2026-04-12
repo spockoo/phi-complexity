@@ -180,6 +180,10 @@ _CAPTURE_MAX_CHARS = 4000
 _STDERR_LINE_SATURATION = 8
 # φ + 3 ≈ 4.618 équilibre erreurs, outils détectés et bruit stderr.
 _OUTPUT_NOISE_NORMALIZER = 3.0 + PHI
+_LILITH_VARIANCE_NORMALIZER = PHI**2 * 100.0
+_BLOCKING_FINDINGS_NORMALIZER = PHI
+_CONSENSUS_AUTO_RESOLVE_THRESHOLD = round((PHI / (PHI + 0.63)) * 100.0, 2)
+_CONSENSUS_REVIEW_THRESHOLD = round((1.0 / (PHI + 0.6)) * 100.0, 2)
 _CONSENSUS_WEIGHT_RAW = {
     "phidelia_signal": PHI,
     "lilith_pressure": 1.0,
@@ -279,9 +283,9 @@ def resoudre_conflit_par_consensus(
         1.0,
         (erreurs_count + len(actions) + stderr_contribution) / _OUTPUT_NOISE_NORMALIZER,
     )
-    lilith_pressure = min(1.0, lilith_variance / (PHI**2 * 100.0))
+    lilith_pressure = min(1.0, lilith_variance / _LILITH_VARIANCE_NORMALIZER)
     phidelia_signal = radiance / 100.0
-    blocking_pressure = min(1.0, blocking_findings / PHI)
+    blocking_pressure = min(1.0, blocking_findings / _BLOCKING_FINDINGS_NORMALIZER)
 
     consensus_brut = (
         _CONSENSUS_WEIGHTS["phidelia_signal"] * phidelia_signal
@@ -291,9 +295,13 @@ def resoudre_conflit_par_consensus(
     )
     consensus_score = round(max(0.0, min(100.0, consensus_brut * 100.0)), 2)
 
-    if blocking_findings == 0 and consensus_score >= 72.0 and erreurs_count <= 1:
+    if (
+        blocking_findings == 0
+        and consensus_score >= _CONSENSUS_AUTO_RESOLVE_THRESHOLD
+        and erreurs_count <= 1
+    ):
         decision = "AUTO_RESOLVE"
-    elif consensus_score >= 45.0:
+    elif consensus_score >= _CONSENSUS_REVIEW_THRESHOLD:
         decision = "REVIEW"
     else:
         decision = "ESCALATE"
