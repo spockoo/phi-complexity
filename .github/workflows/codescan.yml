@@ -56,9 +56,7 @@ jobs:
             -   name: Verify and Enforce Java Version
                 run: |
                     echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
-                    echo "CODE_SCAN_JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
                     echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
-                    export PATH="$JAVA_HOME/bin:$PATH"
                     echo "JAVA_HOME is set to: $JAVA_HOME"
                     echo "java binary: $(command -v java)"
                     java -version
@@ -67,6 +65,10 @@ jobs:
                       exit 1
                     fi
                     JAVA_VER=$("$JAVA_HOME/bin/java" -XshowSettings:properties -version 2>&1 | awk -F ' = ' '/java.specification.version/ {print $2; exit}')
+                    if [ -z "$JAVA_VER" ]; then
+                      echo "❌ Unable to detect Java specification version"
+                      exit 1
+                    fi
                     echo "☕ Java version détectée : $JAVA_VER"
                     if [ "$JAVA_VER" -lt 17 ]; then
                       echo "❌ Java $JAVA_VER < 17 — incompatible avec SonarScanner"
