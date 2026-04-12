@@ -61,6 +61,33 @@ jobs:
               return Math.round((end - start) / 1000);
             }
 
+            function normalizeToLowercase(value) {
+              return String(value || "").toLowerCase();
+            }
+
+            function matchesAny(text, fragments) {
+              return fragments.some((fragment) => text.includes(fragment));
+            }
+
+            function stableStringify(value, seen = new Set()) {
+              if (Array.isArray(value)) {
+                return `[${value.map((item) => stableStringify(item, seen)).join(",")}]`;
+              }
+              if (value && typeof value === "object") {
+                if (seen.has(value)) {
+                  throw new Error("Cycle détecté lors de la sérialisation stable du diagnostic.");
+                }
+                seen.add(value);
+                const keys = Object.keys(value).sort();
+                const result = `{${keys
+                  .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key], seen)}`)
+                  .join(",")}}`;
+                seen.delete(value);
+                return result;
+              }
+              return JSON.stringify(value);
+            }
+
             const jobs = await github.paginate(
               github.rest.actions.listJobsForWorkflowRunAttempt,
               {
@@ -78,104 +105,14 @@ jobs:
 
             function classifyJob(job) {
               const failedStep = getFailedStep(job);
-              const stepName = (failedStep?.name || "").toLowerCase();
-              const jobName = (job.name || "").toLowerCase();
+              const stepName = normalizeToLowercase(failedStep?.name);
+              const jobName = normalizeToLowercase(job.name);
               const corpus = `${jobName} ${stepName}`;
               const runnerId =
                 job.runner_id === null || job.runner_id === undefined
                   ? 0
                   : job.runner_id;
 
-              if (runnerId === 0 && (!job.steps || job.steps.length === 0)) {
-                return {
-                  category: "INFRA_RUNNER_UNAVAILABLE",
-                  confidence: 0.97,
-                  priority: 1,
-                  hint: "Label runner indisponible/non supporté. Vérifier runs-on dans la matrice.",
-                  mutation: "Réduire la matrice au couple os/version supporté puis réactiver graduellement."
-                };
-              }
-              if (corpus.includes("setup python") || corpus.includes("setup node")) {
-                return {
-                  category: "TOOLCHAIN_SETUP",
-                  confidence: 0.93,
-                  priority: 1,
-                  hint: "Échec setup toolchain/version. Vérifier versions supportées et cache toolchain.",
-                  mutation: "Épingler la version de runtime et désactiver temporairement le cache pour isoler."
-                };
-              }
-              if (corpus.includes("install") || corpus.includes("installation") || corpus.includes("pip")) {
-                return {
-                  category: "DEPENDENCY_INSTALL",
-                  confidence: 0.92,
-                  priority: 1,
-                  hint: "Échec installation dépendances. Vérifier contraintes version/verrouillage et index réseau.",
-                  mutation: "Régénérer le verrouillage de dépendances et ajouter retry exponentiel sur install."
-                };
-              }
-              if (corpus.includes("permission") || corpus.includes("token") || corpus.includes("forbidden")) {
-                return {
-                  category: "PERMISSIONS",
-                  confidence: 0.9,
-                  priority: 1,
-                  hint: "Permissions insuffisantes (token/ACL). Vérifier permissions du workflow et secrets.",
-                  mutation: "Ajouter les permissions minimales requises au job et vérifier secrets disponibles."
-                };
-              }
-              if (corpus.includes("network") || corpus.includes("timeout") || corpus.includes("dns")) {
-                return {
-                  category: "NETWORK_TRANSIENT",
-                  confidence: 0.82,
-                  priority: 2,
-                  hint: "Instabilité réseau probable (timeouts/DNS).",
-                  mutation: "Introduire retries idempotents avec backoff et miroir de registry."
-                };
-              }
-              if (corpus.includes("imports critiques") || corpus.includes("import smoke")) {
-                return {
-                  category: "API_CONTRACT_DRIFT",
-                  confidence: 0.95,
-                  priority: 1,
-                  hint: "Imports critiques cassés. Mettre à jour le smoke-test selon l'API exportée.",
-                  mutation: "Aligner l'API publique et le test de contrat import après revue des exports."
-                };
-              }
-              if (corpus.includes("mypy") || corpus.includes("type check")) {
-                return {
-                  category: "TYPE_CHECK",
-                  confidence: 0.95,
-                  priority: 1,
-                  hint: "Échec vérification de types (mypy).",
-                  mutation: "Corriger les annotations/types manquants ou isoler imports optionnels en mode typé."
-                };
-              }
-              if (corpus.includes("ruff") || corpus.includes("black") || corpus.includes("lint")) {
-                return {
-                  category: "QUALITY_GATE",
-                  confidence: 0.95,
-                  priority: 2,
-                  hint: "Échec qualité (lint/format). Reproduire localement les checks.",
-                  mutation: "Appliquer le formatage/lint en local et verrouiller la version des outils."
-                };
-              }
-              if (corpus.includes("pytest") || corpus.includes("test")) {
-                return {
-                  category: "TEST_REGRESSION",
-                  confidence: 0.88,
-                  priority: 1,
-                  hint: "Échec tests. Examiner stacktrace et régression fonctionnelle.",
-                  mutation: "Isoler le test fautif, reproduire localement, corriger puis ajouter garde anti-régression."
-                };
-              }
-              if (job.conclusion === "timed_out") {
-                return {
-                  category: "TIMEOUT_CAPACITY",
-                  confidence: 0.8,
-                  priority: 2,
-                  hint: "Job expiré. Capacité runner ou suite trop longue.",
-                  mutation: "Scinder le job en segments et activer cache pour réduire la durée."
-                };
-              }
               if (
                 jobName.includes("ci-gate") ||
                 jobName.includes("ci resonance gate") ||
@@ -186,7 +123,117 @@ jobs:
                   confidence: 1.0,
                   priority: 3,
                   hint: "Échec en cascade du CI Gate (effet secondaire d'un autre échec). Ce n'est pas une cause racine.",
-                  mutation: "Résoudre les échecs en amont. Ce job se rétablira automatiquement."
+                  mutation: "Résoudre les échecs en amont. Ce job se rétablira automatiquement.",
+                  basis: "job_name"
+                };
+              }
+
+              if (runnerId === 0 && (!job.steps || job.steps.length === 0)) {
+                return {
+                  category: "INFRA_RUNNER_UNAVAILABLE",
+                  confidence: 0.97,
+                  priority: 1,
+                  hint: "Label runner indisponible/non supporté. Vérifier runs-on dans la matrice.",
+                  mutation: "Réduire la matrice au couple os/version supporté puis réactiver graduellement.",
+                  basis: "runner_state"
+                };
+              }
+              if (matchesAny(stepName, ["setup python", "setup node"])) {
+                return {
+                  category: "TOOLCHAIN_SETUP",
+                  confidence: 0.93,
+                  priority: 1,
+                  hint: "Échec setup toolchain/version. Vérifier versions supportées et cache toolchain.",
+                  mutation: "Épingler la version de runtime et désactiver temporairement le cache pour isoler.",
+                  basis: "failed_step"
+                };
+              }
+              if (
+                matchesAny(stepName, [
+                  "installation",
+                  "install dependencies",
+                  "install",
+                  "dépendances",
+                  "pip"
+                ])
+              ) {
+                return {
+                  category: "DEPENDENCY_INSTALL",
+                  confidence: 0.92,
+                  priority: 1,
+                  hint: "Échec installation dépendances. Vérifier contraintes version/verrouillage et index réseau.",
+                  mutation: "Régénérer le verrouillage de dépendances et ajouter retry exponentiel sur install.",
+                  basis: "failed_step"
+                };
+              }
+              if (matchesAny(stepName, ["lint", "ruff", "format check", "black", "quality"])) {
+                return {
+                  category: "QUALITY_GATE",
+                  confidence: 0.97,
+                  priority: 1,
+                  hint: "Échec qualité (lint/format). Cause racine détectée sur l'étape en échec.",
+                  mutation: "Appliquer le formatage/lint sur les fichiers impactés puis relancer la CI.",
+                  basis: "failed_step"
+                };
+              }
+              if (matchesAny(stepName, ["typage", "mypy", "type check"])) {
+                return {
+                  category: "TYPE_CHECK",
+                  confidence: 0.97,
+                  priority: 1,
+                  hint: "Échec vérification de types (mypy) détecté sur l'étape en échec.",
+                  mutation: "Corriger les annotations/types manquants ou isoler imports optionnels en mode typé.",
+                  basis: "failed_step"
+                };
+              }
+              if (matchesAny(stepName, ["pytest", "tests", "test"])) {
+                return {
+                  category: "TEST_REGRESSION",
+                  confidence: 0.9,
+                  priority: 1,
+                  hint: "Échec tests détecté sur l'étape en échec.",
+                  mutation: "Isoler le test fautif, reproduire localement, corriger puis ajouter garde anti-régression.",
+                  basis: "failed_step"
+                };
+              }
+              if (job.conclusion === "timed_out") {
+                return {
+                  category: "TIMEOUT_CAPACITY",
+                  confidence: 0.8,
+                  priority: 2,
+                  hint: "Job expiré. Capacité runner ou suite trop longue.",
+                  mutation: "Scinder le job en segments et activer cache pour réduire la durée.",
+                  basis: "job_conclusion"
+                };
+              }
+              if (corpus.includes("permission") || corpus.includes("token") || corpus.includes("forbidden")) {
+                return {
+                  category: "PERMISSIONS",
+                  confidence: 0.9,
+                  priority: 1,
+                  hint: "Permissions insuffisantes (token/ACL). Vérifier permissions du workflow et secrets.",
+                  mutation: "Ajouter les permissions minimales requises au job et vérifier secrets disponibles.",
+                  basis: "fallback_corpus"
+                };
+              }
+              if (corpus.includes("network") || corpus.includes("timeout") || corpus.includes("dns")) {
+                return {
+                  category: "NETWORK_TRANSIENT",
+                  confidence: 0.82,
+                  priority: 2,
+                  hint: "Instabilité réseau probable (timeouts/DNS).",
+                  mutation: "Introduire retries idempotents avec backoff et miroir de registry.",
+                  basis: "fallback_corpus"
+                };
+              }
+              if (corpus.includes("imports critiques") || corpus.includes("import smoke")) {
+                return {
+                  category: "API_CONTRACT_DRIFT",
+                  confidence: 0.95,
+                  priority: 1,
+                  hint: "Imports critiques cassés. Mettre à jour le smoke-test selon l'API exportée.",
+                  mutation: "Aligner l'API publique et le test de contrat import après revue des exports.",
+                  basis: "fallback_corpus"
                 };
               }
               return {
@@ -194,7 +241,8 @@ jobs:
                 confidence: 0.55,
                 priority: 3,
                 hint: "Cause non classée automatiquement. Inspection manuelle nécessaire.",
-                mutation: "Collecter les logs détaillés et enrichir la taxonomie avec ce nouveau motif."
+                mutation: "Collecter les logs détaillés et enrichir la taxonomie avec ce nouveau motif.",
+                basis: "fallback_default"
               };
             }
 
@@ -216,6 +264,7 @@ jobs:
                 category: cls.category,
                 confidence: cls.confidence,
                 priority: cls.priority,
+                classifier_basis: cls.basis,
                 hint: cls.hint,
                 mutation: cls.mutation,
                 duration_seconds: getDurationSeconds(job),
@@ -262,6 +311,7 @@ jobs:
             };
 
             const fs = require("fs");
+            const crypto = require("crypto");
             fs.mkdirSync(".phi", { recursive: true });
 
             const historyPath = ".phi/ci-history.jsonl";
@@ -393,7 +443,7 @@ jobs:
                 action: d.mutation
               }));
 
-            const output = {
+            const outputCore = {
               repository: `${owner}/${repo}`,
               workflow: run.name,
               run_id: run.id,
@@ -421,6 +471,15 @@ jobs:
               recurrent_patterns: recurrentPatterns,
               proposed_mutations: proposedMutations,
               diagnostics: classifiedDiagnostics
+            };
+            const diagnosticHash = crypto
+              .createHash("sha256")
+              .update(stableStringify(outputCore))
+              .digest("hex");
+            const output = {
+              schema_version: "1.1.0",
+              diagnostic_hash: diagnosticHash,
+              ...outputCore
             };
             fs.writeFileSync(
               ".phi/ci-auto-diagnostic.json",
