@@ -208,7 +208,6 @@ jobs:
                 fs.rmSync(diagDirPath, { recursive: true, force: true });
               }
             }
-
             const DETERMINISTIC_CATALOGUE = {
               QUALITY_GATE: "ruff check --fix . && black .",
               DEPENDENCY_INSTALL: "pip install -e . --upgrade",
