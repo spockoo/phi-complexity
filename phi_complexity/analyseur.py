@@ -80,12 +80,15 @@ class AnalyseurPhi:
         from .backends.python import PythonBackend
         from .backends.c_rust_light import CRustLightBackend
         from .backends.asm_light import AsmLightBackend
+        from .backends.elf_light import ElfLightBackend
 
         ext = self.fichier.split(".")[-1].lower()
         if ext in ("c", "cpp", "h", "hpp", "rs"):
             return CRustLightBackend(self.fichier)
         if ext in ("asm", "s"):
             return AsmLightBackend(self.fichier)
+        if ext in ("elf", "so", "o", "exe", "dll", "sys", "dylib", "bin"):
+            return ElfLightBackend(self.fichier)
 
         # Défaut: Python
         return PythonBackend(self.fichier)

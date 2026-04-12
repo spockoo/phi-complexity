@@ -133,22 +133,29 @@ class BayesianCorrelator:
         score_os: float,
         score_commit: float,
         score_telemetrie: float,
+        score_fingerprint: float = 0.0,
     ) -> float:
         """
-        Fusionne les 3 scores par mise à jour bayésienne successive.
+        Fusionne les scores par mise à jour bayésienne successive.
 
         Utilise le log-odds pour une fusion stable numériquement.
         Chaque signal est pondéré par sa fiabilité estimée :
             - OS behavior      : fiabilité 0.8 (observations directes)
             - commit risk      : fiabilité 0.6 (heuristique)
             - télémétrie stats : fiabilité 0.7 (indirect)
+            - φ-fingerprint    : fiabilité 0.75 (géométrie structurelle)
         """
         # Log-odds initial depuis le prior
         epsilon = 1e-9
         log_odds = math.log((self._prior + epsilon) / (1.0 - self._prior + epsilon))
 
         # Mise à jour bayésienne pour chaque signal
-        poids = [(score_os, 0.8), (score_commit, 0.6), (score_telemetrie, 0.7)]
+        poids = [
+            (score_os, 0.8),
+            (score_commit, 0.6),
+            (score_telemetrie, 0.7),
+            (score_fingerprint, 0.75),
+        ]
 
         for score, fiabilite in poids:
             # Un score nul signifie "absence d'information" → prior inchangé (LR = 1).
@@ -183,6 +190,7 @@ class BayesianCorrelator:
         score_os: float,
         score_commit: float,
         score_telemetrie: float,
+        score_fingerprint: float = 0.0,
     ) -> List[str]:
         """Identifie les facteurs dominants pour l'explication du score."""
         facteurs: List[str] = []
@@ -206,6 +214,12 @@ class BayesianCorrelator:
                 f"Télémétrie suspecte : {score_telemetrie * 100:.1f}% de traces anormales"
             )
 
+        if score_fingerprint >= 0.30:
+            facteurs.append(
+                f"φ-Fingerprint anomalique : divergence {score_fingerprint * 100:.1f}% "
+                f"du profil géométrique idéal"
+            )
+
         return facteurs
 
     def calculer_score(
@@ -213,14 +227,16 @@ class BayesianCorrelator:
         signaux: Optional[List[SignalComportemental]] = None,
         traces: Optional[List[TraceNormalisee]] = None,
         score_commit: float = 0.0,
+        score_fingerprint: float = 0.0,
     ) -> ScoreSentinel:
         """
         Calcule le score de menace unifié à partir des signaux disponibles.
 
         Args:
-            signaux      : Signaux comportementaux (Couche 3). Peut être None.
-            traces       : Traces normalisées (Couche 2). Peut être None.
-            score_commit : Score de risque commit [0,1] (commit_risk.py). Défaut: 0.
+            signaux           : Signaux comportementaux (Couche 3). Peut être None.
+            traces            : Traces normalisées (Couche 2). Peut être None.
+            score_commit      : Score de risque commit [0,1] (commit_risk.py). Défaut: 0.
+            score_fingerprint : Score d'anomalie φ-fingerprint [0,1] (Phase 24). Défaut: 0.
 
         Returns:
             ScoreSentinel avec score final, niveau et facteurs dominants.
@@ -234,12 +250,16 @@ class BayesianCorrelator:
         # Score télémétrie (depuis les stats de traces)
         score_tel = self._score_telemetrie(traces)
 
-        # Fusion bayésienne
-        score_final = self._fusionner_bayesien(score_os, score_commit, score_tel)
+        # Fusion bayésienne (inclut le fingerprint si fourni)
+        score_final = self._fusionner_bayesien(
+            score_os, score_commit, score_tel, score_fingerprint
+        )
 
         # Classification et facteurs
         niveau = self._classifier_niveau(score_final)
-        facteurs = self._identifier_facteurs(signaux, score_os, score_commit, score_tel)
+        facteurs = self._identifier_facteurs(
+            signaux, score_os, score_commit, score_tel, score_fingerprint
+        )
 
         return ScoreSentinel(
             score_final=score_final,

@@ -2,10 +2,13 @@ from __future__ import annotations
 import sys
 import os
 import argparse
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from . import auditer, rapport_console, rapport_markdown, rapport_json
 from .core import VERSION
+
+if TYPE_CHECKING:
+    from .fingerprint import PhiFingerprint
 
 # Extensions de fichiers supportées par le framework φ-Meta
 _EXTENSIONS_SUPPORTEES: Tuple[str, ...] = (
@@ -17,6 +20,18 @@ _EXTENSIONS_SUPPORTEES: Tuple[str, ...] = (
     ".rs",
     ".asm",
     ".s",
+)
+
+# Extensions binaires supportées par le backend ELF/PE/Mach-O
+_EXTENSIONS_BINAIRES: Tuple[str, ...] = (
+    ".elf",
+    ".so",
+    ".o",
+    ".exe",
+    ".dll",
+    ".sys",
+    ".dylib",
+    ".bin",
 )
 
 # ────────────────────────────────────────────────────────
@@ -221,6 +236,30 @@ Exemples :
         help="Inclure les exemples pédagogiques dans le score/gate",
     )
 
+    # Phase 24 — Scan antiviral (phi-fingerprint + sentinel)
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="Scanner un binaire ou fichier source (analyse antivirale φ-Sentinel Phase 24).",
+    )
+    scan_parser.add_argument("cible", help="Fichier binaire ou dossier à scanner")
+    scan_parser.add_argument(
+        "--format",
+        choices=["console", "json"],
+        default="console",
+        help="Format de sortie (console ou json)",
+    )
+    scan_parser.add_argument(
+        "--harvest",
+        action="store_true",
+        help="Collecter le fingerprint dans le corpus harvest",
+    )
+    scan_parser.add_argument(
+        "--output",
+        "-o",
+        default=".phi/harvest.jsonl",
+        help="Fichier JSONL pour le harvest (défaut: .phi/harvest.jsonl)",
+    )
+
     return parser
 
 
@@ -247,6 +286,27 @@ def _collecter_fichiers(cible: str) -> List[str]:
         return [cible] if cible.lower().endswith(_EXTENSIONS_SUPPORTEES) else []
     if os.path.isdir(cible):
         return _fichiers_depuis_dossier(cible)
+    return []
+
+
+def _fichiers_depuis_dossier_scan(dossier: str) -> List[str]:
+    """Collecte récursivement les fichiers scannables d'un dossier (source + binaire)."""
+    toutes = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
+    fichiers: List[str] = []
+    for racine, _, noms in os.walk(dossier):
+        fichiers.extend(
+            os.path.join(racine, nom) for nom in noms if nom.lower().endswith(toutes)
+        )
+    return sorted(fichiers)
+
+
+def _collecter_fichiers_scan(cible: str) -> List[str]:
+    """Retourne la liste des fichiers à scanner (source + binaire)."""
+    if os.path.isfile(cible):
+        # Accept any file for scanning (even without known extension)
+        return [cible]
+    if os.path.isdir(cible):
+        return _fichiers_depuis_dossier_scan(cible)
     return []
 
 
@@ -714,6 +774,92 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
     return 0 if status == "PASS" else 1
 
 
+def _executer_scan(args: argparse.Namespace, fichiers: List[str]) -> int:
+    """Phase 24 : Scanner des fichiers avec le φ-fingerprint antiviral."""
+    import json as _json
+
+    from .fingerprint import FingerprintEngine
+    from .harvest import HarvestEngine
+
+    engine = FingerprintEngine()
+    resultats: List[Dict[str, Any]] = []
+    nb_suspects = 0
+
+    for fichier in fichiers:
+        try:
+            fp = engine.calculer(fichier)
+            entry: Dict[str, Any] = {
+                "fichier": fichier,
+                **fp.to_dict(),
+            }
+            resultats.append(entry)
+
+            if fp.classification != "SAIN":
+                nb_suspects += 1
+
+            if args.format == "console":
+                _afficher_scan_console(fichier, fp)
+
+            # Optionnel : collecter dans le corpus harvest
+            if getattr(args, "harvest", False):
+                try:
+                    harvest = HarvestEngine(sortie=args.output)
+                    harvest.collecter_et_exporter_fingerprint(fichier)
+                except Exception:
+                    pass
+
+        except Exception as e:
+            entry = {"fichier": fichier, "erreur": str(e)}
+            resultats.append(entry)
+            if args.format == "console":
+                print(f"  ❌ {fichier} : {e}")
+
+    if args.format == "json":
+        sortie = resultats[0] if len(resultats) == 1 else resultats
+        print(_json.dumps(sortie, ensure_ascii=False, indent=2))
+    elif args.format == "console":
+        _afficher_scan_resume(len(fichiers), nb_suspects)
+
+    return 1 if nb_suspects > 0 else 0
+
+
+def _afficher_scan_console(fichier: str, fp: PhiFingerprint) -> None:
+    """Affiche le résultat d'un scan en mode console."""
+    symboles = {
+        "SAIN": "✅",
+        "SUSPECT": "⚠️ ",
+        "MALVEILLANT": "🚨",
+    }
+    symbole = symboles.get(fp.classification, "❓")
+
+    pct = fp.score_anomalie * 100
+    barre_len = 20
+    rempli = int(pct / 100 * barre_len)
+    barre = "█" * rempli + "░" * (barre_len - rempli)
+
+    print(f"\n  📄 {fichier}")
+    print(f"      Format     : {fp.format_source}")
+    print(f"      Anomalie   : [{barre}] {pct:.1f}%")
+    print(f"      Verdict    : {symbole}  {fp.classification}")
+    print(f"      Sections   : {fp.nb_sections}")
+    print(f"      Vecteur φ  : [{', '.join(f'{v:.3f}' for v in fp.vecteur)}]")
+
+
+def _afficher_scan_resume(total: int, suspects: int) -> None:
+    """Affiche le résumé final du scan."""
+    print("\n╔══════════════════════════════════════════════════╗")
+    print("║   PHI-SENTINEL — SCAN ANTIVIRAL UNIVERSEL         ║")
+    print("╚══════════════════════════════════════════════════╝")
+    print(f"\n  ◈  Fichiers scannés   : {total}")
+    print(f"  ✅ Sains              : {total - suspects}")
+    if suspects > 0:
+        print(f"  ⚠  Suspects/Malveillants : {suspects}")
+    else:
+        print("  ✦  Aucune menace détectée.")
+    print("\n  ─────────────────────────────────────────────────")
+    print("  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
+
+
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
@@ -763,6 +909,14 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
             print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
             sys.exit(1)
         sys.exit(_executer_spiral(fichiers))
+
+    # Phase 24 — scan antiviral (accepte source + binaire)
+    if args.commande == "scan":
+        fichiers = _collecter_fichiers_scan(args.cible)
+        if not fichiers:
+            print(f"❌ Aucun fichier scannable trouvé dans : {args.cible}")
+            sys.exit(1)
+        sys.exit(_executer_scan(args, fichiers))
 
     fichiers = _collecter_fichiers(args.cible)
     if not fichiers:
