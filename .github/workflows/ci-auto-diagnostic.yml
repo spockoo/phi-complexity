@@ -1,0 +1,164 @@
+name: "🧠 CI Auto-Diagnostic — Classification des échecs (φ-Diagnostic)"
+
+on:
+  workflow_run:
+    workflows:
+      - "CI — Tests & Qualité (φ-Stable)"
+      - "🖥️ Couche OS — Compatibilité Multi-Plateforme (φ-Arch)"
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  classify-failures:
+    if: ${{ github.event.workflow_run.conclusion != 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔎 Classifier les causes probables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+            // GitHub Actions API conclusions:
+            // https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run
+            const PROBLEM_CONCLUSIONS = new Set([
+              "failure",
+              "cancelled",
+              "timed_out",
+              "action_required"
+            ]);
+
+            function getFailedStep(job) {
+              return (job.steps || []).find((s) => s.conclusion === "failure") || null;
+            }
+
+            const jobs = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRunAttempt,
+              {
+                owner,
+                repo,
+                run_id: run.id,
+                attempt_number: run.run_attempt,
+                per_page: 100
+              }
+            );
+
+            const failedJobs = jobs.filter(
+              (job) => PROBLEM_CONCLUSIONS.has(job.conclusion)
+            );
+
+            function classifyJob(job) {
+              const failedStep = getFailedStep(job);
+              const stepName = (failedStep?.name || "").toLowerCase();
+              const runnerId =
+                job.runner_id === null || job.runner_id === undefined
+                  ? 0
+                  : job.runner_id;
+
+              if (runnerId === 0 && (!job.steps || job.steps.length === 0)) {
+                return {
+                  category: "INFRA_RUNNER_UNAVAILABLE",
+                  hint:
+                    "Label runner indisponible/non supporté. Vérifier runs-on dans la matrice."
+                };
+              }
+              if (stepName.includes("setup python")) {
+                return {
+                  category: "TOOLCHAIN_SETUP",
+                  hint:
+                    "Échec setup Python/version. Vérifier versions supportées par actions/setup-python."
+                };
+              }
+              if (stepName.includes("installation")) {
+                return {
+                  category: "DEPENDENCY_INSTALL",
+                  hint:
+                    "Échec installation dépendances. Vérifier pip, contraintes version, extras."
+                };
+              }
+              if (stepName.includes("imports critiques")) {
+                return {
+                  category: "API_CONTRACT_DRIFT",
+                  hint:
+                    "Imports critiques cassés. Mettre à jour le smoke-test selon l'API exportée."
+                };
+              }
+              if (stepName.includes("test") || stepName.includes("pytest")) {
+                return {
+                  category: "TEST_FAILURE",
+                  hint: "Échec tests. Examiner stacktrace et régression fonctionnelle."
+                };
+              }
+              if (["mypy", "ruff", "black"].some((tool) => stepName.includes(tool))) {
+                return {
+                  category: "QUALITY_GATE",
+                  hint:
+                    "Échec qualité (lint/format/type). Reproduire localement les checks."
+                };
+              }
+              return {
+                category: "UNCLASSIFIED",
+                hint: "Cause non classée automatiquement. Inspection manuelle nécessaire."
+              };
+            }
+
+            const diagnostics = failedJobs.map((job) => {
+              const failedStep = getFailedStep(job);
+              const cls = classifyJob(job);
+              return {
+                job_id: job.id,
+                job_name: job.name,
+                conclusion: job.conclusion,
+                runner_label: (job.labels || []).join(", "),
+                failed_step: failedStep ? failedStep.name : null,
+                category: cls.category,
+                hint: cls.hint,
+                url: job.html_url
+              };
+            });
+
+            const output = {
+              repository: `${owner}/${repo}`,
+              workflow: run.name,
+              run_id: run.id,
+              run_attempt: run.run_attempt,
+              run_conclusion: run.conclusion,
+              detected_failures: diagnostics.length,
+              diagnostics
+            };
+
+            const fs = require("fs");
+            fs.mkdirSync(".phi", { recursive: true });
+            fs.writeFileSync(
+              ".phi/ci-auto-diagnostic.json",
+              JSON.stringify(output, null, 2)
+            );
+
+            let summary = `## 🧠 CI Auto-Diagnostic\n\n`;
+            summary += `- Workflow: **${run.name}**\n`;
+            summary += `- Run: ${run.html_url}\n`;
+            summary += `- Conclusion: **${run.conclusion}**\n`;
+            summary += `- Échecs détectés: **${diagnostics.length}**\n\n`;
+
+            if (diagnostics.length === 0) {
+              summary += "Aucun job en échec classifiable.\n";
+            } else {
+              summary += "| Job | Catégorie | Étape en échec | Piste |\n";
+              summary += "|---|---|---|---|\n";
+              for (const d of diagnostics) {
+                summary += `| [${d.job_name}](${d.url}) | ${d.category} | ${d.failed_step || "-"} | ${d.hint} |\n`;
+              }
+            }
+
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+
+      - name: 📁 Publier le diagnostic JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-auto-diagnostic-${{ github.event.workflow_run.id }}-attempt-${{ github.event.workflow_run.run_attempt }}
+          path: .phi/ci-auto-diagnostic.json
+          retention-days: 14
