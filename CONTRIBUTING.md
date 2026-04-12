@@ -33,6 +33,7 @@ Si vous trouvez une erreur de calcul ou un bug logiciel, ouvrez une **Issue** en
 ### Normes de Code
 * Respectez la norme **PEP 8** pour le code Python.
 * Documentez vos fonctions avec des "docstrings" claires (particulièrement pour les formules mathématiques).
+* Avant chaque push, exécutez `pre-commit run --all-files` pour détecter/corriger les écarts de formatage et de lint en local.
 * Assurez-vous que vos changements ne cassent pas le workflow GitHub Actions existant.
 
 ---
