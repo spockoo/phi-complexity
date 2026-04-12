@@ -555,7 +555,8 @@ class TestAuditSecurite:
         try:
             file_path = os.path.join(tmpdir, "complexe.py")
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write("""def f(a, b, c):
+                f.write(
+                    """def f(a, b, c):
     if a:
         if b:
             if c:
@@ -569,7 +570,8 @@ class TestAuditSecurite:
     if (a and b) or (b and c) or (a and c):
         return 5
     return 0
-""")
+"""
+                )
 
             audit = construire_audit_securite([file_path])
             summary = audit["summary"]
