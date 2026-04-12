@@ -211,7 +211,7 @@ class TestJournalConflits:
                     "lilith_variance": 12.0,
                     "blocking_findings": 0,
                 },
-                sorties={"stderr": "would reformat tests/example.py\nblack --check ."},
+                sorties={"stderr": "would reformat example.py\nblack --check ."},
             )
             assert evenement["source"] == "ci-gate"
             assert evenement["resolution"]["decision"] in {

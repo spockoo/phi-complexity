@@ -174,15 +174,12 @@ class JournalAudit:
         return True
 
 
-_CAPTURE_MAX_CHARS = (
-    4000  # Garde un journal JSONL compact tout en conservant le contexte utile.
-)
-_STDERR_LINE_SATURATION = (
-    8  # Fibonacci(6) : au-delà, le bruit marginal apporte peu d'information.
-)
-_OUTPUT_NOISE_NORMALIZER = (
-    3.0 + PHI
-)  # φ + 3 ≈ 4.618 équilibre erreurs, outils détectés et bruit stderr.
+# Garde un journal JSONL compact tout en conservant le contexte utile.
+_CAPTURE_MAX_CHARS = 4000
+# Fibonacci(6) : au-delà, le bruit marginal apporte peu d'information.
+_STDERR_LINE_SATURATION = 8
+# φ + 3 ≈ 4.618 équilibre erreurs, outils détectés et bruit stderr.
+_OUTPUT_NOISE_NORMALIZER = 3.0 + PHI
 _CONSENSUS_WEIGHT_RAW = {
     "phidelia_signal": PHI,
     "lilith_pressure": 1.0,
@@ -223,7 +220,9 @@ def _normaliser_sortie_capturee(valeur: Any) -> str:
         return ""
     if isinstance(valeur, str):
         texte = valeur
-    elif isinstance(valeur, Sequence) and not isinstance(valeur, (bytes, bytearray)):
+    elif isinstance(valeur, Sequence) and not isinstance(
+        valeur, (str, bytes, bytearray)
+    ):
         texte = "\n".join(str(item) for item in valeur)
     else:
         texte = str(valeur)
@@ -233,9 +232,11 @@ def _normaliser_sortie_capturee(valeur: Any) -> str:
 def _actions_depuis_sorties(texte: str) -> List[str]:
     texte_normalise = texte.lower()
     actions: List[str] = []
+    seen = set()
     for motif, action in _ACTIONS_CONSENSUS:
-        if motif in texte_normalise and action not in actions:
+        if motif in texte_normalise and action not in seen:
             actions.append(action)
+            seen.add(action)
     return actions
 
 
@@ -346,11 +347,12 @@ class JournalConflits:
             "resolution": resolution,
             "contexte": dict(contexte or {}),
         }
+        evenement_hashable = json.dumps(evenement, sort_keys=True, ensure_ascii=False)
+        evenement["hash"] = hashlib.sha256(evenement_hashable.encode()).hexdigest()
         evenement_json = json.dumps(evenement, sort_keys=True, ensure_ascii=False)
-        evenement["hash"] = hashlib.sha256(evenement_json.encode()).hexdigest()
 
         with open(self.journal_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(evenement, ensure_ascii=False) + "\n")
+            f.write(evenement_json + "\n")
         return evenement
 
     def lire_journal(self, limite: int = 50) -> List[Dict[str, Any]]:
