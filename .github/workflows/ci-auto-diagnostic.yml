@@ -18,11 +18,11 @@ jobs:
       PHI_CI_RESONANCE_MIN: ${{ vars.PHI_CI_RESONANCE_MIN || '0.35' }}
 
     steps:
-      - name: ♻️ Restaurer la mémoire CI historique
+      - name: ♻️ Restore historical CI memory
         uses: actions/cache/restore@v4
         with:
           path: .phi/ci-history.jsonl
-          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_id }}
+          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_number }}
           restore-keys: |
             ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-
             ci-auto-diagnostic-history-${{ github.repository }}-
@@ -271,10 +271,24 @@ jobs:
               categoryCounts.length <= 1
                 ? 0
                 : categoryCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / categoryCounts.length;
-            const normalizedVariance = diagnostics.length === 0 ? 0 : Math.min(1, variance / Math.max(diagnostics.length, 1));
+            const normalizedVariance = diagnostics.length === 0 ? 0 : Math.min(1, variance / diagnostics.length);
+            // φ-inspired weighting: failures dominate, variance and repetition act as corrective harmonics.
+            const RESONANCE_WEIGHTS = {
+              failureRate: 0.62,
+              variance: 0.23,
+              repeatability: 0.15
+            };
             const ciResonanceScore = Math.max(
               0,
-              Math.min(1, 1 - (0.62 * failureRate + 0.23 * normalizedVariance + 0.15 * repeatability))
+              Math.min(
+                1,
+                1 -
+                  (
+                    RESONANCE_WEIGHTS.failureRate * failureRate +
+                    RESONANCE_WEIGHTS.variance * normalizedVariance +
+                    RESONANCE_WEIGHTS.repeatability * repeatability
+                  )
+              )
             );
 
             const categoryBest = new Map();
@@ -303,7 +317,7 @@ jobs:
               health_snapshot: healthSnapshot,
               ci_resonance: {
                 score: Number(ciResonanceScore.toFixed(4)),
-                threshold: Number(process.env.PHI_CI_RESONANCE_MIN || 0),
+                threshold: Number(process.env.PHI_CI_RESONANCE_MIN || 0.35),
                 components: {
                   failure_rate: Number(failureRate.toFixed(4)),
                   normalized_variance: Number(normalizedVariance.toFixed(4)),
@@ -329,7 +343,9 @@ jobs:
               diagnostics
             };
             history.push(historyEntry);
-            const trimmedHistory = history.slice(-200);
+            // Keep a bounded rolling memory window for trend detection without artifact bloat.
+            const HISTORY_RETENTION_LIMIT = 200;
+            const trimmedHistory = history.slice(-HISTORY_RETENTION_LIMIT);
             fs.writeFileSync(
               historyPath,
               trimmedHistory.map((entry) => JSON.stringify(entry)).join("\n") + "\n"
@@ -393,14 +409,15 @@ jobs:
             .phi/ci-history.jsonl
           retention-days: 14
 
-      - name: 💾 Sauvegarder la mémoire CI historique
+      - name: 💾 Save historical CI memory
         uses: actions/cache/save@v4
         if: always()
         with:
           path: .phi/ci-history.jsonl
-          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_id }}
+          key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_number }}
+          retention-days: 14
 
-      - name: 🛡️ Gate de résonance CI
+      - name: 🛡️ CI resonance gate
         run: |
           python - <<'PY'
           import json
