@@ -650,6 +650,7 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
         JournalAudit,
         construire_audit_securite,
         exporter_audit_securite,
+        journaliser_conflit_audit,
         verifier_politique_securite,
     )
 
@@ -691,6 +692,25 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
             "sarif": args.sarif or "",
         },
     )
+    if status != "PASS" or audit.get("errors"):
+        conflit = journaliser_conflit_audit(
+            audit=audit,
+            sorties={
+                "stdout": f"Shield: {status} | score={score:.2f}",
+                "stderr": "\n".join(audit.get("errors", [])),
+                "errors": audit.get("errors", []),
+            },
+            contexte={
+                "target_count": len(fichiers),
+                "sarif": args.sarif or "",
+            },
+        )
+        resolution = conflit.get("resolution", {})
+        print(
+            "  ✦ Consensus conflit: "
+            f"{resolution.get('decision', 'UNKNOWN')} | "
+            f"score={float(resolution.get('consensus_score', 0.0)):.2f}"
+        )
     return 0 if status == "PASS" else 1
 
 

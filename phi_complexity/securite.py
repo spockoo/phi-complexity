@@ -174,6 +174,210 @@ class JournalAudit:
         return True
 
 
+_CAPTURE_MAX_CHARS = 4000
+_ACTIONS_CONSENSUS = (
+    (
+        "black",
+        "Appliquer Black sur les fichiers signalés puis relancer `black --check .`.",
+    ),
+    ("ruff", "Exécuter `ruff check .` puis corriger les diagnostics remontés."),
+    (
+        "mypy",
+        "Exécuter `mypy phi_complexity --ignore-missing-imports` et corriger le typage.",
+    ),
+    (
+        "pytest",
+        "Relancer `pytest --cov=phi_complexity --cov-fail-under=89` et compléter les cas manquants.",
+    ),
+    (
+        "coverage",
+        "Examiner le rapport de couverture et renforcer les branches sous le seuil de 89%.",
+    ),
+    (
+        "pip install",
+        "Rejouer l'installation locale des dépendances avant de relancer la CI.",
+    ),
+)
+
+
+def _normaliser_sortie_capturee(valeur: Any) -> str:
+    if valeur is None:
+        return ""
+    if isinstance(valeur, str):
+        texte = valeur
+    elif isinstance(valeur, Sequence) and not isinstance(valeur, (bytes, bytearray)):
+        texte = "\n".join(str(item) for item in valeur)
+    else:
+        texte = str(valeur)
+    return texte.strip()[:_CAPTURE_MAX_CHARS]
+
+
+def _actions_depuis_sorties(texte: str) -> List[str]:
+    texte_normalise = texte.lower()
+    actions: List[str] = []
+    for motif, action in _ACTIONS_CONSENSUS:
+        if motif in texte_normalise and action not in actions:
+            actions.append(action)
+    return actions
+
+
+def resoudre_conflit_par_consensus(
+    invariants: Optional[Dict[str, Any]] = None,
+    sorties: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Calcule un consensus de résolution à partir des invariants Lilith/Phidélia
+    et des sorties capturées en CI ou en audit.
+    """
+    invariants = dict(invariants or {})
+    sorties = dict(sorties or {})
+
+    radiance = float(invariants.get("radiance", invariants.get("security_score", 0.0)))
+    radiance = max(0.0, min(100.0, radiance))
+    lilith_variance = max(0.0, float(invariants.get("lilith_variance", 0.0)))
+    blocking_findings = max(0, int(invariants.get("blocking_findings", 0)))
+
+    stdout = _normaliser_sortie_capturee(sorties.get("stdout", ""))
+    stderr = _normaliser_sortie_capturee(sorties.get("stderr", ""))
+    errors_raw = sorties.get("errors", [])
+    if isinstance(errors_raw, Sequence) and not isinstance(errors_raw, (str, bytes)):
+        errors = [str(item) for item in errors_raw]
+    elif errors_raw:
+        errors = [str(errors_raw)]
+    else:
+        errors = []
+
+    erreurs_capturees = _normaliser_sortie_capturee(errors)
+    capture = "\n".join(part for part in (stdout, stderr, erreurs_capturees) if part)
+    actions = _actions_depuis_sorties(capture)
+
+    stderr_lines = len(stderr.splitlines()) if stderr else 0
+    erreurs_count = len(errors) + capture.lower().count("error:")
+    output_noise = min(
+        1.0,
+        (erreurs_count + len(actions) + min(stderr_lines, 8) / 4.0) / 10.0,
+    )
+    lilith_pressure = min(1.0, lilith_variance / (PHI**2 * 100.0))
+    phidelia_signal = radiance / 100.0
+    blocking_pressure = min(1.0, blocking_findings / PHI)
+
+    consensus_brut = (
+        0.45 * phidelia_signal
+        + 0.30 * (1.0 - lilith_pressure)
+        + 0.15 * (1.0 - output_noise)
+        + 0.10 * (1.0 - blocking_pressure)
+    )
+    consensus_score = round(max(0.0, min(100.0, consensus_brut * 100.0)), 2)
+
+    if blocking_findings == 0 and consensus_score >= 72.0 and erreurs_count <= 1:
+        decision = "AUTO_RESOLVE"
+    elif consensus_score >= 45.0:
+        decision = "REVIEW"
+    else:
+        decision = "ESCALATE"
+
+    if not actions and blocking_findings:
+        actions.append("Corriger les findings bloquants avant toute relance de la CI.")
+    if not actions and erreurs_count:
+        actions.append(
+            "Rejouer localement les étapes en échec pour isoler la cause racine."
+        )
+
+    return {
+        "consensus_score": consensus_score,
+        "decision": decision,
+        "signals": {
+            "phidelia_signal": round(phidelia_signal, 4),
+            "lilith_pressure": round(lilith_pressure, 4),
+            "output_noise": round(output_noise, 4),
+            "blocking_pressure": round(blocking_pressure, 4),
+        },
+        "captured_output": {
+            "stdout": stdout,
+            "stderr": stderr,
+            "errors": errors,
+        },
+        "actions": actions,
+    }
+
+
+class JournalConflits:
+    """Journal append-only des conflits et de leur consensus de résolution."""
+
+    def __init__(self, workspace_root: str = ".") -> None:
+        self.phi_dir = os.path.join(workspace_root, ".phi")
+        self.journal_path = os.path.join(self.phi_dir, "conflicts.jsonl")
+        if not os.path.exists(self.phi_dir):
+            os.makedirs(self.phi_dir)
+
+    def enregistrer_conflit(
+        self,
+        source: str,
+        invariants: Dict[str, Any],
+        sorties: Optional[Dict[str, Any]] = None,
+        contexte: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        resolution = resoudre_conflit_par_consensus(invariants, sorties)
+        evenement = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "source": source,
+            "invariants": dict(invariants),
+            "resolution": resolution,
+            "contexte": dict(contexte or {}),
+        }
+        evenement_json = json.dumps(evenement, sort_keys=True, ensure_ascii=False)
+        evenement["hash"] = hashlib.sha256(evenement_json.encode()).hexdigest()
+
+        with open(self.journal_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(evenement, ensure_ascii=False) + "\n")
+        return evenement
+
+    def lire_journal(self, limite: int = 50) -> List[Dict[str, Any]]:
+        if not os.path.exists(self.journal_path):
+            return []
+        try:
+            with open(self.journal_path, "r", encoding="utf-8") as f:
+                lignes = [json.loads(line) for line in f if line.strip()]
+            return lignes[-limite:]
+        except (json.JSONDecodeError, OSError):
+            return []
+
+
+def journaliser_conflit_audit(
+    audit: Dict[str, Any],
+    sorties: Optional[Dict[str, Any]] = None,
+    workspace_root: str = ".",
+    source: str = "phi-shield",
+    contexte: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Construit et journalise un conflit à partir d'un audit sécurité."""
+    summary = audit.get("summary", {})
+    findings = audit.get("findings", [])
+    lilith_count = sum(
+        1 for finding in findings if str(finding.get("rule_id", "")).upper() == "LILITH"
+    )
+    invariants = {
+        "radiance": float(summary.get("security_score", 0.0)),
+        "security_score": float(summary.get("security_score", 0.0)),
+        "blocking_findings": int(summary.get("blocking_findings", 0)),
+        "out_of_scope_findings": int(summary.get("out_of_scope_findings", 0)),
+        "lilith_variance": round(lilith_count * (PHI**2), 4),
+    }
+    journal = JournalConflits(workspace_root=workspace_root)
+    contexte_audit = {
+        "findings_total": int(summary.get("findings_total", 0)),
+        "errors_total": len(audit.get("errors", [])),
+    }
+    if contexte:
+        contexte_audit.update(contexte)
+    return journal.enregistrer_conflit(
+        source=source,
+        invariants=invariants,
+        sorties=sorties,
+        contexte=contexte_audit,
+    )
+
+
 # ────────────────────────────────────────────────────────
 # SBOM — SOFTWARE BILL OF MATERIALS
 # ────────────────────────────────────────────────────────

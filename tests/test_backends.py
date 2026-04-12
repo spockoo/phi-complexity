@@ -293,9 +293,9 @@ class TestCWE134Detection:
         cwe_annots = [a for a in r.annotations if a.categorie == "CWE-134"]
         # Après correction (Phase 22), le fichier utilise uniquement des
         # formats littéraux — zéro CWE-134 attendu.
-        assert len(cwe_annots) == 0, (
-            f"CWE-134 détecté dans moteur_c.c corrigé: {cwe_annots}"
-        )
+        assert (
+            len(cwe_annots) == 0
+        ), f"CWE-134 détecté dans moteur_c.c corrigé: {cwe_annots}"
 
     def test_cwe134_commentaire_ignore(self):
         """Les lignes de commentaire ne déclenchent pas de faux positifs."""
