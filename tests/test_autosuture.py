@@ -174,3 +174,158 @@ class TestAutoSuture:
             assert "ÉCHEC" in verdict
         finally:
             os.unlink(fichier)
+
+    def test_guerir_injection_echoue_restaure_backup(self):
+        """Si l'écriture échoue, restauration et message ERREUR D'INJECTION (lignes 47-52)."""
+        fichier = _creer_fichier(CODE_CHAOTIQUE)
+        try:
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+                patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur,
+                patch(
+                    "phi_complexity.autosuture.calculer_sync_index", return_value=0.3
+                ),
+            ):
+                mock_res = MagicMock()
+                mock_res.radiance = 40.0
+                mock_res.resistance = 0.8
+                MockAnalyseur.return_value.analyser.return_value = mock_res
+
+                mock_agent = MagicMock()
+                mock_agent.suturer.return_value = "```python\nprint('fix')\n```"
+                MockAgent.return_value = mock_agent
+
+                mock_sec = MagicMock()
+                MockSec.return_value = mock_sec
+
+                autosuture = AutoSuture()
+
+                # Mock open to raise IOError on write
+                with patch("builtins.open", side_effect=IOError("disk full")):
+                    verdict = autosuture.guerir(fichier, force=False)
+
+                assert "ERREUR D'INJECTION" in verdict
+                mock_sec.restaurer_dernier.assert_called_once_with(fichier)
+        finally:
+            if os.path.exists(fichier):
+                os.unlink(fichier)
+
+    def test_guerir_code_invalide_restaure_backup(self):
+        """Si le code injecté est invalide (SyntaxError), restauration (lignes 55-60)."""
+        fichier = _creer_fichier(CODE_CHAOTIQUE)
+        try:
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+                patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur,
+                patch(
+                    "phi_complexity.autosuture.calculer_sync_index", return_value=0.3
+                ),
+            ):
+                mock_res = MagicMock()
+                mock_res.radiance = 40.0
+                mock_res.resistance = 0.8
+                MockAnalyseur.return_value.analyser.side_effect = [
+                    mock_res,  # avant
+                    Exception("SyntaxError"),  # après injection
+                ]
+
+                mock_agent = MagicMock()
+                mock_agent.suturer.return_value = "```python\nprint('fix')\n```"
+                MockAgent.return_value = mock_agent
+
+                mock_sec = MagicMock()
+                MockSec.return_value = mock_sec
+
+                autosuture = AutoSuture()
+                verdict = autosuture.guerir(fichier, force=False)
+
+                assert "ALERTE ENTROPIE" in verdict
+                mock_sec.restaurer_dernier.assert_called_once_with(fichier)
+        finally:
+            if os.path.exists(fichier):
+                os.unlink(fichier)
+
+    def test_guerir_code_ameliore_succes(self):
+        """Code amélioré (sync_index gain > 0) → GUÉRISON RÉUSSIE (lignes 63-65)."""
+        fichier = _creer_fichier(CODE_CHAOTIQUE)
+        try:
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+                patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur,
+                patch("phi_complexity.autosuture.calculer_sync_index") as MockSync,
+            ):
+                mock_res_avant = MagicMock()
+                mock_res_avant.radiance = 40.0
+                mock_res_avant.resistance = 0.8
+
+                mock_res_apres = MagicMock()
+                mock_res_apres.radiance = 85.0
+                mock_res_apres.resistance = 0.2
+
+                MockAnalyseur.return_value.analyser.side_effect = [
+                    mock_res_avant,
+                    mock_res_apres,
+                ]
+
+                # sync_index: avant=0.3, après=0.8 → gain > 0
+                MockSync.side_effect = [0.3, 0.8]
+
+                mock_agent = MagicMock()
+                mock_agent.suturer.return_value = "```python\nprint('fix')\n```"
+                MockAgent.return_value = mock_agent
+
+                mock_sec = MagicMock()
+                MockSec.return_value = mock_sec
+
+                autosuture = AutoSuture()
+                verdict = autosuture.guerir(fichier, force=False)
+
+                assert "GUÉRISON RÉUSSIE" in verdict
+        finally:
+            if os.path.exists(fichier):
+                os.unlink(fichier)
+
+    def test_guerir_code_pas_ameliore_restaure(self):
+        """Code pas amélioré et force=False → SUTURE REJETÉE (lignes 66-69)."""
+        fichier = _creer_fichier(CODE_CHAOTIQUE)
+        try:
+            with (
+                patch("phi_complexity.autosuture.SutureAgent") as MockAgent,
+                patch("phi_complexity.autosuture.SecuriteMaat") as MockSec,
+                patch("phi_complexity.autosuture.AnalyseurPhi") as MockAnalyseur,
+                patch("phi_complexity.autosuture.calculer_sync_index") as MockSync,
+            ):
+                mock_res_avant = MagicMock()
+                mock_res_avant.radiance = 40.0
+                mock_res_avant.resistance = 0.8
+
+                mock_res_apres = MagicMock()
+                mock_res_apres.radiance = 35.0
+                mock_res_apres.resistance = 0.9
+
+                MockAnalyseur.return_value.analyser.side_effect = [
+                    mock_res_avant,
+                    mock_res_apres,
+                ]
+
+                # sync_index: avant=0.5, après=0.4 → gain < 0
+                MockSync.side_effect = [0.5, 0.4]
+
+                mock_agent = MagicMock()
+                mock_agent.suturer.return_value = "```python\nprint('worse')\n```"
+                MockAgent.return_value = mock_agent
+
+                mock_sec = MagicMock()
+                MockSec.return_value = mock_sec
+
+                autosuture = AutoSuture()
+                verdict = autosuture.guerir(fichier, force=False)
+
+                assert "SUTURE REJETÉE" in verdict
+                mock_sec.restaurer_dernier.assert_called_once_with(fichier)
+        finally:
+            if os.path.exists(fichier):
+                os.unlink(fichier)

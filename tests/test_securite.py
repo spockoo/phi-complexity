@@ -579,3 +579,502 @@ class TestAuditSecurite:
         assert (
             _est_finding_securite({"source": "Flawfinder", "rule_id": "FF1009"}) is True
         )
+
+
+# ────────────────────────────────────────────────────────
+# TESTS — Couverture des branches manquantes
+# ────────────────────────────────────────────────────────
+
+
+class TestValidationCheminBranches:
+    """Tests couvrant les branches non-couvertes de valider_chemin_fichier."""
+
+    def test_symlink_vers_non_fichier(self):
+        """Symlink vers un répertoire → False (lignes 85-86)."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            link_path = os.path.join(tmpdir, "link.py")
+            os.symlink(tmpdir, link_path)
+            assert valider_chemin_fichier(link_path) is False
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_repertoire_pas_un_fichier(self):
+        """Un répertoire existant → False (ligne 90)."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            assert valider_chemin_fichier(tmpdir) is False
+        finally:
+            shutil.rmtree(tmpdir)
+
+
+class TestJournalAuditBranches:
+    """Tests couvrant les branches non-couvertes du JournalAudit."""
+
+    def test_lire_journal_corrompu(self):
+        """Journal JSONL corrompu → retourne [] (lignes 161-162)."""
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalAudit(workspace_root=workspace)
+            with open(journal.journal_path, "w") as f:
+                f.write("{invalid json\n")
+            assert journal.lire_journal() == []
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_verifier_integrite_corrompue(self):
+        """Journal avec hash modifié → False (ligne 173)."""
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalAudit(workspace_root=workspace)
+            journal.enregistrer("OP", {"v": 1})
+            with open(journal.journal_path, "r") as f:
+                content = f.read()
+            content = content.replace('"v": 1', '"v": 999')
+            with open(journal.journal_path, "w") as f:
+                f.write(content)
+            assert journal.verifier_integrite() is False
+        finally:
+            shutil.rmtree(workspace)
+
+
+class TestNormalisationSortieCapturee:
+    """Tests couvrant _normaliser_sortie_capturee (lignes 224, 232)."""
+
+    def test_sequence_en_entree(self):
+        """Séquence non-string → join (ligne 224)."""
+        from phi_complexity.securite import _normaliser_sortie_capturee
+
+        result = _normaliser_sortie_capturee(["err1", "err2"])
+        assert "err1" in result
+        assert "err2" in result
+
+    def test_valeur_numerique(self):
+        """Entier en entrée → str() (ligne 232)."""
+        from phi_complexity.securite import _normaliser_sortie_capturee
+
+        result = _normaliser_sortie_capturee(42)
+        assert result == "42"
+
+
+class TestConsensusConflitBranches:
+    """Tests couvrant les branches de resoudre_conflit_par_consensus."""
+
+    def test_decision_escalate(self):
+        """Consensus bas → ESCALATE (ligne 312)."""
+        resolution = resoudre_conflit_par_consensus(
+            {"radiance": 10.0, "blocking_findings": 5, "lilith_variance": 100.0},
+            {"stderr": "critical failure\n" * 20, "errors": ["fail"] * 10},
+        )
+        assert resolution["decision"] == "ESCALATE"
+
+    def test_actions_blocking_findings(self):
+        """Findings bloquants sans actions → action spécifique (lignes 314-315)."""
+        resolution = resoudre_conflit_par_consensus(
+            {"radiance": 50.0, "blocking_findings": 3},
+            {"stdout": ""},
+        )
+        assert any("findings bloquants" in a.lower() for a in resolution["actions"])
+
+    def test_actions_erreurs_sans_motifs(self):
+        """Erreurs sans motifs reconnus → action de rejeu (lignes 316-319)."""
+        resolution = resoudre_conflit_par_consensus(
+            {"radiance": 50.0, "blocking_findings": 0},
+            {"stdout": "", "stderr": "", "errors": ["unknown error: xyz"]},
+        )
+        assert any("rejouer" in a.lower() for a in resolution["actions"])
+
+    def test_errors_raw_string(self):
+        """errors_raw est un string → converti en liste (lignes 273-274)."""
+        resolution = resoudre_conflit_par_consensus(
+            {"radiance": 80.0},
+            {"errors": "une erreur simple"},
+        )
+        assert resolution["consensus_score"] >= 0
+
+    def test_errors_raw_vide(self):
+        """errors_raw vide (falsy) → liste vide (lignes 275-276)."""
+        resolution = resoudre_conflit_par_consensus(
+            {"radiance": 80.0},
+            {"errors": ""},
+        )
+        assert resolution["consensus_score"] >= 0
+
+    def test_action_dedup(self):
+        """Actions dédupliquées si même motif apparaît 2× (ligne 244)."""
+        resolution = resoudre_conflit_par_consensus(
+            {"radiance": 80.0},
+            {"stdout": "black --check . black --check ."},
+        )
+        black_actions = [a for a in resolution["actions"] if "black" in a.lower()]
+        assert len(black_actions) <= 1
+
+
+class TestJournalConflitsBranches:
+    """Tests couvrant les branches de JournalConflits."""
+
+    def test_lire_journal_inexistant(self):
+        """Journal inexistant → [] (ligne 373)."""
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalConflits(workspace_root=workspace)
+            assert journal.lire_journal() == []
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_lire_journal_corrompu(self):
+        """Journal corrompu → [] (lignes 378-379)."""
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalConflits(workspace_root=workspace)
+            with open(journal.journal_path, "w") as f:
+                f.write("not json at all\n")
+            assert journal.lire_journal() == []
+        finally:
+            shutil.rmtree(workspace)
+
+
+class TestFindingFromPhiBranches:
+    """Tests couvrant _finding_from_phi branches."""
+
+    def test_rule_id_non_string_in_journaliser(self):
+        """rule_id non-string → str() (ligne 396)."""
+        # The rule_id conversion happens in journaliser_conflit_audit
+        workspace = tempfile.mkdtemp()
+        try:
+            audit = {
+                "summary": {"security_score": 80.0},
+                "findings": [
+                    {"rule_id": 134, "severity": "high"},
+                ],
+                "errors": [],
+            }
+            evenement = journaliser_conflit_audit(
+                audit=audit,
+                workspace_root=workspace,
+            )
+            assert evenement["resolution"]["consensus_score"] >= 0
+        finally:
+            shutil.rmtree(workspace)
+
+
+class TestFindingsFromSarifBranches:
+    """Tests couvrant les branches de _findings_from_sarif."""
+
+    def test_sarif_runs_non_list(self):
+        """runs n'est pas une liste → retourne [] (ligne 651)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump({"runs": "not_a_list"}, f)
+            result = _findings_from_sarif(path)
+            assert result == []
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_run_non_dict(self):
+        """Run n'est pas un dict → skip (ligne 655)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump({"runs": ["not_a_dict"]}, f)
+            result = _findings_from_sarif(path)
+            assert result == []
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_tool_non_dict(self):
+        """tool n'est pas un dict → outil défaut (ligne 658)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": "not_dict",
+                                "results": [
+                                    {
+                                        "ruleId": "TEST",
+                                        "level": "warning",
+                                        "message": {"text": "test"},
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert len(result) == 1
+            assert result[0]["source"] == "sarif"
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_driver_non_dict(self):
+        """driver n'est pas un dict → driver défaut (ligne 661)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": 42},
+                                "results": [
+                                    {
+                                        "ruleId": "X",
+                                        "level": "note",
+                                        "message": {"text": "m"},
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert len(result) == 1
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_results_non_list(self):
+        """results non-list → skip (ligne 665)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": {"name": "T"}},
+                                "results": "not_a_list",
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert result == []
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_result_non_dict(self):
+        """result non-dict → skip (ligne 668)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": {"name": "T"}},
+                                "results": ["not_a_dict"],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert result == []
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_physical_location_non_dict(self):
+        """physicalLocation non-dict → défaut (ligne 677)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": {"name": "T"}},
+                                "results": [
+                                    {
+                                        "ruleId": "X",
+                                        "level": "warning",
+                                        "message": {"text": "m"},
+                                        "locations": [{"physicalLocation": "not_dict"}],
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert len(result) == 1
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_artifact_non_dict(self):
+        """artifactLocation non-dict → défaut (ligne 680)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": {"name": "T"}},
+                                "results": [
+                                    {
+                                        "ruleId": "X",
+                                        "level": "warning",
+                                        "message": {"text": "m"},
+                                        "locations": [
+                                            {
+                                                "physicalLocation": {
+                                                    "artifactLocation": 42,
+                                                    "region": {"startLine": 1},
+                                                }
+                                            }
+                                        ],
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert len(result) == 1
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_region_non_dict(self):
+        """region non-dict → défaut (ligne 683)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": {"name": "T"}},
+                                "results": [
+                                    {
+                                        "ruleId": "X",
+                                        "level": "warning",
+                                        "message": {"text": "m"},
+                                        "locations": [
+                                            {
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "test.c"
+                                                    },
+                                                    "region": "not_dict",
+                                                }
+                                            }
+                                        ],
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert len(result) == 1
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_sarif_message_non_dict(self):
+        """message non-dict → str(msg) (ligne 691)."""
+        from phi_complexity.securite import _findings_from_sarif
+
+        tmpdir = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmpdir, "bad.sarif")
+            with open(path, "w") as f:
+                json.dump(
+                    {
+                        "runs": [
+                            {
+                                "tool": {"driver": {"name": "T"}},
+                                "results": [
+                                    {
+                                        "ruleId": "X",
+                                        "level": "note",
+                                        "message": "plain string message",
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    f,
+                )
+            result = _findings_from_sarif(path)
+            assert len(result) == 1
+            assert "plain string" in result[0]["message"]
+        finally:
+            shutil.rmtree(tmpdir)
+
+
+class TestScoreSecuriteBranches:
+    """Tests couvrant _score_securite (ligne 755)."""
+
+    def test_finding_hors_production_ignore(self):
+        """Finding hors surface production → ignoré (ligne 755)."""
+        from phi_complexity.securite import _score_securite
+
+        findings = [
+            {
+                "surface": "demo",
+                "severity": "critical",
+                "blocking": True,
+                "security_relevant": True,
+            },
+        ]
+        score = _score_securite(findings)
+        assert score == 100.0  # Le finding demo est ignoré
+
+
+class TestConstruireAuditBranches:
+    """Tests couvrant construire_audit_securite branches."""
+
+    def test_fichier_avec_erreur_analyse(self):
+        """Fichier qui cause une exception → capturé dans errors (lignes 789-790)."""
+        audit = construire_audit_securite(["/non/existent/file.py"])
+        assert len(audit["errors"]) >= 1
+
+    def test_sarif_inexistant(self):
+        """SARIF inexistant → erreur capturée (lignes 795-796)."""
+        audit = construire_audit_securite([], sarif_path="/non/existent.sarif")
+        assert len(audit["errors"]) >= 1
+
+
+class TestVerifierPolitiqueBranches:
+    """Tests couvrant verifier_politique_securite branches."""
+
+    def test_summary_non_dict(self):
+        """summary non-dict → False (ligne 848)."""
+        assert verifier_politique_securite({"summary": "not_a_dict"}, 70.0) is False
