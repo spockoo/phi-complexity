@@ -270,9 +270,11 @@ jobs:
             const variance =
               categoryCounts.length <= 1
                 ? 0
-                : categoryCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / categoryCounts.length;
+                : categoryCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / (categoryCounts.length - 1);
             const normalizedVariance = diagnostics.length === 0 ? 0 : Math.min(1, variance / diagnostics.length);
-            // φ-inspired weighting: failures dominate, variance and repetition act as corrective harmonics.
+            // φ-inspired weighting:
+            // - 0.62 ~= 1/φ (dominant stability signal through failure rate),
+            // - 0.23 and 0.15 are secondary harmonics summing to 0.38 ~= 1 - 1/φ.
             const RESONANCE_WEIGHTS = {
               failureRate: 0.62,
               variance: 0.23,
@@ -343,7 +345,8 @@ jobs:
               diagnostics
             };
             history.push(historyEntry);
-            // Keep a bounded rolling memory window for trend detection without artifact bloat.
+            // Keep ~200 entries (~months of frequent runs) to preserve trend visibility
+            // while bounding artifact size and JSON parsing cost.
             const HISTORY_RETENTION_LIMIT = 200;
             const trimmedHistory = history.slice(-HISTORY_RETENTION_LIMIT);
             fs.writeFileSync(
@@ -415,7 +418,6 @@ jobs:
         with:
           path: .phi/ci-history.jsonl
           key: ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_number }}
-          retention-days: 14
 
       - name: 🛡️ CI resonance gate
         run: |
@@ -428,7 +430,7 @@ jobs:
               data = json.load(fh)
 
           resonance = float(data.get("ci_resonance", {}).get("score", 1.0))
-          threshold = float(os.environ.get("PHI_CI_RESONANCE_MIN", "0"))
+          threshold = float(os.environ.get("PHI_CI_RESONANCE_MIN", "0.35"))
           print(f"CI resonance={resonance:.4f} | threshold={threshold:.4f}")
           if resonance < threshold:
               print("CI resonance sous le seuil: échec volontaire pour déclencher une correction prioritaire.")
