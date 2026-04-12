@@ -57,7 +57,9 @@ void log_erreur(const char *buffer) {
      *     fprintf(stderr, buffer);
      *     sprintf(buffer, buffer);
      *
-     * Correction : format littéral + snprintf pour la sécurité mémoire.
+     * Correction : format littéral pour fprintf.
+     * L'appel sprintf(buffer, buffer) a été supprimé car il constituait
+     * un double risque (CWE-134 + écrasement du buffer source).
      */
     fprintf(stderr, "%s", buffer);      /* CORRIGÉ — format littéral */
 }
