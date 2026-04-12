@@ -231,4 +231,61 @@ phi check ./src/ --format json     ✅ Opérationnel
 
 ---
 
+## ✅ PHASE 22 — CORRECTION DES VULNÉRABILITÉS & CHASSE ÉTHIQUE — COMPLÉTÉE
+
+- ✅ **Correction CWE-134 dans `moteur_c.c`** : Les exemples pédagogiques utilisent désormais
+  des formats littéraux (`printf("%s", variable)` au lieu de `printf(variable)`).
+  Les versions vulnérables sont documentées en commentaire uniquement.
+- ✅ **Workflow Threat Hunter** (`threat-hunter.yml`) : Chasse automatisée aux vulnérabilités.
+  - Audit statique φ-complexity sur le code de production.
+  - Détection CWE via les backends C/C++/Rust.
+  - Score comportemental Sentinel (bayésien).
+  - Export IoC (Indicateurs de Compromission) au format STIX-like.
+  - Exécution programmée (hebdomadaire) + sur push/PR.
+- ✅ **Workflow Sentinel SARIF** (`sentinel-sarif.yml`) : Export automatique vers GitHub Security.
+  - Conversion des findings phi-complexity en format SARIF 2.1.0.
+  - Intégration native avec l'onglet Security de GitHub.
+  - Règles personnalisées : CWE-134, LILITH, RAII, FIBONACCI.
+- ✅ **Durcissement Flawfinder** : Exclusion des exemples pédagogiques (`examples/`)
+  du scan de production pour éviter les faux positifs sur le code éducatif.
+- ✅ **Philosophie cybersécurité éthique** : L'IA est un outil de défense,
+  pas d'attaque. Toute détection est documentée, explicable et partageable (IoC OSS).
+
+---
+
+## 🚀 PHASE 23 — VERS UN OS SOUVERAIN (φ-OS) — EN COURS
+
+> *"Un système d'exploitation ne doit pas être une boîte noire.
+> Il doit être un cristal dont chaque facette est inspectable."*
+
+### Vision φ-OS
+
+Le projet évolue vers la construction d'outils fondamentaux pour un OS souverain,
+minimal et transparent, inspiré d'Arch Linux et du paradigme UNIX.
+
+### Axes de développement
+
+#### 23.1 — Noyau d'analyse multi-langage
+- ⬜ **Backend LLVM IR** : Analyse de bytecode LLVM pour couverture universelle.
+- ⬜ **Backend ELF** : Analyse des binaires ELF (sections, symboles, entropie).
+- ⬜ **Détection de rootkits** : Signatures comportementales via le module Sentinel.
+
+#### 23.2 — Couche système (φ-Kernel Tools)
+- ⬜ **Auditeur de syscalls** : Traçage et scoring des appels système.
+- ⬜ **Moniteur de modules noyau** : Détection de modules suspects (`.ko`).
+- ⬜ **Integrity checker** : Vérification d'intégrité des binaires système (hash chain).
+
+#### 23.3 — Défense proactive
+- ⬜ **Honeypot sentinel** : Génération automatique de cibles leurres analysables.
+- ⬜ **Corrélateur réseau** : Fusion des signaux réseau avec le scoring bayésien.
+- ⬜ **Export YARA** : Génération de règles YARA depuis les patterns Sentinel.
+- ⬜ **Export Sigma** : Génération de règles Sigma pour les SIEM.
+
+#### 23.4 — Distribution φ-OS (long terme)
+- ⬜ **Image ISO minimale** : Basée sur un noyau Linux durci + phi-sentinel intégré.
+- ⬜ **Init system φ-init** : Système d'init minimal avec audit intégré.
+- ⬜ **Package manager φ-pkg** : Gestionnaire de paquets avec vérification φ-complexity.
+
+---
+
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*

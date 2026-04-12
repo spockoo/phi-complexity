@@ -26,18 +26,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Identify C/C++ analysis targets
+      - name: Identify C/C++ analysis targets (production only)
         id: targets
         run: |
-          files=$(find . -path ./.git -prune -o -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' \
+          # Exclure les fichiers d'exemples pédagogiques du scan de production.
+          # Les exemples/ contiennent du code à visée éducative et sont traités
+          # séparément par `phi shield --include-demo`.
+          files=$(find . -path ./.git -prune -o -path ./examples -prune -o \
+            -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' \
             -o -name '*.h' -o -name '*.hpp' -o -name '*.hh' \) -print | sort | tr '\n' ' ')
           echo "files=${files}" >> "$GITHUB_OUTPUT"
           if [ -n "$files" ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "✅ C/C++ targets: $files"
+            echo "✅ C/C++ production targets: $files"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "ℹ️  No C/C++ files found — scan skipped."
+            echo "ℹ️  No C/C++ production files found — scan skipped."
           fi
 
       - name: flawfinder_scan

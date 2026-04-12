@@ -13,10 +13,13 @@ from phi_complexity.securite import (
     valider_chemin_fichier,
     sanitiser_contenu_asm,
     JournalAudit,
+    JournalConflits,
     generer_sbom,
     exporter_sbom,
     construire_audit_securite,
     exporter_audit_securite,
+    journaliser_conflit_audit,
+    resoudre_conflit_par_consensus,
     verifier_politique_securite,
     _est_finding_securite,
 )
@@ -192,6 +195,80 @@ class TestJournalAudit:
                 journal.enregistrer(f"OP_{i}", {"i": i})
             entries = journal.lire_journal(limite=3)
             assert len(entries) == 3
+        finally:
+            shutil.rmtree(workspace)
+
+
+class TestJournalConflits:
+    def test_enregistrer_conflit_genere_un_consensus(self):
+        workspace = tempfile.mkdtemp()
+        try:
+            journal = JournalConflits(workspace_root=workspace)
+            evenement = journal.enregistrer_conflit(
+                "ci-gate",
+                {
+                    "radiance": 91.0,
+                    "lilith_variance": 12.0,
+                    "blocking_findings": 0,
+                },
+                sorties={"stderr": "would reformat example.py\nblack --check ."},
+            )
+            assert evenement["source"] == "ci-gate"
+            assert evenement["resolution"]["decision"] in {
+                "AUTO_RESOLVE",
+                "REVIEW",
+            }
+            assert evenement["resolution"]["actions"]
+            entries = journal.lire_journal()
+            assert len(entries) == 1
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_consensus_detecte_actions_black_pytest(self):
+        resolution = resoudre_conflit_par_consensus(
+            {
+                "radiance": 82.0,
+                "lilith_variance": 0.0,
+                "blocking_findings": 0,
+            },
+            {
+                "stdout": "pytest --cov=phi_complexity --cov-fail-under=89",
+                "stderr": "would reformat tests/test_backends.py",
+                "errors": ["black --check . failed"],
+            },
+        )
+        actions = " ".join(resolution["actions"]).lower()
+        assert "black" in actions
+        assert "pytest" in actions
+        assert resolution["consensus_score"] >= 45.0
+
+    def test_journaliser_conflit_audit_extrait_les_invariants(self):
+        workspace = tempfile.mkdtemp()
+        try:
+            audit = {
+                "summary": {
+                    "security_score": 64.0,
+                    "findings_total": 2,
+                    "blocking_findings": 1,
+                    "out_of_scope_findings": 0,
+                    "status": "FAIL",
+                },
+                "findings": [
+                    # Keep one LILITH finding here to verify non-zero variance extraction.
+                    {"rule_id": "LILITH", "severity": "high"},
+                    {"rule_id": "CWE-134", "severity": "critical"},
+                ],
+                "errors": ["pytest failed"],
+            }
+            evenement = journaliser_conflit_audit(
+                audit=audit,
+                sorties={"stderr": "pytest failed\ncoverage below threshold"},
+                workspace_root=workspace,
+            )
+            assert evenement["source"] == "phi-shield"
+            assert evenement["invariants"]["blocking_findings"] == 1
+            assert evenement["invariants"]["lilith_variance"] > 0.0
+            assert evenement["resolution"]["decision"] in {"REVIEW", "ESCALATE"}
         finally:
             shutil.rmtree(workspace)
 
