@@ -1,5 +1,5 @@
 """
-tests/test_public_api_contract.py — Contrat de stabilité des imports publics.
+tests/test_public_api_contract.py - Contrat de stabilité des imports publics.
 """
 
 import phi_complexity
@@ -15,7 +15,7 @@ def test_imports_critiques_symboles_resolus():
     assert CalculateurRadiance.__name__ == "CalculateurRadiance"
 
 
-def test_package_exporte_les_symbols_critiques():
+def test_package_exporte_les_symboles_critiques():
     """Le package top-level doit exposer les symboles critiques du contrat public."""
     exports = set(phi_complexity.__all__)
     assert {"AnalyseurPhi", "CalculateurRadiance", "suture", "auditer"}.issubset(

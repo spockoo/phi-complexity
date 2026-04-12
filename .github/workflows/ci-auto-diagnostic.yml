@@ -1,4 +1,4 @@
-name: "🧠 CI Auto-Diagnostic — Classification des échecs (φ-Healer)"
+name: "🧠 CI Auto-Diagnostic — Classification des échecs (φ-Diagnostic)"
 
 on:
   workflow_run:
@@ -23,6 +23,18 @@ jobs:
           script: |
             const run = context.payload.workflow_run;
             const { owner, repo } = context.repo;
+            // GitHub Actions API conclusions:
+            // https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run
+            const PROBLEM_CONCLUSIONS = new Set([
+              "failure",
+              "cancelled",
+              "timed_out",
+              "action_required"
+            ]);
+
+            function getFailedStep(job) {
+              return (job.steps || []).find((s) => s.conclusion === "failure") || null;
+            }
 
             const jobs = await github.paginate(
               github.rest.actions.listJobsForWorkflowRunAttempt,
@@ -35,22 +47,19 @@ jobs:
               }
             );
 
-            const problemConclusions = new Set([
-              "failure",
-              "cancelled",
-              "timed_out",
-              "action_required"
-            ]);
             const failedJobs = jobs.filter(
-              (job) => problemConclusions.has(job.conclusion)
+              (job) => PROBLEM_CONCLUSIONS.has(job.conclusion)
             );
 
             function classifyJob(job) {
-              const failedStep =
-                (job.steps || []).find((s) => s.conclusion === "failure") || null;
+              const failedStep = getFailedStep(job);
               const stepName = (failedStep?.name || "").toLowerCase();
+              const runnerId =
+                job.runner_id === null || job.runner_id === undefined
+                  ? 0
+                  : job.runner_id;
 
-              if ((job.runner_id || 0) === 0 && (!job.steps || job.steps.length === 0)) {
+              if (runnerId === 0 && (!job.steps || job.steps.length === 0)) {
                 return {
                   category: "INFRA_RUNNER_UNAVAILABLE",
                   hint:
@@ -84,7 +93,7 @@ jobs:
                   hint: "Échec tests. Examiner stacktrace et régression fonctionnelle."
                 };
               }
-              if (stepName.includes("mypy") || stepName.includes("ruff") || stepName.includes("black")) {
+              if (["mypy", "ruff", "black"].some((tool) => stepName.includes(tool))) {
                 return {
                   category: "QUALITY_GATE",
                   hint:
@@ -98,8 +107,7 @@ jobs:
             }
 
             const diagnostics = failedJobs.map((job) => {
-              const failedStep =
-                (job.steps || []).find((s) => s.conclusion === "failure") || null;
+              const failedStep = getFailedStep(job);
               const cls = classifyJob(job);
               return {
                 job_id: job.id,
