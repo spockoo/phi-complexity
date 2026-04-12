@@ -26,7 +26,6 @@ from phi_complexity.fingerprint import (
     _SEUIL_MALVEILLANT,
 )
 
-
 # ──────────────────────────────────────────────
 # HELPERS
 # ──────────────────────────────────────────────
