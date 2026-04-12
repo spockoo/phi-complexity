@@ -29,6 +29,13 @@ class TestClassifierLog:
         result = classifier_log("pip install failed: no matching distribution for foo")
         assert result.category == "DEPENDENCY_INSTALL"
 
+    def test_checkout_ref_not_found(self) -> None:
+        result = classifier_log(
+            "A branch or tag with the name "
+            "'copilot/refactor-harvest-py-fibonacci-entropy' could not be found"
+        )
+        assert result.category == "CHECKOUT_REF_NOT_FOUND"
+
     def test_permissions(self) -> None:
         result = classifier_log(
             "permission denied: 403 forbidden resource not accessible"
@@ -180,6 +187,7 @@ class TestCatalogueSignatures:
             "INFRA_RUNNER_UNAVAILABLE",
             "TOOLCHAIN_SETUP",
             "DEPENDENCY_INSTALL",
+            "CHECKOUT_REF_NOT_FOUND",
             "PERMISSIONS",
             "NETWORK_TRANSIENT",
             "API_CONTRACT_DRIFT",

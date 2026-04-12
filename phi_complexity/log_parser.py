@@ -86,6 +86,19 @@ CATALOGUE_SIGNATURES: List[PatternSignature] = [
         mutation="Régénérer le verrouillage de dépendances et ajouter retry exponentiel sur install.",
     ),
     PatternSignature(
+        category="CHECKOUT_REF_NOT_FOUND",
+        patterns=[
+            r"a branch or tag with the name .* could not be found",
+            r"fatal: couldn't find remote ref",
+            r"fatal: reference is not a tree",
+            r"unable to checkout.*ref",
+        ],
+        confidence_base=0.80,
+        priority=1,
+        hint="Référence git introuvable au checkout (branche/tag/sha).",
+        mutation="Vérifier que la branche existe encore côté remote et aligner la référence checkout (head_ref/sha).",
+    ),
+    PatternSignature(
         category="PERMISSIONS",
         patterns=[
             r"permission denied",
