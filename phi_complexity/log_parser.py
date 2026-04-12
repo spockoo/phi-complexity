@@ -56,6 +56,17 @@ CATALOGUE_SIGNATURES: List[PatternSignature] = [
         mutation="Réduire la matrice au couple os/version supporté puis réactiver graduellement.",
     ),
     PatternSignature(
+        category="CHECKOUT_REF",
+        patterns=[
+            r"a branch or tag with the name .* could not be found",
+            r"run actions/checkout@v\d+[\s\S]*a branch or tag with the name .* could not be found",
+        ],
+        confidence_base=0.78,
+        priority=1,
+        hint="Échec checkout Git (ref/branche/tag introuvable ou invalide).",
+        mutation="Collecter les logs détaillés de checkout, vérifier que la ref cible existe encore puis relancer la CI.",
+    ),
+    PatternSignature(
         category="TOOLCHAIN_SETUP",
         patterns=[
             r"error.*setup.*python",
