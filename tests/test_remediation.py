@@ -10,7 +10,6 @@ from phi_complexity.remediation import (
     CATALOGUE_MUTATIONS,
     MutationPlan,
     RegleMutation,
-    ResultatMutation,
     appliquer_mutation,
     mutations_pour_rapport,
     planifier_mutation,

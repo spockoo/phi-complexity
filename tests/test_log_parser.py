@@ -4,7 +4,6 @@ tests/test_log_parser.py — Tests de l'analyseur de logs (Phase 3.1)
 
 from __future__ import annotations
 
-import pytest
 
 from phi_complexity.log_parser import (
     CATALOGUE_SIGNATURES,
