@@ -48,6 +48,14 @@ class TestPlanifierMutation:
         plan = planifier_mutation("QUALITY_GATE", 0.92)
         assert plan.diagnostic_confidence == pytest.approx(0.92)
 
+    def test_applicable_for_workflow_concurrency_cancelled(self) -> None:
+        plan = planifier_mutation("WORKFLOW_CONCURRENCY_CANCELLED", 0.80)
+        assert plan.applicable is True
+
+    def test_applicable_for_runner_queue_stall(self) -> None:
+        plan = planifier_mutation("RUNNER_QUEUE_STALL", 0.80)
+        assert plan.applicable is True
+
     def test_custom_catalogue(self) -> None:
         custom = [
             RegleMutation(
@@ -191,6 +199,8 @@ class TestCatalogueMutations:
             "DEPENDENCY_INSTALL",
             "TEST_REGRESSION",
             "TYPE_CHECK",
+            "WORKFLOW_CONCURRENCY_CANCELLED",
+            "RUNNER_QUEUE_STALL",
         }
         assert expected == categories
 

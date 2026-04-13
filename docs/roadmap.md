@@ -8,6 +8,8 @@
 - [ ] **Portail Documentation** : Celui que vous lisez actuellement ! (En cours ✦)
 - [ ] **Phase 7** : Support du langage C et Rust (Audit bas niveau).
 - [ ] **Phase 8** : Intégration de l'IA Souveraine pour des suggestions de suture automatiques.
+- [x] **CI Innovation Suite** : Flow Intelligence + Runner Sentinel + Control Plane exportable.
+- [x] **Dev Productivity Environment** : DevContainer + Makefile + miroir CI local (`make ci-local`).
 
 ---
 
