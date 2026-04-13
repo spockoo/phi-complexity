@@ -61,6 +61,8 @@ CATALOGUE_SIGNATURES: List[PatternSignature] = [
             r"run actions/checkout@v\d+[\s\S]*a branch or tag with the name .* could not be found",
             r"a branch or tag with the name .* could not be found",
             r"couldn't find remote ref",
+            r"reference is not a tree",
+            r"unable to checkout (?:requested )?ref(?:erence)?(?:\s|:)",
             r"pathspec '.*' did not match any file\(s\) known to git",
         ],
         confidence_base=0.82,
@@ -109,19 +111,6 @@ CATALOGUE_SIGNATURES: List[PatternSignature] = [
         priority=1,
         hint="Échec installation dépendances.",
         mutation="Régénérer le verrouillage de dépendances et ajouter retry exponentiel sur install.",
-    ),
-    PatternSignature(
-        category="CHECKOUT_REF_NOT_FOUND",
-        patterns=[
-            r"(?i)a branch or tag with the name .* could not be found",
-            r"fatal: couldn't find remote ref",
-            r"fatal: reference is not a tree",
-            r"(?i)unable to checkout (?:requested )?ref(?:erence)?(?:\s|:)",
-        ],
-        confidence_base=0.85,
-        priority=1,
-        hint="Référence git introuvable au checkout (branche/tag/sha).",
-        mutation="Vérifier que la branche existe encore côté remote et aligner la référence checkout (head_ref/sha).",
     ),
     PatternSignature(
         category="PERMISSIONS",
