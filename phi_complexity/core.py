@@ -4,10 +4,64 @@ Constantes Souveraines issues du Morphic Phi Framework (Tomy Verreault, 2026).
 """
 
 import math
+import re
+from typing import Optional
+from importlib import metadata
+from pathlib import Path
+
+try:  # Python 3.11+ native; sinon, fallback regex
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exécuté sur py<3.11
+    tomllib = None
 
 # ============================================================
 # CONSTANTES SOUVERAINES (Bibliothèque Céleste — φ-Meta)
 # ============================================================
+
+
+def _resolve_version() -> str:
+    """
+    Retourne la version du package en priorité depuis les métadonnées installées.
+
+    - Cas normal (wheel / editable) : importlib.metadata.version("phi-complexity")
+    - Cas repository local sans métadonnées installées : lecture de pyproject.toml
+    - Cas ultime : chaîne de secours explicite
+    """
+    try:
+        return metadata.version("phi-complexity")
+    except metadata.PackageNotFoundError:
+        pass
+
+    version = _pyproject_version()
+    if version:
+        return version
+    return "0.0.0"
+
+
+def _pyproject_version() -> Optional[str]:
+    """Extrait la version depuis pyproject.toml sans dépendance externe."""
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    if not pyproject.exists():
+        return None
+    try:
+        if tomllib:
+            with pyproject.open("rb") as f:
+                data = tomllib.load(f)
+            version = data.get("project", {}).get("version")
+            if isinstance(version, str) and version:
+                return version
+        else:
+            contenu = pyproject.read_text(encoding="utf-8")
+            match = re.search(
+                r"^version\\s*=\\s*\"(?P<ver>[^\"]+)\"", contenu, re.MULTILINE
+            )
+            if match:
+                return match.group("ver")
+    except Exception:
+        # Gardien antifragile : on retombe sur None et le caller gère le fallback
+        return None
+    return None
+
 
 PHI: float = (1 + math.sqrt(5)) / 2
 """Le nombre d'or. CM-001. L'attracteur universel de l'harmonie."""
@@ -49,7 +103,7 @@ SEUIL_RADIANCE_DORMANT: int = 0
 SEQUENCE_FIBONACCI: list[int] = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]
 """Première séquence de Fibonacci. Tailles naturelles d'une fonction harmonieuse."""
 
-VERSION: str = "0.1.8"
+VERSION: str = _resolve_version()
 AUTEUR: str = "Tomy Verreault"
 FRAMEWORK: str = "Morphic Phi Framework (φ-Meta)"
 

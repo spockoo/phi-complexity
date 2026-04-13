@@ -9,6 +9,15 @@ import shutil
 import tempfile
 import textwrap
 import subprocess
+import re
+from importlib import metadata
+from pathlib import Path
+from typing import Optional
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    tomllib = None
 from phi_complexity.cli import (
     _collecter_fichiers,
     _nom_rapport,
@@ -36,6 +45,26 @@ def multiplier(a: float, b: float) -> float:
 """
 
 IMPOSSIBLE_SECURITY_SCORE = 101.0
+
+
+def _expected_version() -> str:
+    """Version attendue pour la CLI (métadonnées ou pyproject en fallback)."""
+    try:
+        return metadata.version("phi-complexity")
+    except metadata.PackageNotFoundError:
+        pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+        contenu = pyproject.read_text(encoding="utf-8")
+        if tomllib:
+            data = tomllib.loads(contenu)
+            version: Optional[str] = data.get("project", {}).get("version")
+            if version:
+                return version
+        match = re.search(
+            r"^version\\s*=\\s*\"(?P<ver>[^\"]+)\"", contenu, re.MULTILINE
+        )
+        if match:
+            return match.group("ver")
+        return "0.0.0"
 
 
 def creer_fichier(code: str) -> str:
@@ -429,7 +458,10 @@ class TestCLISubprocess:
     def test_version(self):
         """phi --version retourne la version."""
         res = self._phi("--version")
-        assert "phi-complexity" in res.stdout or "phi-complexity" in res.stderr
+        output = res.stdout or res.stderr
+        attendu = _expected_version()
+        assert "phi-complexity" in output
+        assert attendu in output
 
     def test_check_fichier_simple(self):
         """phi check <fichier> retourne exit code 0 et affiche RADIANCE."""
