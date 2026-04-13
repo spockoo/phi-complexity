@@ -61,6 +61,8 @@ CATALOGUE_SIGNATURES: List[PatternSignature] = [
             r"run actions/checkout@v\d+[\s\S]*a branch or tag with the name .* could not be found",
             r"a branch or tag with the name .* could not be found",
             r"couldn't find remote ref",
+            r"reference is not a tree",
+            r"unable to checkout (?:requested )?ref(?:erence)?(?:\s|:)",
             r"pathspec '.*' did not match any file\(s\) known to git",
         ],
         confidence_base=0.82,

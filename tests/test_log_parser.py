@@ -41,6 +41,15 @@ class TestClassifierLog:
         result = classifier_log("pip install failed: no matching distribution for foo")
         assert result.category == "DEPENDENCY_INSTALL"
 
+    def test_checkout_ref_not_found_variations(self) -> None:
+        logs = [
+            "fatal: couldn't find remote ref copilot/missing-branch",
+            "fatal: reference is not a tree: 1234567890abcdef",
+            "Unable to checkout requested ref in detached HEAD mode",
+        ]
+        for log in logs:
+            assert classifier_log(log).category == "CHECKOUT_REF_NOT_FOUND"
+
     def test_permissions(self) -> None:
         result = classifier_log(
             "permission denied: 403 forbidden resource not accessible"
