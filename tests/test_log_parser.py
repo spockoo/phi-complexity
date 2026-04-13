@@ -24,7 +24,7 @@ class TestClassifierLog:
 
     def test_checkout_ref_generic(self) -> None:
         result = classifier_log(
-            "fatal: repository 'https://github.com/org/missing.git' not found during checkout"
+            "error: checkout failed with exit code 128 after fetch"
         )
         assert result.category == "CHECKOUT_REF"
 
@@ -49,6 +49,12 @@ class TestClassifierLog:
         ]
         for log in logs:
             assert classifier_log(log).category == "CHECKOUT_REF_NOT_FOUND"
+
+    def test_checkout_repo_missing_maps_to_not_found(self) -> None:
+        result = classifier_log(
+            "fatal: repository 'https://github.com/org/missing.git' not found during checkout"
+        )
+        assert result.category == "CHECKOUT_REF_NOT_FOUND"
 
     def test_permissions(self) -> None:
         result = classifier_log(
