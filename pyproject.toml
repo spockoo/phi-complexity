@@ -63,6 +63,10 @@ no_implicit_reexport = true
 module = "tests"
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = ["matplotlib", "matplotlib.*", "numpy", "IPython", "IPython.*"]
+ignore_missing_imports = true
+
 [tool.black]
 target-version = ["py39"]
 line-length = 88

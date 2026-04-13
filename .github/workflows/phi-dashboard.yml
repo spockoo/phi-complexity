@@ -32,6 +32,15 @@ jobs:
             ci-auto-diagnostic-history-${{ github.repository }}-${{ github.ref_name }}-
             ci-auto-diagnostic-history-${{ github.repository }}-
 
+      - name: ♻️ Restaurer le cache coverage history
+        uses: actions/cache/restore@v4
+        with:
+          path: .phi/coverage-history.jsonl
+          key: phi-dashboard-coverage-history-${{ github.repository }}-${{ github.ref_name }}
+          restore-keys: |
+            phi-dashboard-coverage-history-${{ github.repository }}-${{ github.ref_name }}-
+            phi-dashboard-coverage-history-${{ github.repository }}-
+
       - name: 📥 Télécharger le dernier artifact ci-auto-diagnostic
         uses: actions/github-script@v7
         with:
@@ -70,19 +79,106 @@ jobs:
               }
             }
 
+      - name: 📥 Télécharger le dernier artifact coverage-summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              {
+                owner,
+                repo,
+                status: "completed",
+                per_page: 30
+              }
+            );
+            for (const run of runs) {
+              const artifacts = await github.paginate(
+                github.rest.actions.listWorkflowRunArtifacts,
+                { owner, repo, run_id: run.id, per_page: 100 }
+              );
+              const covArtifact = artifacts.find((a) => a.name === "coverage-summary");
+              if (covArtifact) {
+                const download = await github.rest.actions.downloadArtifact({
+                  owner,
+                  repo,
+                  artifact_id: covArtifact.id,
+                  archive_format: "zip"
+                });
+                const fs = require("fs");
+                fs.mkdirSync(".phi", { recursive: true });
+                fs.writeFileSync("coverage-artifact.zip", Buffer.from(download.data));
+                require("child_process").execSync("unzip -o coverage-artifact.zip -d .phi/");
+                console.log(`Coverage summary extrait depuis le run ${run.id}`);
+                break;
+              }
+            }
+
       - name: 📊 Générer le dashboard SLO
         id: dashboard
         run: |
           python - <<'PY'
           import json
           import os
-          from phi_complexity.audit_slo import calculer_slo, rapport_slo_markdown, sparkline_resonance, charger_historique
+          from datetime import datetime, timezone
+          from phi_complexity.audit_slo import (
+              calculer_slo,
+              charger_historique,
+              estimer_efficacite_dev_depuis_historique,
+              rapport_slo_markdown,
+              sparkline_resonance,
+          )
+          from phi_complexity.coverage_reporting import (
+              SnapshotCouverture,
+              charger_historique_couverture,
+              rapport_couverture_markdown,
+              sauvegarder_snapshot_couverture,
+              sparkline_couverture_core,
+          )
 
           history_path = ".phi/ci-history.jsonl"
           slo = calculer_slo(history_path)
           historique = charger_historique(history_path)
           spark = sparkline_resonance(historique)
-          rapport = rapport_slo_markdown(slo, sparkline=spark)
+          coverage_summary_path = ".phi/coverage-summary.json"
+          coverage_history_path = ".phi/coverage-history.jsonl"
+
+          coverage_section = ""
+          coverage_ratio = 0.90
+          if os.path.exists(coverage_summary_path):
+              with open(coverage_summary_path, encoding="utf-8") as fh:
+                  coverage_data = json.load(fh)
+              snapshot = SnapshotCouverture(
+                  total_covered=int(coverage_data.get("total", {}).get("covered", 0)),
+                  total_statements=int(coverage_data.get("total", {}).get("statements", 0)),
+                  core_covered=int(coverage_data.get("core", {}).get("covered", 0)),
+                  core_statements=int(coverage_data.get("core", {}).get("statements", 0)),
+                  optional_covered=int(coverage_data.get("optional", {}).get("covered", 0)),
+                  optional_statements=int(coverage_data.get("optional", {}).get("statements", 0)),
+              )
+              coverage_ratio = snapshot.core_ratio
+              history_cov = sauvegarder_snapshot_couverture(
+                  coverage_history_path,
+                  snapshot,
+                  analyzed_at=datetime.now(timezone.utc).isoformat(),
+              )
+              spark_cov = sparkline_couverture_core(history_cov)
+              coverage_section = rapport_couverture_markdown(snapshot, trend_sparkline=spark_cov)
+          else:
+              history_cov = charger_historique_couverture(coverage_history_path)
+              if history_cov:
+                  last_ratio = float(history_cov[-1].get("core", {}).get("ratio", 0.90))
+                  coverage_ratio = max(0.0, min(1.0, last_ratio))
+
+          efficacite = estimer_efficacite_dev_depuis_historique(
+              historique,
+              couverture_utile=coverage_ratio,
+              complexite_maitrisee=0.80,
+          )
+          rapport = rapport_slo_markdown(slo, sparkline=spark, efficacite_dev=efficacite)
+          if coverage_section:
+              rapport = rapport.rstrip() + "\n\n" + coverage_section
 
           os.makedirs(".phi", exist_ok=True)
           with open(".phi/dashboard.md", "w", encoding="utf-8") as fh:
@@ -97,6 +193,13 @@ jobs:
 
           print("Dashboard généré dans .phi/dashboard.md")
           PY
+
+      - name: 💾 Sauvegarder le cache coverage history
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .phi/coverage-history.jsonl
+          key: phi-dashboard-coverage-history-${{ github.repository }}-${{ github.ref_name }}-${{ hashFiles('.phi/coverage-history.jsonl') }}
 
       - name: 📁 Uploader le dashboard
         uses: actions/upload-artifact@v4
