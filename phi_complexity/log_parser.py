@@ -43,6 +43,34 @@ class ClassificationResult:
 
 CATALOGUE_SIGNATURES: List[PatternSignature] = [
     PatternSignature(
+        category="WORKFLOW_CONCURRENCY_CANCELLED",
+        patterns=[
+            r"cancel(?:led|ed).*(?:concurrency|newer run|higher priority waiting request)",
+            r"the operation was canceled",
+            r"run was canceled because another run is in progress",
+            r"canceling since a higher priority waiting request exists",
+            r"concurrency group .* cancel-in-progress",
+        ],
+        confidence_base=0.80,
+        priority=2,
+        hint="Run annulé par stratégie de concurrence (souvent attendu, parfois mal calibré).",
+        mutation="Ajuster concurrency/cancel-in-progress par branche critique et prioriser les workflows bloquants.",
+    ),
+    PatternSignature(
+        category="RUNNER_QUEUE_STALL",
+        patterns=[
+            r"waiting for a runner to pick up this job",
+            r"this job is waiting for an available runner",
+            r"queued for \d+",
+            r"queue time exceeded",
+            r"job is stuck in queued state",
+        ],
+        confidence_base=0.78,
+        priority=1,
+        hint="Run bloqué en file d'attente runner (capacité insuffisante ou labels incompatibles).",
+        mutation="Rééquilibrer labels/capacité runners, réduire la matrice et ajouter un canary de saturation.",
+    ),
+    PatternSignature(
         category="INFRA_RUNNER_UNAVAILABLE",
         patterns=[
             r"runner.*not found",

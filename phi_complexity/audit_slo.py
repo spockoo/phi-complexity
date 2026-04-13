@@ -55,6 +55,22 @@ class MetriqueEfficaciteDev:
     vitesse_correction: float
 
 
+@dataclass
+class ControlPlaneSnapshot:
+    """Vue unifiée Ops & Engineering exportable en JSON/Markdown."""
+
+    total_runs: int
+    success_runs: int
+    failure_runs: int
+    cancelled_runs: int
+    success_rate: float
+    mttr_secondes: Optional[float]
+    top_root_causes: List[Dict[str, Any]]
+    ci_resonance_trend: str
+    runner_pressure_rate: float
+    flow_cancellation_rate: float
+
+
 _SPARKLINE_CHARS = "▁▂▃▄▅▆▇█"
 
 
@@ -344,10 +360,120 @@ def rapport_slo_markdown(
     return "\n".join(lines)
 
 
+def construire_control_plane_snapshot(
+    historique: List[EntreeHistorique],
+    trend_window: int = 50,
+    top_n_root_causes: int = 5,
+) -> ControlPlaneSnapshot:
+    """
+    Construit un snapshot unifié pour exploitation Ops/Engineering.
+
+    Les causes racines sont agrégées depuis les catégories des diagnostics.
+    """
+    total_runs = len(historique)
+    success_runs = sum(1 for entry in historique if entry.run_conclusion == "success")
+    failure_runs = sum(
+        1 for entry in historique if entry.run_conclusion in ("failure", "timed_out")
+    )
+    cancelled_runs = sum(1 for entry in historique if entry.run_conclusion == "cancelled")
+    success_rate = 1.0 if total_runs == 0 else success_runs / total_runs
+
+    category_counts: Dict[str, int] = {}
+    total_diags = 0
+    runner_pressure_hits = 0
+    flow_cancel_hits = 0
+    for entry in historique:
+        for diag in entry.diagnostics:
+            category = str(diag.get("category", "UNCLASSIFIED"))
+            total_diags += 1
+            category_counts[category] = category_counts.get(category, 0) + 1
+            if category in {"INFRA_RUNNER_UNAVAILABLE", "RUNNER_QUEUE_STALL"}:
+                runner_pressure_hits += 1
+            if category == "WORKFLOW_CONCURRENCY_CANCELLED":
+                flow_cancel_hits += 1
+
+    top_root_causes = [
+        {"category": category, "occurrences": occurrences}
+        for category, occurrences in sorted(
+            category_counts.items(), key=lambda item: item[1], reverse=True
+        )[:top_n_root_causes]
+    ]
+
+    runner_pressure_rate = 0.0 if total_diags == 0 else runner_pressure_hits / total_diags
+    flow_cancellation_rate = 0.0 if total_diags == 0 else flow_cancel_hits / total_diags
+
+    return ControlPlaneSnapshot(
+        total_runs=total_runs,
+        success_runs=success_runs,
+        failure_runs=failure_runs,
+        cancelled_runs=cancelled_runs,
+        success_rate=success_rate,
+        mttr_secondes=calculer_mttr(historique),
+        top_root_causes=top_root_causes,
+        ci_resonance_trend=sparkline_resonance(historique, n=trend_window),
+        runner_pressure_rate=runner_pressure_rate,
+        flow_cancellation_rate=flow_cancellation_rate,
+    )
+
+
+def exporter_control_plane_snapshot_json(
+    snapshot: ControlPlaneSnapshot,
+    chemin_sortie: str,
+) -> None:
+    """Exporte le snapshot Ops & Engineering au format JSON."""
+    payload = {
+        "total_runs": snapshot.total_runs,
+        "success_runs": snapshot.success_runs,
+        "failure_runs": snapshot.failure_runs,
+        "cancelled_runs": snapshot.cancelled_runs,
+        "success_rate": snapshot.success_rate,
+        "mttr_secondes": snapshot.mttr_secondes,
+        "top_root_causes": snapshot.top_root_causes,
+        "ci_resonance_trend": snapshot.ci_resonance_trend,
+        "runner_pressure_rate": snapshot.runner_pressure_rate,
+        "flow_cancellation_rate": snapshot.flow_cancellation_rate,
+    }
+    with open(chemin_sortie, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+
+def rapport_control_plane_markdown(snapshot: ControlPlaneSnapshot) -> str:
+    """Génère un résumé Markdown compact du Control Plane."""
+    lines: List[str] = [
+        "## 🛰️ Ops & Engineering Control Plane",
+        "",
+        f"- Runs: **{snapshot.total_runs}** "
+        f"(✅ {snapshot.success_runs} | ❌ {snapshot.failure_runs} | ⏹ {snapshot.cancelled_runs})",
+        f"- Taux de succès: **{snapshot.success_rate * 100:.1f}%**",
+    ]
+    if snapshot.mttr_secondes is None:
+        lines.append("- MTTR: **N/A**")
+    else:
+        lines.append(f"- MTTR: **{snapshot.mttr_secondes / 3600.0:.1f}h**")
+    lines.extend(
+        [
+            f"- Pression runner: **{snapshot.runner_pressure_rate * 100:.1f}%**",
+            f"- Annulations concurrence: **{snapshot.flow_cancellation_rate * 100:.1f}%**",
+        ]
+    )
+    if snapshot.ci_resonance_trend:
+        lines.append(f"- Tendance résonance: `{snapshot.ci_resonance_trend}`")
+    if snapshot.top_root_causes:
+        lines.extend(["", "### Causes racines dominantes"])
+        for cause in snapshot.top_root_causes:
+            lines.append(
+                f"- `{cause.get('category', 'UNCLASSIFIED')}` : "
+                f"{int(cause.get('occurrences', 0))} occurrence(s)"
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
 __all__ = [
     "EntreeHistorique",
     "MetriquesSLO",
     "MetriqueEfficaciteDev",
+    "ControlPlaneSnapshot",
     "charger_historique",
     "calculer_mttr",
     "calculer_taux_classification",
@@ -357,4 +483,7 @@ __all__ = [
     "calculer_efficacite_dev",
     "estimer_efficacite_dev_depuis_historique",
     "rapport_slo_markdown",
+    "construire_control_plane_snapshot",
+    "exporter_control_plane_snapshot_json",
+    "rapport_control_plane_markdown",
 ]

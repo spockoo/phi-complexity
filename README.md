@@ -105,6 +105,23 @@ rapport_markdown("my_script.py", sortie="report.md")
 
 ---
 
+## 🚀 CI Innovation Suite (Open Source)
+
+`phi-complexity` embarque maintenant une suite orientée productivité/dev/ops :
+
+- **AI AutoFix Studio** : règles de mutation déterministes pour appliquer rapidement des corrections CI.
+- **Flow Intelligence** : classification dédiée des annulations liées à la concurrence (`WORKFLOW_CONCURRENCY_CANCELLED`).
+- **Runner Sentinel** : détection explicite des blocages de queue runner (`RUNNER_QUEUE_STALL`).
+- **Ops & Engineering Control Plane** : snapshot exportable JSON/Markdown (succès/échecs/cancelled, MTTR, causes racines, tendances).
+- **Dev Productivity Environment** : `.devcontainer` + `Makefile` + commande `make ci-local` pour reproduire le pipeline localement.
+
+```bash
+make setup
+make ci-local
+```
+
+---
+
 ## 🧮 Mathematical Foundations
 
 The **Radiance Formula** is derived from:

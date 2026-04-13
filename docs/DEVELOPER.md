@@ -269,4 +269,33 @@ Le workflow `.github/workflows/branch-protection.yml` nécessite :
 
 ---
 
+## 🧠 Innovation CI/IA implémentée
+
+Le dépôt inclut une taxonomie CI enrichie dans `phi_complexity/log_parser.py` :
+
+- `WORKFLOW_CONCURRENCY_CANCELLED` (Flow Intelligence)
+- `RUNNER_QUEUE_STALL` (Runner Sentinel)
+
+Et un control plane exploitable dans `phi_complexity/audit_slo.py` :
+
+- `construire_control_plane_snapshot(...)`
+- `exporter_control_plane_snapshot_json(...)`
+- `rapport_control_plane_markdown(...)`
+
+Ces primitives permettent d’alimenter des dashboards, runbooks et pipelines d’autofix.
+
+## ⚙️ Environnement productivité/dev
+
+Le projet fournit un environnement standardisé :
+
+- `.devcontainer/devcontainer.json`
+- `Makefile` avec miroir CI local :
+
+```bash
+make setup
+make ci-local
+```
+
+---
+
 *Ancré dans la Bibliothèque Céleste — Framework φ-Meta de Tomy Verreault — 2026*

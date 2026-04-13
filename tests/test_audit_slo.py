@@ -12,6 +12,7 @@ from typing import Any, Dict, List
 import pytest
 
 from phi_complexity.audit_slo import (
+    ControlPlaneSnapshot,
     EntreeHistorique,
     MetriqueEfficaciteDev,
     MetriquesSLO,
@@ -21,7 +22,10 @@ from phi_complexity.audit_slo import (
     calculer_taux_classification,
     calculer_taux_faux_positifs,
     charger_historique,
+    construire_control_plane_snapshot,
     estimer_efficacite_dev_depuis_historique,
+    exporter_control_plane_snapshot_json,
+    rapport_control_plane_markdown,
     rapport_slo_markdown,
     sparkline_resonance,
 )
@@ -484,3 +488,86 @@ class TestEfficaciteDev:
         )
         rapport = rapport_slo_markdown(slo)
         assert "❌" in rapport
+
+
+class TestControlPlaneSnapshot:
+    def test_construire_control_plane_snapshot(self) -> None:
+        historique = [
+            _make_entree(
+                "2024-01-01T00:00:00",
+                1,
+                "failure",
+                0.2,
+                [
+                    {"category": "RUNNER_QUEUE_STALL"},
+                    {"category": "WORKFLOW_CONCURRENCY_CANCELLED"},
+                ],
+            ),
+            _make_entree(
+                "2024-01-01T03:00:00",
+                2,
+                "success",
+                0.9,
+                [{"category": "QUALITY_GATE"}],
+            ),
+            _make_entree(
+                "2024-01-01T04:00:00",
+                3,
+                "cancelled",
+                0.4,
+                [{"category": "WORKFLOW_CONCURRENCY_CANCELLED"}],
+            ),
+        ]
+        snapshot = construire_control_plane_snapshot(historique, trend_window=10)
+        assert isinstance(snapshot, ControlPlaneSnapshot)
+        assert snapshot.total_runs == 3
+        assert snapshot.success_runs == 1
+        assert snapshot.failure_runs == 1
+        assert snapshot.cancelled_runs == 1
+        assert snapshot.success_rate == pytest.approx(1 / 3)
+        assert snapshot.runner_pressure_rate > 0.0
+        assert snapshot.flow_cancellation_rate > 0.0
+        assert len(snapshot.top_root_causes) > 0
+
+    def test_exporter_control_plane_snapshot_json(self) -> None:
+        snapshot = ControlPlaneSnapshot(
+            total_runs=2,
+            success_runs=1,
+            failure_runs=1,
+            cancelled_runs=0,
+            success_rate=0.5,
+            mttr_secondes=3600.0,
+            top_root_causes=[{"category": "QUALITY_GATE", "occurrences": 1}],
+            ci_resonance_trend="▁█",
+            runner_pressure_rate=0.0,
+            flow_cancellation_rate=0.0,
+        )
+        fd, path = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        try:
+            exporter_control_plane_snapshot_json(snapshot, path)
+            with open(path, encoding="utf-8") as fh:
+                payload = json.load(fh)
+            assert payload["total_runs"] == 2
+            assert payload["success_rate"] == pytest.approx(0.5)
+            assert payload["ci_resonance_trend"] == "▁█"
+        finally:
+            os.unlink(path)
+
+    def test_rapport_control_plane_markdown(self) -> None:
+        snapshot = ControlPlaneSnapshot(
+            total_runs=5,
+            success_runs=4,
+            failure_runs=1,
+            cancelled_runs=0,
+            success_rate=0.8,
+            mttr_secondes=None,
+            top_root_causes=[{"category": "TEST_REGRESSION", "occurrences": 2}],
+            ci_resonance_trend="▁▂▃▄",
+            runner_pressure_rate=0.1,
+            flow_cancellation_rate=0.2,
+        )
+        rapport = rapport_control_plane_markdown(snapshot)
+        assert "Ops & Engineering Control Plane" in rapport
+        assert "TEST_REGRESSION" in rapport
+        assert "▁▂▃▄" in rapport

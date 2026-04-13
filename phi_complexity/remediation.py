@@ -91,6 +91,28 @@ CATALOGUE_MUTATIONS: List[RegleMutation] = [
         rollback_commandes=[],
         necessite_tests=False,
     ),
+    RegleMutation(
+        categorie="WORKFLOW_CONCURRENCY_CANCELLED",
+        confidence_threshold=0.80,
+        description="Produit une recommandation de calibration concurrency.",
+        commandes=[
+            "echo '[FLOW-INTELLIGENCE] Vérifier cancel-in-progress par branche et workflow critique.'"
+        ],
+        idempotence_check=None,
+        rollback_commandes=[],
+        necessite_tests=False,
+    ),
+    RegleMutation(
+        categorie="RUNNER_QUEUE_STALL",
+        confidence_threshold=0.80,
+        description="Produit une recommandation de capacité runner.",
+        commandes=[
+            "echo '[RUNNER-SENTINEL] Vérifier saturation runners, labels et taille de matrice.'"
+        ],
+        idempotence_check=None,
+        rollback_commandes=[],
+        necessite_tests=False,
+    ),
 ]
 
 

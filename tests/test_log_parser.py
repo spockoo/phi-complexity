@@ -38,6 +38,16 @@ class TestClassifierLog:
         result = classifier_log("setup-python failed: version not available")
         assert result.category == "TOOLCHAIN_SETUP"
 
+    def test_workflow_concurrency_cancelled(self) -> None:
+        result = classifier_log(
+            "Run was canceled because another run is in progress in concurrency group"
+        )
+        assert result.category == "WORKFLOW_CONCURRENCY_CANCELLED"
+
+    def test_runner_queue_stall(self) -> None:
+        result = classifier_log("This job is waiting for an available runner queued for 25m")
+        assert result.category == "RUNNER_QUEUE_STALL"
+
     def test_dependency_install(self) -> None:
         result = classifier_log("pip install failed: no matching distribution for foo")
         assert result.category == "DEPENDENCY_INSTALL"
@@ -205,6 +215,8 @@ class TestCatalogueSignatures:
     def test_catalogue_has_all_expected_categories(self) -> None:
         categories = {sig.category for sig in CATALOGUE_SIGNATURES}
         expected = {
+            "WORKFLOW_CONCURRENCY_CANCELLED",
+            "RUNNER_QUEUE_STALL",
             "INFRA_RUNNER_UNAVAILABLE",
             "CHECKOUT_REF_NOT_FOUND",
             "CHECKOUT_REF",
