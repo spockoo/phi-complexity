@@ -1,4 +1,4 @@
-.PHONY: setup lint format-check typecheck test ci-local
+.PHONY: setup lint format format-check typecheck test ci-local
 
 setup:
 	pip install -e .
@@ -6,6 +6,9 @@ setup:
 
 lint:
 	ruff check .
+
+format:
+	black .
 
 format-check:
 	black --check .
