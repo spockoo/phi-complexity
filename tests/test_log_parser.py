@@ -17,10 +17,13 @@ from phi_complexity.log_parser import (
 
 class TestClassifierLog:
     def test_checkout_ref_not_found(self) -> None:
-        result = classifier_log(
-            "Run actions/checkout@v4 A branch or tag with the name 'foo/bar' could not be found"
-        )
-        assert result.category == "CHECKOUT_REF_NOT_FOUND"
+        logs = [
+            "Run actions/checkout@v4 A branch or tag with the name 'foo/bar' could not be found",
+            "A branch or tag with the name 'feature/test-branch' could not be found",
+        ]
+        for log in logs:
+            result = classifier_log(log)
+            assert result.category == "CHECKOUT_REF_NOT_FOUND"
 
     def test_checkout_ref_generic(self) -> None:
         result = classifier_log(
