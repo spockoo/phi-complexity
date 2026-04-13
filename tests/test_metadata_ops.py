@@ -125,6 +125,13 @@ def test_cli_metadata_purge_default_output(tmp_path, capsys):
     assert "Corpus purgé" in out
 
 
+def test_cli_metadata_requires_action_manually():
+    parser = _construire_parseur()
+    args = parser.parse_args(["metadata"])
+    assert getattr(args, "metadata_action", None) is None
+    assert _executer_metadata(args) == 1
+
+
 def test_sanitize_harvest_skips_corrupted_lines(tmp_path):
     harvest = tmp_path / "harvest_corrupted.jsonl"
     harvest.write_text(

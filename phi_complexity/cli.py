@@ -143,7 +143,8 @@ Exemples :
     metadata_parser = subparsers.add_parser(
         "metadata", help="Synthèse et purge souveraine des métadonnées."
     )
-    metadata_sub = metadata_parser.add_subparsers(dest="metadata_action", required=True)
+    metadata_parser.set_defaults(_metadata_parser=metadata_parser)
+    metadata_sub = metadata_parser.add_subparsers(dest="metadata_action")
 
     metadata_summary = metadata_sub.add_parser(
         "summary", help="Afficher une synthèse des métadonnées (harvest + vault)."
@@ -1038,6 +1039,13 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_sbom(args))
 
     if args.commande == "metadata":
+        if not getattr(args, "metadata_action", None):
+            metadata_parser = getattr(args, "_metadata_parser", None)
+            if metadata_parser is not None:
+                metadata_parser.print_help()
+            else:
+                parser.print_help()
+            sys.exit(1)
         sys.exit(_executer_metadata(args))
 
     # Phase 14 — commandes sans collecte de fichiers préalable
