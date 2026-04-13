@@ -13,12 +13,15 @@ import pytest
 
 from phi_complexity.audit_slo import (
     EntreeHistorique,
+    MetriqueEfficaciteDev,
     MetriquesSLO,
+    calculer_efficacite_dev,
     calculer_mttr,
     calculer_slo,
     calculer_taux_classification,
     calculer_taux_faux_positifs,
     charger_historique,
+    estimer_efficacite_dev_depuis_historique,
     rapport_slo_markdown,
     sparkline_resonance,
 )
@@ -334,6 +337,70 @@ class TestRapportSloMarkdown:
         )
         rapport = rapport_slo_markdown(slo)
         assert "## 📊 Rapport SLO" in rapport
+
+    def test_contains_dev_efficiency_section_when_provided(self) -> None:
+        slo = MetriquesSLO(
+            mttr_secondes=3600.0,
+            taux_classification=0.95,
+            taux_faux_positifs=0.02,
+            nb_runs_analyses=42,
+            nb_runs_consecutifs_bons=5,
+            recommandation_upgrade=False,
+        )
+        efficacite = MetriqueEfficaciteDev(
+            score_global=83.2,
+            stabilite_ci=0.9,
+            qualite_livraison=0.8,
+            couverture_utile=0.88,
+            complexite_maitrisee=0.75,
+            vitesse_correction=0.7,
+        )
+        rapport = rapport_slo_markdown(slo, efficacite_dev=efficacite)
+        assert "Score d'Efficacité Dev" in rapport
+        assert "83.2/100" in rapport
+
+
+class TestEfficaciteDev:
+    def test_calculer_efficacite_dev_bounds_score(self) -> None:
+        score = calculer_efficacite_dev(
+            stabilite_ci=2.0,
+            qualite_livraison=-1.0,
+            couverture_utile=0.9,
+            complexite_maitrisee=0.8,
+            vitesse_correction=0.7,
+        )
+        assert 0.0 <= score.score_global <= 100.0
+
+    def test_estimer_efficacite_depuis_historique(self) -> None:
+        historique = [
+            _make_entree(
+                "2024-01-01T00:00:00",
+                1,
+                "failure",
+                0.4,
+                [{"category": "QUALITY_GATE"}],
+            ),
+            _make_entree(
+                "2024-01-01T01:00:00",
+                2,
+                "success",
+                0.9,
+                [{"category": "TEST_REGRESSION"}],
+            ),
+            _make_entree(
+                "2024-01-01T02:00:00",
+                3,
+                "success",
+                0.95,
+                [{"category": "PERMISSIONS"}],
+            ),
+        ]
+        score = estimer_efficacite_dev_depuis_historique(
+            historique, couverture_utile=0.91, complexite_maitrisee=0.8
+        )
+        assert isinstance(score, MetriqueEfficaciteDev)
+        assert 0.0 <= score.score_global <= 100.0
+        assert score.couverture_utile == pytest.approx(0.91)
 
     def test_contains_runs_count(self) -> None:
         slo = MetriquesSLO(
