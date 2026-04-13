@@ -172,6 +172,7 @@ def sanitize_harvest(
     strip_set: Set[str] = set(strip_keys or [])
 
     corpus: List[Dict[str, Any]] = []
+    feature_set = set(_FEATURE_KEYS)
     for v in vecteurs:
         base = (
             {k: v[k] for k in _FEATURE_KEYS if keep_only_features and k in v}
@@ -181,16 +182,22 @@ def sanitize_harvest(
 
         if strip_sensitive:
             for cle in _SENSITIVE_KEYS:
+                if keep_only_features and cle in feature_set:
+                    continue
                 if cle in base:
                     removed.add(cle)
                     base.pop(cle, None)
         if strip_labels:
             for cle in ("labels", "nb_critiques"):
+                if keep_only_features and cle in feature_set:
+                    continue
                 if cle in base:
                     removed.add(cle)
                     base.pop(cle, None)
 
         for cle in strip_set:
+            if keep_only_features and cle in feature_set:
+                continue
             if cle in base:
                 removed.add(cle)
                 base.pop(cle, None)

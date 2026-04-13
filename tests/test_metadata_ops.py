@@ -20,8 +20,16 @@ def _write_harvest(path: str, vecteurs: List[Dict[str, Any]]) -> None:
 def _read_harvest(path: str) -> List[Dict[str, Any]]:
     if not os.path.exists(path):
         return []
+    result: List[Dict[str, Any]] = []
     with open(path, "r", encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                result.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return result
 
 
 def test_summarize_metadata_counts(tmp_path):
@@ -130,6 +138,66 @@ def test_cli_metadata_requires_action_manually():
     args = parser.parse_args(["metadata"])
     assert getattr(args, "metadata_action", None) is None
     assert _executer_metadata(args) == 1
+
+
+def test_sanitize_harvest_empty_file(tmp_path):
+    harvest = tmp_path / "empty.jsonl"
+    harvest.write_text("", encoding="utf-8")
+    sortie = tmp_path / "sanitized_empty.jsonl"
+    resultat = sanitize_harvest(str(harvest), str(sortie), strip_sensitive=True)
+    assert resultat["written"] == 0
+    assert _read_harvest(str(sortie)) == []
+
+
+def test_cli_metadata_purge_missing_harvest(tmp_path, capsys):
+    parser = _construire_parseur()
+    args = parser.parse_args(
+        [
+            "metadata",
+            "purge",
+            "--harvest",
+            str(tmp_path / "nonexistent.jsonl"),
+            "--strip-sensitive",
+        ]
+    )
+    code = _executer_metadata(args)
+    assert code == 0
+    sortie_path = default_sanitized_path(str(tmp_path / "nonexistent.jsonl"))
+    contenu = _read_harvest(sortie_path)
+    assert contenu == []
+
+
+def test_sanitize_harvest_feature_only_preserves_features(tmp_path):
+    harvest = tmp_path / "harvest_feat.jsonl"
+    vecteur = {
+        "schema": "1.1",
+        "radiance": 85.0,
+        "timestamp": 999,
+        "fingerprint": {"hash": "abc"},
+        "labels": {"LILITH": 1},
+        "nb_critiques": 3,
+        "phi_ratio": 1.618,
+        "custom_key": "drop-me",
+    }
+    _write_harvest(str(harvest), [vecteur])
+    sortie = tmp_path / "features.jsonl"
+    resultat = sanitize_harvest(
+        str(harvest),
+        str(sortie),
+        strip_keys={"radiance"},
+        strip_sensitive=True,
+        strip_labels=True,
+        keep_only_features=True,
+    )
+    assert resultat["written"] == 1
+    contenu = _read_harvest(str(sortie))[0]
+    assert "radiance" in contenu
+    assert "phi_ratio" in contenu
+    assert "schema" in contenu
+    assert "timestamp" not in contenu
+    assert "fingerprint" not in contenu
+    assert "labels" not in contenu
+    assert "custom_key" not in contenu
 
 
 def test_sanitize_harvest_skips_corrupted_lines(tmp_path):
