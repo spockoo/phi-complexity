@@ -40,7 +40,7 @@ class PhiSearch:
         resultats: List[Dict[str, Any]] = []
 
         for fichier, info in index.get("notes", {}).items():
-            radiance = float(info.get("radiance", 0.0))
+            radiance = _to_float(info.get("radiance", 0.0))
             if minimum <= radiance <= maximum:
                 resultats.append(
                     {
@@ -68,7 +68,7 @@ class PhiSearch:
                 resultats.append(
                     {
                         "fichier": fichier,
-                        "radiance": float(info.get("radiance", 0.0)),
+                        "radiance": _to_float(info.get("radiance", 0.0)),
                         "statut": str(info.get("statut", "")),
                         "note": str(info.get("note", "")),
                     }
@@ -95,10 +95,10 @@ class PhiSearch:
             if sim >= seuil:
                 resultats.append(
                     {
-                        "radiance": float(v.get("radiance", 0.0)),
+                        "radiance": _to_float(v.get("radiance", 0.0)),
                         "similarite": round(sim, 4),
-                        "lilith_variance": float(v.get("lilith_variance", 0.0)),
-                        "shannon_entropy": float(v.get("shannon_entropy", 0.0)),
+                        "lilith_variance": _to_float(v.get("lilith_variance", 0.0)),
+                        "shannon_entropy": _to_float(v.get("shannon_entropy", 0.0)),
                         "labels": v.get("labels", {}),
                     }
                 )
@@ -120,7 +120,7 @@ class PhiSearch:
             if count > 0:
                 resultats.append(
                     {
-                        "radiance": float(v.get("radiance", 0.0)),
+                        "radiance": _to_float(v.get("radiance", 0.0)),
                         f"nb_{cat_upper.lower()}": count,
                         "nb_critiques": int(v.get("nb_critiques", 0)),
                         "timestamp": v.get("timestamp", 0),
@@ -128,6 +128,40 @@ class PhiSearch:
                 )
 
         return sorted(resultats, key=lambda x: x["radiance"])
+
+    def chercher_transitions_zero(self, etat: str) -> List[Dict[str, Any]]:
+        """
+        Recherche les vecteurs harvest par état morphogénétique.
+        États : PRE_ZERO, ZERO_CAUSAL, POST_RENAISSANCE.
+        """
+        etat_upper = etat.upper()
+        vecteurs = self._charger_harvest()
+        resultats: List[Dict[str, Any]] = []
+
+        for v in vecteurs:
+            taxonomie = dict(v.get("taxonomie_transition") or {})
+            etat_vecteur = str(
+                v.get("zero_morphogenetic_state", taxonomie.get("etat", ""))
+            ).upper()
+            if etat_vecteur != etat_upper:
+                continue
+            coherence_raw = v.get(
+                "quasicrystal_coherence", taxonomie.get("coherence", 0.0)
+            )
+            coherence = _to_float(coherence_raw)
+            resultats.append(
+                {
+                    "radiance": _to_float(v.get("radiance", 0.0)),
+                    "etat_zero": etat_vecteur,
+                    "quasicrystal_state": str(
+                        v.get("quasicrystal_state", taxonomie.get("quasicristal", ""))
+                    ),
+                    "quasicrystal_coherence": coherence,
+                    "timestamp": v.get("timestamp", 0),
+                }
+            )
+
+        return sorted(resultats, key=lambda x: x["radiance"], reverse=True)
 
     def rapport_recherche(
         self, resultats: List[Dict[str, Any]], titre: str = "Recherche"
@@ -150,6 +184,8 @@ class PhiSearch:
             radiance = r.get("radiance", 0.0)
             statut = r.get("statut", "")
             sim = r.get("similarite", None)
+            etat_zero = r.get("etat_zero", "")
+            coherence = r.get("quasicrystal_coherence", None)
 
             if fichier:
                 base = os.path.basename(fichier)
@@ -160,6 +196,10 @@ class PhiSearch:
                 ligne = f"  [{i+1:>2}] Radiance: {radiance:.1f}"
                 if sim is not None:
                     ligne += f"  Similarité: {sim:.4f}"
+                if etat_zero:
+                    ligne += f"  État: {etat_zero}"
+                if coherence is not None:
+                    ligne += f"  Cohérence: {_to_float(coherence):.3f}"
 
             lignes.append(ligne)
 
@@ -195,3 +235,11 @@ def _similitude_cosinus(a: List[float], b: List[float]) -> float:
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot / (norm_a * norm_b)
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    """Convertit une valeur quelconque en float de manière sûre."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
