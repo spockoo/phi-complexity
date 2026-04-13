@@ -3,6 +3,17 @@ tests/test_core.py — Tests unitaires des constantes et fonctions core.
 """
 
 import math
+import re
+from importlib import metadata
+from pathlib import Path
+from typing import Optional
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    tomllib = None
+
+import phi_complexity
 from phi_complexity.core import (
     PHI,
     PHI_INV,
@@ -14,6 +25,26 @@ from phi_complexity.core import (
     fibonacci_plus_proche,
     distance_fibonacci,
 )
+
+
+def _expected_version() -> str:
+    """Version attendue : métadonnées installées ou fallback pyproject."""
+    try:
+        return metadata.version("phi-complexity")
+    except metadata.PackageNotFoundError:
+        pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+        contenu = pyproject.read_text(encoding="utf-8")
+        if tomllib:
+            data = tomllib.loads(contenu)
+            version: Optional[str] = data.get("project", {}).get("version")
+            if version:
+                return version
+        match = re.search(
+            r"^version\\s*=\\s*\"(?P<ver>[^\"]+)\"", contenu, re.MULTILINE
+        )
+        if match:
+            return match.group("ver")
+        return "0.0.0"
 
 
 class TestConstantesSouveraines:
@@ -98,3 +129,15 @@ class TestFibonacci:
     def test_distance_fibonacci_positive(self):
         """Un nombre hors séquence a une distance positive."""
         assert distance_fibonacci(10) > 0
+
+
+class TestVersionSynchronisation:
+    """La version exposée doit refléter celle du package installé."""
+
+    def test_version_sync_metadata(self):
+        attendu = _expected_version()
+        assert phi_complexity.__version__ == attendu
+        # VERSION (core) est l'alias utilisé par la CLI
+        from phi_complexity.core import VERSION
+
+        assert VERSION == attendu
