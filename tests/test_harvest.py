@@ -75,6 +75,9 @@ class TestHarvestEngine:
                 assert "phi_ratio" in vecteur
                 assert "labels" in vecteur
                 assert "vecteur_phi" in vecteur
+                assert "zero_morphogenetic_state" in vecteur
+                assert "quasicrystal_state" in vecteur
+                assert "taxonomie_transition" in vecteur
                 assert len(vecteur["vecteur_phi"]) == 5
             finally:
                 _safe_unlink(jsonl)
@@ -107,6 +110,7 @@ class TestHarvestEngine:
                 # Le code chaotique doit avoir au moins une violation
                 total = sum(labels.values())
                 assert total > 0
+                assert "MORPHOGENESE_ZERO" in labels
             finally:
                 _safe_unlink(jsonl)
         finally:
@@ -214,6 +218,7 @@ class TestHarvestEngine:
                 rapport = engine.rapport_harvest()
                 assert "1" in rapport  # 1 vecteur collecté
                 assert "HARVEST" in rapport
+                assert "Pré-Zéro" in rapport
             finally:
                 _safe_unlink(jsonl)
         finally:

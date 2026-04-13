@@ -380,3 +380,50 @@ class TestCoherenceBayes:
         calc = self._build_calculateur()
         c = 1.0
         assert abs(calc._deduction_bayes(c) - c * PHI) < 1e-10
+
+
+class TestBoucleZero:
+    """Tests unitaires des métriques dérivées de la boucle de zéro."""
+
+    def test_boucle_zero_presente_dans_resultat(self, tmp_path):
+        from phi_complexity.analyseur import AnalyseurPhi
+        from phi_complexity.metriques import CalculateurRadiance
+
+        code = (
+            "def f(x):\n"
+            "    if x > 0:\n"
+            "        return x\n"
+            "    return -x\n"
+            "\n"
+            "def g(n):\n"
+            "    s = 0\n"
+            "    for i in range(n):\n"
+            "        s += i\n"
+            "    return s\n"
+        )
+        fichier = tmp_path / "zero_loop_sample.py"
+        fichier.write_text(code)
+
+        result = CalculateurRadiance(AnalyseurPhi(str(fichier)).analyser()).calculer()
+        assert "sync_index" in result
+        assert "quasicrystal_coherence" in result
+        assert "zero_morphogenetic_state" in result
+        assert "zero_loop_mapping" in result
+        assert result["zero_morphogenetic_state"] in {
+            "PRE_ZERO",
+            "ZERO_CAUSAL",
+            "POST_RENAISSANCE",
+        }
+        assert 0.0 <= result["quasicrystal_coherence"] <= 1.0
+
+    def test_boucle_zero_resultat_vide(self):
+        from phi_complexity.analyseur import ResultatAnalyse
+        from phi_complexity.metriques import CalculateurRadiance
+
+        result = CalculateurRadiance(ResultatAnalyse(fichier="vide.py"))._resultat_vide()
+        assert result["sync_index"] == 0.0
+        assert result["zero_morphogenetic_state"] == "PRE_ZERO"
+        assert result["zero_morphogenetic_trigger"] is False
+        mapping = result["zero_loop_mapping"]
+        assert "Z_phi_condition" in mapping
+        assert "morphogenetic_zero" in mapping

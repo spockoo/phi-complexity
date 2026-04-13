@@ -197,6 +197,10 @@ Exemples :
         "--categorie",
         help="Chercher par catégorie d'annotation (LILITH, SUTURE, FIBONACCI, SOUVERAINETE)",
     )
+    search_parser.add_argument(
+        "--etat-zero",
+        help="Chercher par état morphogénétique (PRE_ZERO, ZERO_CAUSAL, POST_RENAISSANCE)",
+    )
 
     # Phase 20 — SBOM (Software Bill of Materials)
     sbom_parser = subparsers.add_parser(
@@ -680,6 +684,9 @@ def _executer_search(args: argparse.Namespace) -> int:
     if args.statut:
         resultats = search.chercher_par_statut(args.statut)
         print(search.rapport_recherche(resultats, f"Statut: {args.statut}"))
+    elif args.etat_zero:
+        resultats = search.chercher_transitions_zero(args.etat_zero)
+        print(search.rapport_recherche(resultats, f"État Zéro: {args.etat_zero}"))
     elif args.categorie:
         resultats = search.chercher_annotations(args.categorie)
         print(search.rapport_recherche(resultats, f"Catégorie: {args.categorie}"))

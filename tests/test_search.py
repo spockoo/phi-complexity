@@ -240,6 +240,45 @@ class TestRechercheAnnotations:
             shutil.rmtree(workspace)
 
 
+class TestRechercheTransitionsZero:
+    def test_recherche_transitions_zero_vide(self):
+        search, workspace = _creer_search_temp()
+        try:
+            resultats = search.chercher_transitions_zero("PRE_ZERO")
+            assert resultats == []
+        finally:
+            shutil.rmtree(workspace)
+
+    def test_recherche_transitions_zero_filtre_etat(self):
+        search, workspace = _creer_search_temp()
+        try:
+            _peupler_harvest(
+                workspace,
+                [
+                    {
+                        "radiance": 91.0,
+                        "zero_morphogenetic_state": "POST_RENAISSANCE",
+                        "quasicrystal_state": "QUASICRISTAL_HERMETIQUE",
+                        "quasicrystal_coherence": 0.9,
+                        "timestamp": 10,
+                    },
+                    {
+                        "radiance": 63.0,
+                        "zero_morphogenetic_state": "PRE_ZERO",
+                        "quasicrystal_state": "QUASICRISTAL_CHAOTIQUE",
+                        "quasicrystal_coherence": 0.3,
+                        "timestamp": 11,
+                    },
+                ],
+            )
+            resultats = search.chercher_transitions_zero("POST_RENAISSANCE")
+            assert len(resultats) == 1
+            assert resultats[0]["etat_zero"] == "POST_RENAISSANCE"
+            assert resultats[0]["quasicrystal_state"] == "QUASICRISTAL_HERMETIQUE"
+        finally:
+            shutil.rmtree(workspace)
+
+
 # ────────────────────────────────────────────────────────
 # TESTS — Rapport de Recherche
 # ────────────────────────────────────────────────────────

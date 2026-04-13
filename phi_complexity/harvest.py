@@ -80,6 +80,17 @@ class HarvestEngine:
             "zeta_score": float(metriques.get("zeta_score", 0.0)),
             "fibonacci_distance": float(metriques.get("fibonacci_distance", 0.0)),
             "resistance": float(metriques.get("resistance", 0.0)),
+            "sync_index": float(metriques.get("sync_index", 0.0)),
+            "zero_condition_alignment": float(
+                metriques.get("zero_condition_alignment", 0.0)
+            ),
+            "quasicrystal_coherence": float(metriques.get("quasicrystal_coherence", 0.0)),
+            "quasicrystal_state": str(
+                metriques.get("quasicrystal_state", "QUASICRISTAL_CHAOTIQUE")
+            ),
+            "zero_morphogenetic_state": str(
+                metriques.get("zero_morphogenetic_state", "PRE_ZERO")
+            ),
             # Topologie du code (structure features)
             "nb_fonctions": int(metriques.get("nb_fonctions", 0)),
             "nb_classes": int(metriques.get("nb_classes", 0)),
@@ -94,10 +105,20 @@ class HarvestEngine:
                 "SUTURE": categories.count("SUTURE"),
                 "FIBONACCI": categories.count("FIBONACCI"),
                 "SOUVERAINETE": categories.count("SOUVERAINETE"),
+                "MORPHOGENESE_ZERO": int(
+                    bool(metriques.get("zero_morphogenetic_trigger", False))
+                ),
             },
             "nb_critiques": sum(
                 1 for a in annotations if str(a.get("niveau", "")) == "CRITICAL"
             ),
+            "taxonomie_transition": {
+                "etat": str(metriques.get("zero_morphogenetic_state", "PRE_ZERO")),
+                "quasicristal": str(
+                    metriques.get("quasicrystal_state", "QUASICRISTAL_CHAOTIQUE")
+                ),
+                "coherence": float(metriques.get("quasicrystal_coherence", 0.0)),
+            },
             # Vecteur de résonance Phi (pour clustering) — pondéré par Fibonacci
             "vecteur_phi": self._vecteur_resonance(metriques),
         }
@@ -184,6 +205,17 @@ class HarvestEngine:
         radiance_moy = sum(radiancies) / len(radiancies)
         nb_suture = sum(int(v.get("labels", {}).get("SUTURE", 0)) for v in vecteurs)
         nb_lilith = sum(int(v.get("labels", {}).get("LILITH", 0)) for v in vecteurs)
+        nb_pre_zero = sum(
+            1 for v in vecteurs if v.get("zero_morphogenetic_state") == "PRE_ZERO"
+        )
+        nb_zero_causal = sum(
+            1 for v in vecteurs if v.get("zero_morphogenetic_state") == "ZERO_CAUSAL"
+        )
+        nb_renaissance = sum(
+            1
+            for v in vecteurs
+            if v.get("zero_morphogenetic_state") == "POST_RENAISSANCE"
+        )
 
         lignes = [
             "╔══════════════════════════════════════════════════╗",
@@ -194,6 +226,9 @@ class HarvestEngine:
             f"  ☼  Radiance moyenne     : {radiance_moy:.2f} / 100",
             f"  🌊 Labels SUTURE        : {nb_suture} (fuites de ressources)",
             f"  ⚖  Labels LILITH        : {nb_lilith} (boucles entropiques)",
+            f"  ◌ Pré-Zéro              : {nb_pre_zero}",
+            f"  0 Zéro Causal           : {nb_zero_causal}",
+            f"  ✶ Post-Renaissance      : {nb_renaissance}",
             f"  📂 Fichier JSONL        : {self.sortie}",
             "",
             "  ─────────────────────────────────────────────────",

@@ -63,6 +63,7 @@ extra_javascript:
 nav:
   - Accueil: index.md
   - Mathématiques φ-Meta: mathematiques.md
+  - Boucle de Zéro & Quasicristaux: BOUCLE_ZERO.md
   - Guide d'Utilisation:
     - Installation: installation.md
     - Usage CLI: usage.md
