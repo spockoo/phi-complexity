@@ -30,6 +30,24 @@ Si vous trouvez une erreur de calcul ou un bug logiciel, ouvrez une **Issue** en
 3. **Commitez** vos changements avec des messages clairs.
 4. **Poussez** votre branche et ouvrez une **Pull Request**.
 
+### 🚀 Onboarding rapide (5 minutes)
+1. Installer les dépendances et l'editable : `make setup`
+2. Reproduire la CI locale : `make ci-local` (ruff + black --check + mypy + pytest)
+3. Valider un exemple : `phi check examples/code_harmonieux.py --min-radiance 70`
+
+### 🧪 Reproduire la CI
+- `make ci-local` aligne les jobs principaux (`ruff`, `black --check`, `mypy`, `pytest`).
+- Si un job GitHub Actions échoue, commencez par rejouer `make ci-local` puis lancez le job ciblé (voir cartographie ci-dessous) avec la même version de Python que la CI.
+
+### 🛰️ Cartographie des workflows GitHub
+| Workflow | But | Déclencheur | Sortie clé |
+|---|---|---|---|
+| `tests.yml` | Lint + typecheck + tests unitaires | push / PR | Statut vert/rouge CI |
+| `phi-autofix.yml` | Applique des corrections automatiques (ruff --fix) | push / PR | Commits `[skip ci]` éventuels |
+| `security.yml` | Scan de vulnérabilités (pip-audit) | push / PR | Alerte sur dépendances |
+| `codeql.yml` | Analyse CodeQL (sécurité) | schedule / PR | SARIF CodeQL |
+| `commit-risk.yml` | Score de risque des commits | push / PR | Commentaire sur PR |
+
 ### Normes de Code
 * Respectez la norme **PEP 8** pour le code Python.
 * Documentez vos fonctions avec des "docstrings" claires (particulièrement pour les formules mathématiques).
