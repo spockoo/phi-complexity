@@ -426,7 +426,7 @@ def _afficher_bmad(fichier: str) -> None:
     print("  ◈ RÉSONANCE DES AGENTS BMAD :")
     for nom, score in list(resonance.items())[:6]:
         barre = "█" * int(score * 10)
-        print(f"    - {nom:<20} : {barre:<10} {score*100:>5.1f}%")
+        print(f"    - {nom:<20} : {barre:<10} {score * 100:>5.1f}%")
 
     print("\n  ⚛ SUPRACONDUCTIVITÉ (PHASE 10) :")
     omega = metrics["resistance"]
@@ -569,7 +569,7 @@ def _executer_memory() -> int:
         timestamp = entry.get("timestamp", time.time())
         date_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(timestamp))
         f = os.path.basename(entry["fichier"])
-        print(f"\n  [{i+1}] {f} — {date_str}")
+        print(f"\n  [{i + 1}] {f} — {date_str}")
         print(
             f"      Radiance: {entry['radiance']:.1f} | Masse Harmonique: {entry.get('masse_harmonique', 'N/A')}"
         )
