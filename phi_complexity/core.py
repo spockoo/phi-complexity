@@ -10,7 +10,7 @@ from importlib import metadata
 from pathlib import Path
 
 try:  # Python 3.11+ native; sinon, fallback regex
-    import tomllib  # type: ignore[import-not-found]
+    import tomllib
 except ModuleNotFoundError:  # pragma: no cover - exécuté sur py<3.11
     tomllib = None
 
