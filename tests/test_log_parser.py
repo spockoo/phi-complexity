@@ -45,7 +45,9 @@ class TestClassifierLog:
         assert result.category == "WORKFLOW_CONCURRENCY_CANCELLED"
 
     def test_runner_queue_stall(self) -> None:
-        result = classifier_log("This job is waiting for an available runner queued for 25m")
+        result = classifier_log(
+            "This job is waiting for an available runner queued for 25m"
+        )
         assert result.category == "RUNNER_QUEUE_STALL"
 
     def test_dependency_install(self) -> None:

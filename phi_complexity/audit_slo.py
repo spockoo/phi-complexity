@@ -375,7 +375,9 @@ def construire_control_plane_snapshot(
     failure_runs = sum(
         1 for entry in historique if entry.run_conclusion in ("failure", "timed_out")
     )
-    cancelled_runs = sum(1 for entry in historique if entry.run_conclusion == "cancelled")
+    cancelled_runs = sum(
+        1 for entry in historique if entry.run_conclusion == "cancelled"
+    )
     success_rate = 1.0 if total_runs == 0 else success_runs / total_runs
 
     category_counts: Dict[str, int] = {}
@@ -399,7 +401,9 @@ def construire_control_plane_snapshot(
         )[:top_n_root_causes]
     ]
 
-    runner_pressure_rate = 0.0 if total_diags == 0 else runner_pressure_hits / total_diags
+    runner_pressure_rate = (
+        0.0 if total_diags == 0 else runner_pressure_hits / total_diags
+    )
     flow_cancellation_rate = 0.0 if total_diags == 0 else flow_cancel_hits / total_diags
 
     return ControlPlaneSnapshot(
