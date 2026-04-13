@@ -156,6 +156,11 @@ Collecte des vecteurs AST **entièrement anonymisés** pour l'IA :
 - Labels de vulnérabilités : LILITH, SUTURE, FIBONACCI, SOUVERAINETÉ
 - Vecteur φ normalisé pour la similitude cosinus
 
+**Contrat I/O**
+- Entrée : fichier ou dossier (extensions supportées : `.py`, `.c`, `.cpp`, `.h`, `.hpp`, `.rs`, `.asm`, `.s`).
+- Sortie : append-only sur `.phi/harvest.jsonl` (chemin configurable avec `--output`).
+- Échecs courants : dossier `.phi/` non créable (droits), fichier binaire non reconnu, espace disque insuffisant.
+
 ---
 
 ### `phi memory` — Annales Akashiques
@@ -188,6 +193,12 @@ phi heal <fichier.py> [--force] [--url http://localhost:1234/v1/chat/completions
 
 Invoque Phidélia (via un LLM local compatible OpenAI) pour proposer
 une refactorisation souveraine. Nécessite **LM Studio** ou **Ollama**.
+
+**Contrat I/O**
+- Entrée : fichier Python (texte, encodage UTF-8).
+- Sortie : le même fichier modifié (sauvegarde préalable recommandée), journaux dans la console.
+- Dépendances externes : endpoint chat OpenAI local si `--url` est fourni, sinon erreur explicite.
+- Sécurité : aucune clé n'est lue depuis le code ; passer les tokens via variables d'environnement.
 
 ---
 
@@ -470,6 +481,34 @@ phi check examples/code_chaotique.py
 # Voir la différence en spirale
 phi spiral examples/code_harmonieux.py
 phi spiral examples/code_chaotique.py
+
+### Exemples de sortie
+
+**Rapport JSON (phi check --format json)** :
+```json
+{
+  "fichier": "examples/code_harmonieux.py",
+  "radiance": 84.7,
+  "lilith_variance": 11221.9,
+  "shannon_entropy": 2.48,
+  "phi_ratio": 1.62,
+  "zeta_score": 0.61,
+  "statut_gnostique": "EN ÉVEIL ◈"
+}
+```
+
+**Rapport Markdown (phi report --output rapport.md)** :
+```markdown
+# Audit de Radiance — examples/code_harmonieux.py
+
+- Radiance : 84.7 / 100  (Statut : EN ÉVEIL ◈)
+- LILITH : 11221.9  | Entropie : 2.48 bits | φ-Ratio : 1.62
+- OUDJAT : process_data (ligne 42, complexité 376)
+
+## SUTURES
+- Ligne 18 [LILITH] : Boucle imbriquée (profondeur 2). Extraire une fonction.
+- Ligne 67 [SOUVERAINETE] : 6 arguments. Introduire un objet de configuration.
+```
 ```
 
 ---
@@ -514,6 +553,11 @@ Les notes sont stockées dans `.phi/vault/` avec :
 - Des **tags** de statut (`#hermetique`, `#dormant`)
 - Un **journal quotidien** dans `.phi/vault/journal/`
 
+**Contrat I/O**
+- Entrée : fichiers ou dossiers auditables.
+- Sortie : `.phi/vault/` (notes Markdown), `.phi/vault/index.jsonl` (index), `.phi/vault/journal/` (journal).
+- Échecs courants : chemins non accessibles en écriture, radiance = 0 (fichier vide), encodage non UTF-8.
+
 ### Graphe de Radiance
 
 ```bash
@@ -523,6 +567,11 @@ phi graph
 # Export DOT pour Graphviz
 phi graph --format dot
 ```
+
+**Contrat I/O**
+- Entrée : contenu du vault (produit par `phi vault`).
+- Sortie : console (ASCII) ou stdout (DOT).
+- Échecs courants : vault absent/non initialisé.
 
 ### Détection de Régressions
 
@@ -552,6 +601,11 @@ pour une visualisation interactive de l'architecture du code.
 - 🟡 Jaune : EN ÉVEIL (Radiance 60-84)
 - 🔴 Rouge : DORMANT (Radiance < 60)
 
+**Contrat I/O**
+- Entrée : fichiers ou dossiers audités.
+- Sortie : `.phi/architecture.canvas` (ou chemin passé à `--output`).
+- Échecs courants : répertoires non accessibles en écriture, volume de fichiers important (prévoir plus de temps).
+
 ---
 
 ## Phase 18 — Phi Search (Recherche Sémantique)
@@ -568,6 +622,11 @@ phi search --min-radiance 60 --max-radiance 85
 # Chercher par catégorie d'annotation
 phi search --categorie LILITH
 ```
+
+**Contrat I/O**
+- Entrée : critères de recherche (radiance, statut, catégorie).
+- Sortie : console (tableau) ; redirection JSON possible.
+- Échecs courants : vault absent ou incompatible (versions antérieures non migrées).
 
 ---
 

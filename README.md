@@ -76,6 +76,23 @@ rapport_markdown("my_script.py", sortie="report.md")
 
 ---
 
+## 🧭 Command Stability Matrix
+
+| Command | Stability | Purpose | Output / Side-effects |
+|---|---|---|---|
+| `phi check` | **Stable** | Audit radiance for files/folders | Console or JSON (no writes) |
+| `phi report` | **Stable** | Markdown report | Writes `report.md` if `--output` |
+| `phi oracle` | **Stable** | Release gate (radiance + tests) | Console; exits 1 on failure |
+| `phi harvest` | Experimental | AST vectors collection | Writes `.phi/harvest.jsonl` |
+| `phi vault` / `phi graph` / `phi canvas` | Experimental | Vault storage + graph export + Obsidian canvas | Writes under `.phi/` (JSON, DOT/ASCII, `.canvas`) |
+| `phi search` | Experimental | Query the vault | Console/JSON; reads `.phi/vault.jsonl` |
+| `phi seal` / `phi heal` | Experimental | Seal + auto-suture via LLM | May call local LLM (`--url`); writes seal metadata in `.phi/` |
+| `phi spiral` | Experimental | Radiance spiral visualization | Console ASCII only |
+
+**Tip:** keep `phi check`/`phi report`/`phi oracle` in CI. Use experimental commands locally first and pin outputs under `.phi/` in `.gitignore` if not needed in VCS.
+
+---
+
 ## 🔍 Sample Output
 
 ```
