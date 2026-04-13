@@ -5,14 +5,25 @@ Constantes Souveraines issues du Morphic Phi Framework (Tomy Verreault, 2026).
 
 import math
 import re
-from typing import Optional
+import sys
 from importlib import metadata
 from pathlib import Path
+from typing import Any, BinaryIO, Optional, Protocol
 
-try:  # Python 3.11+ native; sinon, fallback regex
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - exécuté sur py<3.11
-    tomllib = None
+
+class _TomllibLoader(Protocol):
+    def load(self, f: BinaryIO) -> dict[str, Any]: ...
+
+
+if sys.version_info >= (3, 11):  # Python 3.11+ fournit tomllib nativement
+    try:
+        import tomllib as _tomllib
+    except ModuleNotFoundError:  # pragma: no cover - environnement minimaliste
+        _tomllib = None
+else:  # pragma: no cover - exécuté sur py<3.11
+    _tomllib = None
+
+tomllib: Optional[_TomllibLoader] = _tomllib
 
 # ============================================================
 # CONSTANTES SOUVERAINES (Bibliothèque Céleste — φ-Meta)
