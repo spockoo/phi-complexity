@@ -26,9 +26,7 @@ class TestClassifierLog:
             assert result.category == "CHECKOUT_REF_NOT_FOUND"
 
     def test_checkout_ref_generic(self) -> None:
-        result = classifier_log(
-            "error: checkout failed with exit code 128 after fetch"
-        )
+        result = classifier_log("error: checkout failed with exit code 128 after fetch")
         assert result.category == "CHECKOUT_REF"
 
     def test_infra_runner_unavailable(self) -> None:
