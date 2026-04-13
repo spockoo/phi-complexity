@@ -48,6 +48,7 @@ jobs:
               "timed_out",
               "action_required"
             ]);
+            const ROOT_CAUSE_CONCLUSIONS = new Set(["failure", "timed_out"]);
 
             function getFailedStep(job) {
               return (job.steps || []).find((s) => s.conclusion === "failure") || null;
@@ -99,9 +100,11 @@ jobs:
               }
             );
 
-            const failedJobs = jobs.filter(
-              (job) => PROBLEM_CONCLUSIONS.has(job.conclusion)
+            const problemJobs = jobs.filter((job) => PROBLEM_CONCLUSIONS.has(job.conclusion));
+            const rootCauseJobs = problemJobs.filter((job) =>
+              ROOT_CAUSE_CONCLUSIONS.has(job.conclusion)
             );
+            const failedJobs = rootCauseJobs.length > 0 ? rootCauseJobs : problemJobs;
 
             function classifyJob(job) {
               const failedStep = getFailedStep(job);
@@ -136,6 +139,16 @@ jobs:
                   hint: "Label runner indisponible/non supporté. Vérifier runs-on dans la matrice.",
                   mutation: "Réduire la matrice au couple os/version supporté puis réactiver graduellement.",
                   basis: "runner_state"
+                };
+              }
+              if (matchesAny(stepName, ["checkout", "actions/checkout"])) {
+                return {
+                  category: "CHECKOUT_REF",
+                  confidence: 0.9,
+                  priority: 1,
+                  hint: "Échec checkout Git (ref/branche/tag introuvable ou invalide).",
+                  mutation: "Collecter les logs détaillés de checkout, vérifier que la ref cible existe encore puis relancer la CI.",
+                  basis: "failed_step"
                 };
               }
               if (matchesAny(stepName, ["setup python", "setup node"])) {

@@ -16,6 +16,18 @@ from phi_complexity.log_parser import (
 
 
 class TestClassifierLog:
+    def test_checkout_ref_not_found(self) -> None:
+        result = classifier_log(
+            "Run actions/checkout@v4 A branch or tag with the name 'foo/bar' could not be found"
+        )
+        assert result.category == "CHECKOUT_REF_NOT_FOUND"
+
+    def test_checkout_ref_generic(self) -> None:
+        result = classifier_log(
+            "fatal: repository 'https://github.com/org/missing.git' not found during checkout"
+        )
+        assert result.category == "CHECKOUT_REF"
+
     def test_infra_runner_unavailable(self) -> None:
         result = classifier_log("no runner available for this job queued timeout")
         assert result.category == "INFRA_RUNNER_UNAVAILABLE"
@@ -178,6 +190,8 @@ class TestCatalogueSignatures:
         categories = {sig.category for sig in CATALOGUE_SIGNATURES}
         expected = {
             "INFRA_RUNNER_UNAVAILABLE",
+            "CHECKOUT_REF_NOT_FOUND",
+            "CHECKOUT_REF",
             "TOOLCHAIN_SETUP",
             "DEPENDENCY_INSTALL",
             "PERMISSIONS",
