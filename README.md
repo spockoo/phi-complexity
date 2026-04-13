@@ -84,6 +84,7 @@ rapport_markdown("my_script.py", sortie="report.md")
 | `phi report` | **Stable** | Markdown report | Writes `report.md` if `--output` |
 | `phi oracle` | **Stable** | Release gate (radiance + tests) | Console; exits 1 on failure |
 | `phi harvest` | Experimental | AST vectors collection | Writes `.phi/harvest.jsonl` |
+| `phi metadata` | Experimental | Metadata summary & purge (harvest/vault) | Summaries; sanitized JSONL |
 | `phi vault` / `phi graph` / `phi canvas` | Experimental | Vault storage + graph export + Obsidian canvas | Writes under `.phi/` (JSON, DOT/ASCII, `.canvas`) |
 | `phi search` | Experimental | Query the vault | Console/JSON; reads `.phi/vault.jsonl` |
 | `phi seal` / `phi heal` | Experimental | Seal + auto-suture via LLM | May call local LLM (`--url`); writes seal metadata in `.phi/` |
