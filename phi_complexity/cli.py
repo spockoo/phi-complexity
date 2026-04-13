@@ -1,7 +1,9 @@
 from __future__ import annotations
 import sys
 import os
+import json
 import argparse
+import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from . import auditer, rapport_console, rapport_markdown, rapport_json
@@ -135,6 +137,74 @@ Exemples :
         "-o",
         default=".phi/harvest.jsonl",
         help="Fichier JSONL de sortie (défaut: .phi/harvest.jsonl)",
+    )
+
+    # Phase 15 — Metadata (gouvernance harvest/vault)
+    metadata_parser = subparsers.add_parser(
+        "metadata", help="Synthèse et purge souveraine des métadonnées."
+    )
+    metadata_parser.set_defaults(_metadata_parser=metadata_parser)
+    metadata_sub = metadata_parser.add_subparsers(dest="metadata_action")
+
+    metadata_summary = metadata_sub.add_parser(
+        "summary", help="Afficher une synthèse des métadonnées (harvest + vault)."
+    )
+    metadata_summary.add_argument(
+        "--harvest",
+        default=".phi/harvest.jsonl",
+        help="Chemin du corpus harvest (défaut: .phi/harvest.jsonl)",
+    )
+    metadata_summary.add_argument(
+        "--vault-index",
+        default=".phi/vault/index.json",
+        help="Index du vault (défaut: .phi/vault/index.json)",
+    )
+    metadata_summary.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Format de sortie (texte par défaut).",
+    )
+
+    metadata_purge = metadata_sub.add_parser(
+        "purge", help="Sanitiser un corpus harvest pour partage (strip / features)."
+    )
+    metadata_purge.add_argument(
+        "--harvest",
+        default=".phi/harvest.jsonl",
+        help="Chemin du corpus harvest (défaut: .phi/harvest.jsonl)",
+    )
+    metadata_purge.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Fichier de sortie. Par défaut : <harvest>.sanitized.jsonl",
+    )
+    metadata_purge.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Écrase le fichier harvest (attention : irréversible).",
+    )
+    metadata_purge.add_argument(
+        "--strip",
+        action="append",
+        default=[],
+        help="Clés supplémentaires à supprimer (option répétable).",
+    )
+    metadata_purge.add_argument(
+        "--strip-sensitive",
+        action="store_true",
+        help="Supprime les clés sensibles (timestamp, fingerprint).",
+    )
+    metadata_purge.add_argument(
+        "--strip-labels",
+        action="store_true",
+        help="Supprime les labels/nb_critiques (partage sans annotations).",
+    )
+    metadata_purge.add_argument(
+        "--keep-features",
+        action="store_true",
+        help="Conserve uniquement les métriques structurelles (vecteur φ).",
     )
 
     spiral_parser = subparsers.add_parser(
@@ -506,6 +576,75 @@ def _executer_heal(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"  ❌ Échec de la guérison : {e}")
         return 1
+
+
+def _executer_metadata(args: argparse.Namespace) -> int:
+    """Phase 15 : Synthèse et purge souveraine des métadonnées."""
+    from .metadata_ops import (
+        default_sanitized_path,
+        format_summary_text,
+        sanitize_harvest,
+        summarize_metadata,
+    )
+
+    metadata_action = getattr(args, "metadata_action", None)
+    if metadata_action not in {"summary", "purge"}:
+        print("❌ Commande 'metadata' requiert une action : summary ou purge.")
+        metadata_parser = getattr(args, "_metadata_parser", None)
+        if metadata_parser is not None:
+            metadata_parser.print_help()
+        else:
+            print("ℹ️ Utilisez : phi metadata {summary|purge} --help")
+        return 1
+
+    if metadata_action == "summary":
+        try:
+            resume = summarize_metadata(args.harvest, args.vault_index)
+            if args.format == "json":
+                print(json.dumps(resume, ensure_ascii=False, indent=2))
+            else:
+                print(format_summary_text(resume))
+            return 0
+        except (ValueError, RuntimeError, OSError) as e:
+            print(f"❌ Erreur metadata : {e}")
+            return 1
+        except Exception as e:
+            print(f"❌ Erreur metadata inattendue : {e}")
+            traceback.print_exc()
+            return 1
+
+    if metadata_action == "purge":
+        try:
+            sortie = args.harvest if args.in_place else args.output
+            if not sortie:
+                sortie = default_sanitized_path(args.harvest)
+            resultat = sanitize_harvest(
+                args.harvest,
+                sortie,
+                strip_keys=args.strip,
+                strip_sensitive=args.strip_sensitive,
+                strip_labels=args.strip_labels,
+                keep_only_features=args.keep_features,
+            )
+            print(
+                f"✦ Corpus purgé → {resultat['output']} ({resultat['written']} vecteurs)"
+            )
+            if resultat["removed_keys"]:
+                print(f"  Clés retirées : {', '.join(resultat['removed_keys'])}")
+            if resultat["kept_features_only"]:
+                print(
+                    "  Mode features-only : seules les métriques structurelles sont conservées."
+                )
+            return 0
+        except (ValueError, RuntimeError, OSError) as e:
+            print(f"❌ Erreur metadata : {e}")
+            return 1
+        except Exception as e:
+            print(f"❌ Erreur metadata inattendue : {e}")
+            traceback.print_exc()
+            return 1
+
+    return 1
 
 
 def _executer_oracle(args: argparse.Namespace, fichiers: List[str]) -> int:
@@ -908,6 +1047,9 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
     # Phase 20 — SBOM
     if args.commande == "sbom":
         sys.exit(_executer_sbom(args))
+
+    if args.commande == "metadata":
+        sys.exit(_executer_metadata(args))
 
     # Phase 14 — commandes sans collecte de fichiers préalable
     if args.commande == "spiral":

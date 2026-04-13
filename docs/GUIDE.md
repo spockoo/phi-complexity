@@ -163,6 +163,22 @@ Collecte des vecteurs AST **entièrement anonymisés** pour l'IA :
 
 ---
 
+### `phi metadata` — Synthèse & purge souveraine
+
+```bash
+phi metadata summary --harvest .phi/harvest.jsonl --vault-index .phi/vault/index.json
+phi metadata purge --harvest .phi/harvest.jsonl --strip-sensitive --keep-features
+```
+
+- `summary` : vue condensée des schémas, labels (LILITH/SUTURE/…) et fingerprints présents.
+- `purge` : génère une version sanitizée du harvest (`<fichier>.sanitized.jsonl` par défaut).
+  - `--strip-sensitive` : supprime `timestamp` et `fingerprint`.
+  - `--strip-labels` : supprime les labels/annotations.
+  - `--strip <cle>` : retire des clés arbitraires (option répétable).
+  - `--keep-features` : ne conserve que les métriques structurelles (vecteur φ).
+
+---
+
 ### `phi memory` — Annales Akashiques
 
 ```bash
