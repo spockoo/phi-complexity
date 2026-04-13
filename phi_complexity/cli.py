@@ -587,7 +587,17 @@ def _executer_metadata(args: argparse.Namespace) -> int:
         summarize_metadata,
     )
 
-    if args.metadata_action == "summary":
+    metadata_action = getattr(args, "metadata_action", None)
+    if metadata_action not in {"summary", "purge"}:
+        print("❌ Commande 'metadata' requiert une action : summary ou purge.")
+        metadata_parser = getattr(args, "_metadata_parser", None)
+        if metadata_parser is not None:
+            metadata_parser.print_help()
+        else:
+            print("ℹ️ Utilisez : phi metadata {summary|purge} --help")
+        return 1
+
+    if metadata_action == "summary":
         try:
             resume = summarize_metadata(args.harvest, args.vault_index)
             if args.format == "json":
@@ -603,7 +613,7 @@ def _executer_metadata(args: argparse.Namespace) -> int:
             traceback.print_exc()
             return 1
 
-    if args.metadata_action == "purge":
+    if metadata_action == "purge":
         try:
             sortie = args.harvest if args.in_place else args.output
             if not sortie:
@@ -1039,13 +1049,6 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_sbom(args))
 
     if args.commande == "metadata":
-        if not getattr(args, "metadata_action", None):
-            metadata_parser = getattr(args, "_metadata_parser", None)
-            if metadata_parser is not None:
-                metadata_parser.print_help()
-            else:
-                parser.print_help()
-            sys.exit(1)
         sys.exit(_executer_metadata(args))
 
     # Phase 14 — commandes sans collecte de fichiers préalable

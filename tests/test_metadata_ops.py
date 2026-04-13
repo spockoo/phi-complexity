@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from typing import List, Dict, Any
@@ -133,11 +134,23 @@ def test_cli_metadata_purge_default_output(tmp_path, capsys):
     assert "Corpus purgé" in out
 
 
-def test_cli_metadata_requires_action_manually():
+def test_cli_metadata_requires_action_manually(capsys):
     parser = _construire_parseur()
     args = parser.parse_args(["metadata"])
     assert getattr(args, "metadata_action", None) is None
     assert _executer_metadata(args) == 1
+    out = capsys.readouterr().out
+    assert "requiert une action" in out
+    assert "summary" in out
+    assert "purge" in out
+
+
+def test_cli_metadata_requires_action_without_parser(capsys):
+    args = argparse.Namespace(metadata_action=None)
+    assert _executer_metadata(args) == 1
+    out = capsys.readouterr().out
+    assert "requiert une action" in out
+    assert "phi metadata {summary|purge} --help" in out
 
 
 def test_sanitize_harvest_empty_file(tmp_path):
