@@ -13,6 +13,8 @@ import pytest
 from phi_complexity.notebook_helpers import (
     charger_metriques,
     charger_harvest,
+    matrice_interactions_zero,
+    tableau_zero_morphogenetique,
 )
 
 # ────────────────────────────────────────────────────────
@@ -130,6 +132,28 @@ class TestChargerHarvest:
             f.write('{"a": 1}\n\n\n{"b": 2}\n')
         vecteurs = charger_harvest(chemin)
         assert len(vecteurs) == 2
+
+
+class TestBoucleZeroNotebookHelpers:
+    def test_matrice_interactions_zero(self) -> None:
+        matrice = matrice_interactions_zero()
+        assert len(matrice) == 4
+        assert any(item["formulation"] == "Z_phi" for item in matrice)
+
+    def test_tableau_zero_morphogenetique(self) -> None:
+        metriques = [
+            {
+                "zero_morphogenetic_state": "PRE_ZERO",
+                "quasicrystal_coherence": 0.3,
+            },
+            {
+                "zero_morphogenetic_state": "POST_RENAISSANCE",
+                "quasicrystal_coherence": 0.85,
+            },
+        ]
+        tableau = tableau_zero_morphogenetique(metriques)
+        assert "PRE_ZERO" in tableau
+        assert "POST_RENAISSANCE" in tableau
 
 
 # ────────────────────────────────────────────────────────

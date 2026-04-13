@@ -717,6 +717,13 @@ class TestExecuterSearch:
         code = _executer_search(args)
         assert code == 0
 
+    def test_search_par_etat_zero(self):
+        from phi_complexity.cli import _executer_search
+
+        args = _construire_parseur().parse_args(["search", "--etat-zero", "PRE_ZERO"])
+        code = _executer_search(args)
+        assert code == 0
+
 
 class TestExecuterSbom:
     """Test couvrant _executer_sbom (lignes 639-644)."""
