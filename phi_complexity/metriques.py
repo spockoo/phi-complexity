@@ -121,9 +121,7 @@ class CalculateurRadiance:
             "zero_attractor_convergence": round(
                 zero_metrics["zero_attractor_convergence"], 4
             ),
-            "quasicrystal_coherence": round(
-                zero_metrics["quasicrystal_coherence"], 4
-            ),
+            "quasicrystal_coherence": round(zero_metrics["quasicrystal_coherence"], 4),
             "quasicrystal_state": zero_metrics["quasicrystal_state"],
             "zero_morphogenetic_state": zero_metrics["zero_morphogenetic_state"],
             "zero_morphogenetic_trigger": zero_metrics["zero_morphogenetic_trigger"],

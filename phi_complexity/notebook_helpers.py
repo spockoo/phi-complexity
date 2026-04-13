@@ -479,7 +479,9 @@ def _resumer_zero_transitions(metriques_list: List[Dict[str, Any]]) -> Dict[str,
         for m in metriques_list
         if m.get("zero_morphogenetic_state") == "POST_RENAISSANCE"
     )
-    coherence_vals = [float(m.get("quasicrystal_coherence", 0.0)) for m in metriques_list]
+    coherence_vals = [
+        float(m.get("quasicrystal_coherence", 0.0)) for m in metriques_list
+    ]
     coherence_moy = sum(coherence_vals) / len(coherence_vals)
 
     compte = {
@@ -487,7 +489,7 @@ def _resumer_zero_transitions(metriques_list: List[Dict[str, Any]]) -> Dict[str,
         "ZERO_CAUSAL": zero_causal,
         "POST_RENAISSANCE": post_renaissance,
     }
-    etat_dominant = max(compte, key=compte.get) if compte else "PRE_ZERO"
+    etat_dominant = max(compte, key=lambda etat: compte[etat]) if compte else "PRE_ZERO"
 
     return {
         "pre_zero": pre_zero,

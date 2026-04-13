@@ -420,7 +420,9 @@ class TestBoucleZero:
         from phi_complexity.analyseur import ResultatAnalyse
         from phi_complexity.metriques import CalculateurRadiance
 
-        result = CalculateurRadiance(ResultatAnalyse(fichier="vide.py"))._resultat_vide()
+        result = CalculateurRadiance(
+            ResultatAnalyse(fichier="vide.py")
+        )._resultat_vide()
         assert result["sync_index"] == 0.0
         assert result["zero_morphogenetic_state"] == "PRE_ZERO"
         assert result["zero_morphogenetic_trigger"] is False

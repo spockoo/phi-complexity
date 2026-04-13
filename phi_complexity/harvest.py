@@ -84,7 +84,9 @@ class HarvestEngine:
             "zero_condition_alignment": float(
                 metriques.get("zero_condition_alignment", 0.0)
             ),
-            "quasicrystal_coherence": float(metriques.get("quasicrystal_coherence", 0.0)),
+            "quasicrystal_coherence": float(
+                metriques.get("quasicrystal_coherence", 0.0)
+            ),
             "quasicrystal_state": str(
                 metriques.get("quasicrystal_state", "QUASICRISTAL_CHAOTIQUE")
             ),
