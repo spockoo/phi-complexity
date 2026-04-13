@@ -363,7 +363,7 @@ print(verdict["version_phi"]) # → "v82.68"
 
 ## Jupyter Notebooks
 
-Le dossier `notebooks/` contient 7 notebooks d'étude interactifs qui explorent les fondements mathématiques et les applications de phi-complexity.
+Le dossier `notebooks/` contient 8 notebooks d'étude interactifs qui explorent les fondements mathématiques et les applications de phi-complexity.
 
 ### Installation
 
@@ -391,6 +391,8 @@ jupyter notebook
 | 05 | `05_harvest_ml.ipynb` | ML sur vecteurs φ : clustering, k-NN, visualisation MDS |
 | 06 | `06_spirale_doree_fractale.ipynb` | Spirale dorée 137.5°, dimension fractale de l'AST |
 | 07 | `07_matrice_holographique.ipynb` | Espace Z[φ], transmutation Maat, similitude cosinus |
+| 08 | `08_diagnostic_cybersecurite.ipynb` | Sentinel + carte d'entropie Penrose + radar MITRE |
+| 09 | `09_zero_quasicristaux_ia.ipynb` | Boucle de zéro, taxonomie morphogénétique, IA OSS |
 
 ### Fonctions d'aide pour notebooks
 
@@ -402,6 +404,8 @@ from phi_complexity.notebook_helpers import (
     charger_harvest,      # Charger un corpus JSONL de harvest
     radar_radiance,       # Radar chart des métriques de radiance
     carte_heisenberg,     # Carte d'incertitude Heisenberg-Phi
+    matrice_interactions_zero,      # Matrice "boucle de zéro" ↔ métriques
+    tableau_zero_morphogenetique,   # Tableau PRE_ZERO/ZERO/POST
     spirale_doree,        # Spirale dorée de Fibonacci
     enregistrer_magics,   # Activer les magic commands IPython
 )

@@ -24,6 +24,19 @@ ETA_GOLDEN: float = 1 - PHI_INV
 ZETA_PLANCHER: float = PHI_INV**2
 """Plancher Zeta. En-dessous, le système perd sa résonance."""
 
+# PHASE 24 — BOUCLE DE ZÉRO & COHÉRENCE QUASICRISTALLINE
+QUASICRYSTAL_COHERENCE_EVEIL: float = 0.55
+"""Seuil minimal de cohérence quasicristalline (ordre apériodique détectable)."""
+
+QUASICRYSTAL_COHERENCE_HERMETIQUE: float = 0.78
+"""Seuil de cohérence quasicristalline stable (structure harmonique robuste)."""
+
+ZERO_CAUSAL_RESISTANCE_MAX: float = 0.08
+"""Résistance maximale tolérée pour l'état de Zéro Causal."""
+
+MORPHOGENESIS_RENAISSANCE_SYNC_MIN: float = 0.70
+"""Sync-index minimal pour qualifier un état post-renaissance morphogénétique."""
+
 SEUIL_RADIANCE_HARMONIEUX: int = 85
 """Score au-delà duquel le code est considéré 'Hermétique' (stable + harmonieux)."""
 

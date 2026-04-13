@@ -8,6 +8,11 @@ from .core import (
     ETA_GOLDEN,
     HBAR_PHI,
     SEQUENCE_FIBONACCI,
+    QUASICRYSTAL_COHERENCE_EVEIL,
+    QUASICRYSTAL_COHERENCE_HERMETIQUE,
+    ZERO_CAUSAL_RESISTANCE_MAX,
+    MORPHOGENESIS_RENAISSANCE_SYNC_MIN,
+    calculer_sync_index,
     statut_gnostique,
 )
 from .analyseur import ResultatAnalyse
@@ -81,6 +86,14 @@ class CalculateurRadiance:
         self.r.resistance = orchestrateur.calculer_omega_resistance(
             radiance, complexite_totale
         )
+        sync_index = calculer_sync_index(self.r.radiance, self.r.resistance)
+        zero_metrics = self._zero_loop_metrics(
+            phi_ratio_delta=abs(self.r.phi_ratio - PHI),
+            zeta_score=float(brutes["zeta_score"]),
+            resistance=self.r.resistance,
+            sync_index=sync_index,
+            heisenberg_tension=float(brutes["heisenberg"]["tension_quantique"]),
+        )
         self.r.signature = f"v{self.r.lilith_variance:.2f}_e{self.r.shannon_entropy:.2f}_p{self.r.phi_ratio:.2f}"
 
         return {
@@ -97,6 +110,22 @@ class CalculateurRadiance:
             "heisenberg_tension": round(brutes["heisenberg"]["tension_quantique"], 4),
             "coherence_bayes": round(brutes["coherence_bayes"], 4),
             "resistance": round(self.r.resistance, 4),
+            "sync_index": round(sync_index, 4),
+            "zero_condition_tension": round(zero_metrics["zero_condition_tension"], 4),
+            "zero_condition_alignment": round(
+                zero_metrics["zero_condition_alignment"], 4
+            ),
+            "zero_clamped_resistance": round(
+                zero_metrics["zero_clamped_resistance"], 4
+            ),
+            "zero_attractor_convergence": round(
+                zero_metrics["zero_attractor_convergence"], 4
+            ),
+            "quasicrystal_coherence": round(zero_metrics["quasicrystal_coherence"], 4),
+            "quasicrystal_state": zero_metrics["quasicrystal_state"],
+            "zero_morphogenetic_state": zero_metrics["zero_morphogenetic_state"],
+            "zero_morphogenetic_trigger": zero_metrics["zero_morphogenetic_trigger"],
+            "zero_loop_mapping": self._zero_loop_mapping(),
             "pole_alpha": self.r.pole_alpha,
             "pole_omega": self.r.pole_omega,
             "signature": self.r.signature,
@@ -324,6 +353,111 @@ class CalculateurRadiance:
             "tension_quantique": tension,
         }
 
+    def _zero_loop_metrics(
+        self,
+        phi_ratio_delta: float,
+        zeta_score: float,
+        resistance: float,
+        sync_index: float,
+        heisenberg_tension: float,
+    ) -> Dict[str, Any]:
+        """
+        Dérive les métriques opérationnelles de la "boucle de zéro".
+
+        - Condition de Zéro (Z_phi) :
+            tension = moyenne(Δφ, 1-ζ)
+            alignment = 1 - tension
+        - Clamp :
+            résistance clampée = max(0, Ω)
+        - Attracteur Zéro :
+            convergence = (1-Ω_clamp) × sync_index
+        - Quasicristal :
+            cohérence = moyenne(alignment, attracteur, cohérence Heisenberg)
+        - Morphogenèse :
+            état discret PRE_ZERO / ZERO_CAUSAL / POST_RENAISSANCE
+        """
+        zeta_clamped = min(1.0, max(0.0, zeta_score))
+        delta_phi = max(0.0, phi_ratio_delta)
+        zero_condition_tension = min(1.0, (delta_phi + (1.0 - zeta_clamped)) / 2.0)
+        zero_condition_alignment = max(0.0, 1.0 - zero_condition_tension)
+
+        zero_clamped_resistance = max(0.0, resistance)
+        attracteur = max(
+            0.0,
+            min(1.0, (1.0 - min(1.0, zero_clamped_resistance)) * min(1.0, sync_index)),
+        )
+
+        heisenberg_coherence = max(0.0, 1.0 - min(1.0, abs(heisenberg_tension - 1.0)))
+        quasicrystal_coherence = max(
+            0.0,
+            min(
+                1.0,
+                (zero_condition_alignment + attracteur + heisenberg_coherence) / 3.0,
+            ),
+        )
+
+        if quasicrystal_coherence >= QUASICRYSTAL_COHERENCE_HERMETIQUE:
+            quasicrystal_state = "QUASICRISTAL_HERMETIQUE"
+        elif quasicrystal_coherence >= QUASICRYSTAL_COHERENCE_EVEIL:
+            quasicrystal_state = "QUASICRISTAL_EN_EVEIL"
+        else:
+            quasicrystal_state = "QUASICRISTAL_CHAOTIQUE"
+
+        zero_morphogenetic_state = "PRE_ZERO"
+        if (
+            zero_condition_alignment >= QUASICRYSTAL_COHERENCE_EVEIL
+            and zero_clamped_resistance <= ZERO_CAUSAL_RESISTANCE_MAX
+        ):
+            zero_morphogenetic_state = "ZERO_CAUSAL"
+            if (
+                sync_index >= MORPHOGENESIS_RENAISSANCE_SYNC_MIN
+                and quasicrystal_coherence >= QUASICRYSTAL_COHERENCE_HERMETIQUE
+            ):
+                zero_morphogenetic_state = "POST_RENAISSANCE"
+
+        return {
+            "zero_condition_tension": zero_condition_tension,
+            "zero_condition_alignment": zero_condition_alignment,
+            "zero_clamped_resistance": zero_clamped_resistance,
+            "zero_attractor_convergence": attracteur,
+            "quasicrystal_coherence": quasicrystal_coherence,
+            "quasicrystal_state": quasicrystal_state,
+            "zero_morphogenetic_state": zero_morphogenetic_state,
+            "zero_morphogenetic_trigger": zero_morphogenetic_state
+            in {"ZERO_CAUSAL", "POST_RENAISSANCE"},
+        }
+
+    def _zero_loop_mapping(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Cartographie explicite entre axiomes symboliques et mesures calculables.
+        """
+        return {
+            "Z_phi_condition": {
+                "axiome_symbolique": "∫_{M_O} ζ(s) · 1/|ψ_g⟩ ds = 0",
+                "mesures_calculables": ["zeta_score", "phi_ratio_delta"],
+            },
+            "zero_clamp": {
+                "axiome_symbolique": "φ[t+1] = max(0, φ[t+1])",
+                "mesures_calculables": ["zero_clamped_resistance", "radiance"],
+            },
+            "zero_attractor": {
+                "axiome_symbolique": "ΔChaos→0 ⇒ (R_système→0 ∧ E_potentielle→∞)",
+                "mesures_calculables": [
+                    "resistance",
+                    "sync_index",
+                    "zero_attractor_convergence",
+                ],
+            },
+            "morphogenetic_zero": {
+                "axiome_symbolique": "φ_i[t]=0 ⇒ reset/renaissance",
+                "mesures_calculables": [
+                    "zero_morphogenetic_state",
+                    "zero_morphogenetic_trigger",
+                    "quasicrystal_coherence",
+                ],
+            },
+        }
+
     # ────────────────────────────────────────────────────────
     # RÉSULTAT NEUTRE (fichiers sans fonctions)
     # ────────────────────────────────────────────────────────
@@ -343,6 +477,17 @@ class CalculateurRadiance:
             "zeta_score": 0.0,
             "heisenberg_tension": 0.0,
             "coherence_bayes": 0.0,
+            "resistance": 0.0,
+            "sync_index": 0.0,
+            "zero_condition_tension": 1.0,
+            "zero_condition_alignment": 0.0,
+            "zero_clamped_resistance": 0.0,
+            "zero_attractor_convergence": 0.0,
+            "quasicrystal_coherence": 0.0,
+            "quasicrystal_state": "QUASICRISTAL_CHAOTIQUE",
+            "zero_morphogenetic_state": "PRE_ZERO",
+            "zero_morphogenetic_trigger": False,
+            "zero_loop_mapping": self._zero_loop_mapping(),
             "nb_fonctions": 0,
             "nb_classes": self.r.nb_classes,
             "nb_imports": self.r.nb_imports,

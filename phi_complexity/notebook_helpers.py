@@ -413,6 +413,7 @@ def diagnostic_systeme(
     metriques: List[Dict[str, Any]] = []
     if cible_code:
         metriques = charger_metriques(cible_code)
+    zero_transitions = _resumer_zero_transitions(metriques)
 
     return {
         "events": events,
@@ -423,8 +424,105 @@ def diagnostic_systeme(
         "alertes": alertes,
         "rapport_console": rapport_txt,
         "metriques": metriques,
+        "zero_transitions": zero_transitions,
         "politique": responder.politique_de_reponse(alertes),
     }
+
+
+def matrice_interactions_zero() -> List[Dict[str, str]]:
+    """
+    Retourne la matrice d'interactions entre la boucle de zéro et les métriques.
+    """
+    return [
+        {
+            "formulation": "Z_phi",
+            "relation": "zeta_score + phi_ratio_delta",
+            "objet": "Condition de résonance vers le zéro",
+        },
+        {
+            "formulation": "Clamp max(0, x)",
+            "relation": "zero_clamped_resistance + plancher radiance",
+            "objet": "Mécanisme de stabilité active",
+        },
+        {
+            "formulation": "Attracteur Zéro",
+            "relation": "resistance + sync_index + zero_attractor_convergence",
+            "objet": "Convergence harmonique sans friction",
+        },
+        {
+            "formulation": "Zéro Morphogénétique",
+            "relation": "zero_morphogenetic_state + quasicrystal_coherence",
+            "objet": "Cycle reset → renaissance",
+        },
+    ]
+
+
+def _resumer_zero_transitions(metriques_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Agrège les états morphogénétiques pour le diagnostic notebook/Sentinel."""
+    if not metriques_list:
+        return {
+            "pre_zero": 0,
+            "zero_causal": 0,
+            "post_renaissance": 0,
+            "coherence_moyenne": 0.0,
+            "etat_dominant": "PRE_ZERO",
+        }
+
+    pre_zero = sum(
+        1 for m in metriques_list if m.get("zero_morphogenetic_state") == "PRE_ZERO"
+    )
+    zero_causal = sum(
+        1 for m in metriques_list if m.get("zero_morphogenetic_state") == "ZERO_CAUSAL"
+    )
+    post_renaissance = sum(
+        1
+        for m in metriques_list
+        if m.get("zero_morphogenetic_state") == "POST_RENAISSANCE"
+    )
+    coherence_vals = [
+        float(m.get("quasicrystal_coherence", 0.0)) for m in metriques_list
+    ]
+    coherence_moy = sum(coherence_vals) / len(coherence_vals)
+
+    compte = {
+        "PRE_ZERO": pre_zero,
+        "ZERO_CAUSAL": zero_causal,
+        "POST_RENAISSANCE": post_renaissance,
+    }
+    etat_dominant = max(compte, key=lambda etat: compte[etat]) if compte else "PRE_ZERO"
+
+    return {
+        "pre_zero": pre_zero,
+        "zero_causal": zero_causal,
+        "post_renaissance": post_renaissance,
+        "coherence_moyenne": round(coherence_moy, 4),
+        "etat_dominant": etat_dominant,
+    }
+
+
+def tableau_zero_morphogenetique(metriques_list: List[Dict[str, Any]]) -> str:
+    """
+    Génère un tableau ASCII d'interprétation des états morphogénétiques.
+    """
+    resume = _resumer_zero_transitions(metriques_list)
+    lignes = [
+        "╔══════════════════════════════════════════════════════════╗",
+        "║     TABLEAU D'INTERPRÉTATION — BOUCLE DE ZÉRO           ║",
+        "╚══════════════════════════════════════════════════════════╝",
+        "",
+        "  État              | Critères dominants                  | Nombre",
+        "  ------------------+-------------------------------------+-------",
+        "  PRE_ZERO          | Δφ élevé, ζ faible ou Ω non minimale",
+        f"                    |                                     | {resume['pre_zero']}",
+        "  ZERO_CAUSAL       | Ω <= 0.08 et alignement quasicristal",
+        f"                    |                                     | {resume['zero_causal']}",
+        "  POST_RENAISSANCE  | sync>=0.70 + cohérence quasicristal",
+        f"                    |                                     | {resume['post_renaissance']}",
+        "",
+        f"  Cohérence moyenne : {resume['coherence_moyenne']:.4f}",
+        f"  État dominant     : {resume['etat_dominant']}",
+    ]
+    return "\n".join(lignes)
 
 
 def radar_menaces(
