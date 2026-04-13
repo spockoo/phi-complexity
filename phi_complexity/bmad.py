@@ -1,8 +1,8 @@
 from __future__ import annotations
-import os
 import json
+from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .core import PHI_INV
 
 
@@ -17,37 +17,93 @@ class AgentRole:
     description: str = ""
 
 
+def _agents_par_defaut() -> Dict[str, Dict[str, str]]:
+    """Retourne un registre minimal si le registre disque est indisponible."""
+    return {
+        "AG-01": {
+            "nom": "OUDJAT (L'Oeil)",
+            "axiome": "Vision centrale.",
+            "description": "",
+        },
+        "AG-02": {
+            "nom": "LILITH (La Variance)",
+            "axiome": "Entropie sauvage.",
+            "description": "",
+        },
+    }
+
+
+class RegistreInterneBMAD:
+    """Registre interne des agents BMAD, basé sur le registre JSON existant."""
+
+    def __init__(
+        self,
+        chemin: Optional[str] = None,
+        donnees_initiales: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> None:
+        self._chemin = (
+            Path(chemin)
+            if chemin is not None
+            else Path(__file__).with_name("agents_registry.json")
+        )
+        self._agents: Dict[str, AgentRole] = {}
+        source = (
+            donnees_initiales
+            if donnees_initiales is not None
+            else self._charger_depuis_fichier()
+        )
+        self.fusionner(source)
+
+    def _charger_depuis_fichier(self) -> Dict[str, Dict[str, str]]:
+        try:
+            with self._chemin.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+        return _agents_par_defaut()
+
+    def fusionner(self, donnees: Dict[str, Dict[str, str]]) -> None:
+        for aid, info in donnees.items():
+            if not isinstance(info, dict):
+                continue
+            nom = str(info.get("nom", aid))
+            axiome = str(info.get("axiome", ""))
+            description = str(info.get("description", ""))
+            self.enregistrer(
+                AgentRole(
+                    id=aid,
+                    nom=nom,
+                    axiome=axiome,
+                    priorite=1.0,
+                    description=description,
+                )
+            )
+
+    def enregistrer(self, agent: AgentRole) -> None:
+        self._agents[agent.id] = agent
+
+    def obtenir(self, agent_id: str) -> Optional[AgentRole]:
+        return self._agents.get(agent_id)
+
+    def lister(self) -> List[AgentRole]:
+        return list(self._agents.values())
+
+
 class OrchestrateurBMAD:
     """
     Orchestrateur du Cycle BMAD (φ-Meta).
     Simule un conseil de 12 experts et calcule la Résistance Ω (Phase 10).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, registre: Optional[RegistreInterneBMAD] = None) -> None:
+        self._registre = registre if registre is not None else RegistreInterneBMAD()
         self.agents = self._charger_conseil()
 
     def _charger_conseil(self) -> List[AgentRole]:
-        """Charge les agents depuis le registre JSON ou utilise les défauts."""
-        chemin = os.path.join(os.path.dirname(__file__), "agents_registry.json")
-        try:
-            with open(chemin, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return [
-                    AgentRole(
-                        aid,
-                        info["nom"],
-                        info["axiome"],
-                        1.0,
-                        info.get("description", ""),
-                    )
-                    for aid, info in data.items()
-                ]
-        except Exception:
-            # Fallback cosmologique si le registre est indisponible
-            return [
-                AgentRole("AG-01", "OUDJAT (L'Oeil)", "Vision centrale."),
-                AgentRole("AG-02", "LILITH (La Variance)", "Entropie sauvage."),
-            ]
+        """Charge les agents depuis le registre interne."""
+        return self._registre.lister()
 
     def calculer_omega_resistance(
         self, radiance: float, complexite_totale: int
