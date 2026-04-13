@@ -43,6 +43,18 @@ class MetriquesSLO:
     objectif_mttr_secondes: float = 86400.0
 
 
+@dataclass
+class MetriqueEfficaciteDev:
+    """Score composite d'efficacité développeur (0-100)."""
+
+    score_global: float
+    stabilite_ci: float
+    qualite_livraison: float
+    couverture_utile: float
+    complexite_maitrisee: float
+    vitesse_correction: float
+
+
 _SPARKLINE_CHARS = "▁▂▃▄▅▆▇█"
 
 
@@ -194,7 +206,85 @@ def calculer_slo(chemin_historique: str) -> MetriquesSLO:
     )
 
 
-def rapport_slo_markdown(slo: MetriquesSLO, sparkline: str = "") -> str:
+def calculer_efficacite_dev(
+    stabilite_ci: float,
+    qualite_livraison: float,
+    couverture_utile: float,
+    complexite_maitrisee: float,
+    vitesse_correction: float,
+) -> MetriqueEfficaciteDev:
+    """Calcule un score composite d'efficacité développeur."""
+    metrics = [
+        stabilite_ci,
+        qualite_livraison,
+        couverture_utile,
+        complexite_maitrisee,
+        vitesse_correction,
+    ]
+    clamped = [max(0.0, min(1.0, value)) for value in metrics]
+    weights = [0.30, 0.25, 0.20, 0.15, 0.10]
+    score = sum(value * weight for value, weight in zip(clamped, weights)) * 100.0
+    return MetriqueEfficaciteDev(
+        score_global=score,
+        stabilite_ci=clamped[0],
+        qualite_livraison=clamped[1],
+        couverture_utile=clamped[2],
+        complexite_maitrisee=clamped[3],
+        vitesse_correction=clamped[4],
+    )
+
+
+def estimer_efficacite_dev_depuis_historique(
+    historique: List[EntreeHistorique],
+    couverture_utile: float,
+    complexite_maitrisee: float = 0.80,
+) -> MetriqueEfficaciteDev:
+    """
+    Estime le score développeur à partir de l'historique CI et d'un snapshot couverture.
+    """
+    if not historique:
+        return calculer_efficacite_dev(
+            stabilite_ci=1.0,
+            qualite_livraison=1.0,
+            couverture_utile=couverture_utile,
+            complexite_maitrisee=complexite_maitrisee,
+            vitesse_correction=1.0,
+        )
+
+    nb_success = sum(1 for h in historique if h.run_conclusion == "success")
+    stabilite_ci = nb_success / len(historique)
+
+    quality_categories = {"QUALITY_GATE", "TYPE_CHECK", "TEST_REGRESSION"}
+    quality_hits = 0
+    diag_total = 0
+    for entree in historique:
+        for diag in entree.diagnostics:
+            diag_total += 1
+            if diag.get("category") in quality_categories:
+                quality_hits += 1
+    qualite_livraison = (
+        1.0 if diag_total == 0 else max(0.0, 1.0 - (quality_hits / diag_total))
+    )
+
+    mttr = calculer_mttr(historique)
+    vitesse_correction = (
+        1.0 if mttr is None else max(0.0, min(1.0, 1.0 - (mttr / 172800.0)))
+    )
+
+    return calculer_efficacite_dev(
+        stabilite_ci=stabilite_ci,
+        qualite_livraison=qualite_livraison,
+        couverture_utile=couverture_utile,
+        complexite_maitrisee=complexite_maitrisee,
+        vitesse_correction=vitesse_correction,
+    )
+
+
+def rapport_slo_markdown(
+    slo: MetriquesSLO,
+    sparkline: str = "",
+    efficacite_dev: Optional[MetriqueEfficaciteDev] = None,
+) -> str:
     """
     Génère un rapport Markdown formaté des métriques SLO.
     """
@@ -236,6 +326,20 @@ def rapport_slo_markdown(slo: MetriquesSLO, sparkline: str = "") -> str:
             ]
         )
 
+    if efficacite_dev is not None:
+        lines.extend(
+            [
+                "",
+                "### 👩‍💻 Score d'Efficacité Dev",
+                f"- **Score global** : {efficacite_dev.score_global:.1f}/100",
+                f"- Stabilité CI : {efficacite_dev.stabilite_ci * 100:.1f}%",
+                f"- Qualité de livraison : {efficacite_dev.qualite_livraison * 100:.1f}%",
+                f"- Couverture utile (cœur) : {efficacite_dev.couverture_utile * 100:.1f}%",
+                f"- Complexité maîtrisée : {efficacite_dev.complexite_maitrisee * 100:.1f}%",
+                f"- Vitesse de correction : {efficacite_dev.vitesse_correction * 100:.1f}%",
+            ]
+        )
+
     lines.append("")
     return "\n".join(lines)
 
@@ -243,11 +347,14 @@ def rapport_slo_markdown(slo: MetriquesSLO, sparkline: str = "") -> str:
 __all__ = [
     "EntreeHistorique",
     "MetriquesSLO",
+    "MetriqueEfficaciteDev",
     "charger_historique",
     "calculer_mttr",
     "calculer_taux_classification",
     "calculer_taux_faux_positifs",
     "sparkline_resonance",
     "calculer_slo",
+    "calculer_efficacite_dev",
+    "estimer_efficacite_dev_depuis_historique",
     "rapport_slo_markdown",
 ]
