@@ -606,11 +606,15 @@ def _executer_metadata(args: argparse.Namespace) -> int:
                 strip_labels=args.strip_labels,
                 keep_only_features=args.keep_features,
             )
-            print(f"✦ Corpus purgé → {resultat['output']} ({resultat['written']} vecteurs)")
+            print(
+                f"✦ Corpus purgé → {resultat['output']} ({resultat['written']} vecteurs)"
+            )
             if resultat["removed_keys"]:
                 print(f"  Clés retirées : {', '.join(resultat['removed_keys'])}")
             if resultat["kept_features_only"]:
-                print("  Mode features-only : seules les métriques structurelles sont conservées.")
+                print(
+                    "  Mode features-only : seules les métriques structurelles sont conservées."
+                )
             return 0
     except Exception as e:
         print(f"❌ Erreur metadata : {e}")

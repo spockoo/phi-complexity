@@ -21,7 +21,7 @@ def _read_harvest(path: str) -> List[Dict[str, Any]]:
     if not os.path.exists(path):
         return []
     with open(path, "r", encoding="utf-8") as f:
-        return [json.loads(l) for l in f if l.strip()]
+        return [json.loads(line) for line in f if line.strip()]
 
 
 def test_summarize_metadata_counts(tmp_path):
@@ -44,7 +44,9 @@ def test_summarize_metadata_counts(tmp_path):
     _write_harvest(str(harvest), vecteurs)
 
     vault_index = tmp_path / "index.json"
-    vault_index.write_text(json.dumps({"notes": {"a.py": {}, "b.py": {}}, "version": "16.0"}))
+    vault_index.write_text(
+        json.dumps({"notes": {"a.py": {}, "b.py": {}}, "version": "16.0"})
+    )
 
     resume = summarize_metadata(str(harvest), str(vault_index))
     assert resume["harvest"]["count"] == 2
@@ -96,11 +98,20 @@ def test_cli_metadata_purge_default_output(tmp_path, capsys):
     harvest = tmp_path / "harvest.jsonl"
     _write_harvest(
         str(harvest),
-        [{"schema": "1.1", "radiance": 70.0, "fingerprint": {"hash": "abc"}, "timestamp": 1}],
+        [
+            {
+                "schema": "1.1",
+                "radiance": 70.0,
+                "fingerprint": {"hash": "abc"},
+                "timestamp": 1,
+            }
+        ],
     )
 
     parser = _construire_parseur()
-    args = parser.parse_args(["metadata", "purge", "--harvest", str(harvest), "--strip-sensitive"])
+    args = parser.parse_args(
+        ["metadata", "purge", "--harvest", str(harvest), "--strip-sensitive"]
+    )
     code = _executer_metadata(args)
     out = capsys.readouterr().out
 

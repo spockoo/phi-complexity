@@ -72,7 +72,8 @@ def _charger_index_vault(chemin: str) -> Dict[str, Any]:
 
 
 def summarize_metadata(
-    harvest_path: str = ".phi/harvest.jsonl", vault_index_path: str = ".phi/vault/index.json"
+    harvest_path: str = ".phi/harvest.jsonl",
+    vault_index_path: str = ".phi/vault/index.json",
 ) -> Dict[str, Any]:
     """
     Résume les métadonnées du projet (harvest + vault).
@@ -82,7 +83,13 @@ def summarize_metadata(
     vecteurs = _charger_harvest(harvest_path)
     index_vault = _charger_index_vault(vault_index_path)
 
-    labels = {"LILITH": 0, "SUTURE": 0, "FIBONACCI": 0, "SOUVERAINETE": 0, "MORPHOGENESE_ZERO": 0}
+    labels = {
+        "LILITH": 0,
+        "SUTURE": 0,
+        "FIBONACCI": 0,
+        "SOUVERAINETE": 0,
+        "MORPHOGENESE_ZERO": 0,
+    }
     versions: Dict[str, int] = {}
     states: Dict[str, int] = {}
     fingerprints = 0
@@ -106,7 +113,10 @@ def summarize_metadata(
             "schema_versions": versions,
             "states": states,
             "labels": labels,
-            "fingerprint": {"count": fingerprints, "ratio": (fingerprints / len(vecteurs)) if vecteurs else 0.0},
+            "fingerprint": {
+                "count": fingerprints,
+                "ratio": (fingerprints / len(vecteurs)) if vecteurs else 0.0,
+            },
         },
         "vault": {
             "path": vault_index_path,
@@ -161,7 +171,11 @@ def sanitize_harvest(
 
     corpus: List[Dict[str, Any]] = []
     for v in vecteurs:
-        base = {k: v[k] for k in _FEATURE_KEYS if keep_only_features and k in v} if keep_only_features else dict(v)
+        base = (
+            {k: v[k] for k in _FEATURE_KEYS if keep_only_features and k in v}
+            if keep_only_features
+            else dict(v)
+        )
 
         if strip_sensitive:
             for cle in _SENSITIVE_KEYS:
