@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import argparse
+import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from . import auditer, rapport_console, rapport_markdown, rapport_json
@@ -585,16 +586,24 @@ def _executer_metadata(args: argparse.Namespace) -> int:
         summarize_metadata,
     )
 
-    try:
-        if args.metadata_action == "summary":
+    if args.metadata_action == "summary":
+        try:
             resume = summarize_metadata(args.harvest, args.vault_index)
             if args.format == "json":
                 print(json.dumps(resume, ensure_ascii=False, indent=2))
             else:
                 print(format_summary_text(resume))
             return 0
+        except (ValueError, RuntimeError, OSError) as e:
+            print(f"❌ Erreur metadata : {e}")
+            return 1
+        except Exception as e:
+            print(f"❌ Erreur metadata inattendue : {e}")
+            traceback.print_exc()
+            return 1
 
-        if args.metadata_action == "purge":
+    if args.metadata_action == "purge":
+        try:
             sortie = args.harvest if args.in_place else args.output
             if not sortie:
                 sortie = default_sanitized_path(args.harvest)
@@ -616,9 +625,13 @@ def _executer_metadata(args: argparse.Namespace) -> int:
                     "  Mode features-only : seules les métriques structurelles sont conservées."
                 )
             return 0
-    except Exception as e:
-        print(f"❌ Erreur metadata : {e}")
-        return 1
+        except (ValueError, RuntimeError, OSError) as e:
+            print(f"❌ Erreur metadata : {e}")
+            return 1
+        except Exception as e:
+            print(f"❌ Erreur metadata inattendue : {e}")
+            traceback.print_exc()
+            return 1
 
     return 1
 

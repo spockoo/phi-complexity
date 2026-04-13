@@ -123,3 +123,20 @@ def test_cli_metadata_purge_default_output(tmp_path, capsys):
     assert "timestamp" not in contenu
     assert "radiance" in contenu
     assert "Corpus purgé" in out
+
+
+def test_sanitize_harvest_skips_corrupted_lines(tmp_path):
+    harvest = tmp_path / "harvest_corrupted.jsonl"
+    harvest.write_text(
+        '{"schema": "1.1", "radiance": 70.0}\n{invalid-json}\n{"schema":"1.2","radiance":75.0}\n',
+        encoding="utf-8",
+    )
+
+    sortie = tmp_path / "sanitized_corrupted.jsonl"
+    resultat = sanitize_harvest(str(harvest), str(sortie), strip_sensitive=True)
+
+    assert resultat["written"] == 2
+    contenu = _read_harvest(str(sortie))
+    assert len(contenu) == 2
+    assert contenu[0]["schema"] == "1.1"
+    assert contenu[1]["schema"] == "1.2"

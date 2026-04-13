@@ -43,7 +43,7 @@ _FEATURE_KEYS: List[str] = [
 _SENSITIVE_KEYS: Set[str] = {"timestamp", "fingerprint"}
 
 
-def _charger_harvest(chemin: str) -> List[Dict[str, Any]]:
+def _charger_harvest(chemin: str, strict: bool = True) -> List[Dict[str, Any]]:
     """Charge un corpus harvest JSONL. Retourne une liste vide si fichier absent."""
     if not os.path.exists(chemin):
         return []
@@ -56,7 +56,9 @@ def _charger_harvest(chemin: str) -> List[Dict[str, Any]]:
             try:
                 vecteurs.append(json.loads(line))
             except json.JSONDecodeError as e:
-                raise ValueError(f"Harvest corrompu à {chemin}: {e}") from e
+                if strict:
+                    raise ValueError(f"Harvest corrompu à {chemin}: {e}") from e
+                continue
     return vecteurs
 
 
@@ -80,7 +82,7 @@ def summarize_metadata(
 
     Retourne un dictionnaire prêt à être sérialisé (JSON ou texte).
     """
-    vecteurs = _charger_harvest(harvest_path)
+    vecteurs = _charger_harvest(harvest_path, strict=False)
     index_vault = _charger_index_vault(vault_index_path)
 
     labels = {
@@ -165,7 +167,7 @@ def sanitize_harvest(
     - strip_keys      : supprime toute clé additionnelle passée par l'utilisateur
     - keep_only_features : conserve uniquement les métriques structurelles
     """
-    vecteurs = _charger_harvest(harvest_path)
+    vecteurs = _charger_harvest(harvest_path, strict=False)
     removed: Set[str] = set()
     strip_set: Set[str] = set(strip_keys or [])
 
@@ -197,11 +199,21 @@ def sanitize_harvest(
 
     dossier = os.path.dirname(output_path)
     if dossier and not os.path.exists(dossier):
-        os.makedirs(dossier)
+        try:
+            os.makedirs(dossier)
+        except OSError as e:
+            raise RuntimeError(
+                f"Impossible de créer le dossier de sortie '{dossier}': {e}"
+            ) from e
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        for vecteur in corpus:
-            f.write(json.dumps(vecteur, ensure_ascii=False) + "\n")
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            for vecteur in corpus:
+                f.write(json.dumps(vecteur, ensure_ascii=False) + "\n")
+    except OSError as e:
+        raise RuntimeError(
+            f"Impossible d'écrire le corpus purgé dans '{output_path}': {e}"
+        ) from e
 
     return {
         "written": len(corpus),
