@@ -11,7 +11,7 @@ format-check:
 	black --check .
 
 typecheck:
-	python -m mypy phi_complexity --ignore-missing-imports
+	python -m mypy
 
 test:
 	python -m pytest tests/ --cov=phi_complexity --cov-report=term-missing
