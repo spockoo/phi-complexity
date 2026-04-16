@@ -212,3 +212,14 @@ ADMIN_TOKEN=
 MIT — Tomy Verreault, 2026
 
 *Anchored in the Bibliothèque Céleste — Morphic Phi Framework (φ-Meta)*
+
+## 🔒 Sécurité : Activation du contrôle phi-check
+
+Ce projet utilise un contrôle automatique (pré-commit) qui bloque tout ajout de code contenant certains mots ou outils réservés (par exemple des scripts ou outils reconnus de piratage).
+
+**Pour installer et activer le contrôle localement :**
+```sh
+pip install pre-commit
+pre-commit install
+```
+Le contrôle `phi-check` se lance alors automatiquement à chaque commit.
