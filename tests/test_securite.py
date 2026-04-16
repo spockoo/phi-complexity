@@ -24,10 +24,14 @@ from phi_complexity.securite import (
     journaliser_conflit_audit,
     resoudre_conflit_par_consensus,
     verifier_politique_securite,
+    construire_dossier_preuve,
     calculer_score_risque_global,
     evaluer_politique_gouvernance,
     detecter_drift_heuristique,
     construire_dossier_preuve,
+    _extraire_cwe,
+    classer_finding,
+    classer_findings,
     _est_finding_securite,
 )
 
@@ -1201,3 +1205,53 @@ class TestVerifierPolitiqueBranches:
     def test_summary_non_dict(self):
         """summary non-dict → False (ligne 848)."""
         assert verifier_politique_securite({"summary": "not_a_dict"}, 70.0) is False
+
+class TestPhiClassification:
+    def test_classer_finding_cwe(self):
+        finding = {
+            "source": "phi-complexity",
+            "rule_id": "CWE-79",
+            "severity": "high",
+            "surface": "production",
+        }
+        classification = classer_finding(finding)
+        assert classification["family"] == "security"
+        assert classification["category"] == "injection"
+        assert classification["priority"] == "P0"
+        assert classification["cwe"] == "CWE-79"
+
+    def test_classer_finding_quality(self):
+        finding = {
+            "source": "phi-complexity",
+            "rule_id": "CYCLOMATIQUE",
+            "severity": "medium",
+            "surface": "production",
+            "security_relevant": False,
+        }
+        classification = classer_finding(finding)
+        assert classification["family"] == "quality"
+        assert classification["category"] == "complexity"
+        assert classification["priority"] == "P4"
+
+    def test_extraire_cwe(self):
+        assert _extraire_cwe("CWE-79") == "79"
+        assert _extraire_cwe("CWE-134") == "134"
+        assert _extraire_cwe("cwe_89") == "89"
+        assert _extraire_cwe("CWE-00123") == "00123"
+        assert _extraire_cwe("NO-CWE") is None
+
+    def test_classer_findings_registry_reuse(self):
+        findings = [
+            {
+                "source": "phi-complexity",
+                "rule_id": "CWE-79",
+                "severity": "critical",
+                "surface": "production",
+            }
+        ]
+        registry = {"phi-complexity:CWE-79": {"decision": "quality", "basis": "memo"}}
+        classer_findings(findings, registry)
+        classification = findings[0]["classification"]
+        assert classification["family"] == "quality"
+        assert classification["priority"] == "P4"
+        assert classification["learning"]["reused"] is True
