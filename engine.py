@@ -21,6 +21,7 @@ _ENV_BRANCH = re.compile(r"^[a-zA-Z0-9_./-]{1,200}$")
 _MAX_ENV_LEN = 512
 
 def _env_securise(nom, defaut=""):
+    """Lecture sécurisée des variables d'environnement avec validation Regex."""
     val = os.environ.get(nom, defaut)
     if not val or len(val) > _MAX_ENV_LEN:
         return defaut
@@ -30,15 +31,17 @@ def _env_securise(nom, defaut=""):
     return val
 
 def _chemin_reel(chemin):
+    """Résolution du chemin réel pour éviter les conflits de liens symboliques."""
     return os.path.realpath(chemin)
 
 class PhiArchitect:
     def __init__(self):
         self.phi = 1.61803398875
         self.filename = _chemin_reel(inspect.getfile(self.__class__))
-        self.complexity_limit = 12  # Légère augmentation pour tolérer l'auto-mutation
+        self.complexity_limit = 12  # Seuil de tolérance avant arrêt de mutation
 
     def clean_merge_markers(self):
+        """Supprime les marqueurs de conflit Git pour éviter les erreurs AST."""
         if not os.path.exists(self.filename):
             return
         with open(self.filename, "r", encoding="utf-8") as f:
@@ -52,6 +55,7 @@ class PhiArchitect:
                 f.writelines(clean_lines)
 
     def get_complexity(self, node):
+        """Calcule la complexité cyclomatique simplifiée d'un nœud AST."""
         complexity = 1
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With, ast.IfExp)):
@@ -59,20 +63,24 @@ class PhiArchitect:
         return complexity
 
     def clean_dead_code(self, tree):
-        """Nettoyage des variables de synchronisation inutilisées."""
-        source = ast.unparse(tree)
+        """
+        Nettoyage du code mort.
+        CORRECTION : Ne supprime JAMAIS les variables 'static_sync_'.
+        """
         new_body = []
         for node in tree.body:
             if isinstance(node, ast.Assign) and node.targets and isinstance(node.targets[0], ast.Name):
                 var_name = node.targets[0].id
-                # On ne garde la variable que si elle est référencée ailleurs que dans sa définition
-                if var_name.startswith("static_sync_") and source.count(var_name) <= 1:
+                # On protège ces variables car elles servent de 'poids' mathématique
+                if var_name.startswith("static_sync_"):
+                    new_body.append(node)
                     continue
             new_body.append(node)
         tree.body = new_body
         return tree
 
     def run_cycle(self):
+        """Exécute un cycle de mesure et de mutation structurelle."""
         self.clean_merge_markers()
         try:
             with open(self.filename, "r", encoding="utf-8") as f:
@@ -81,39 +89,40 @@ class PhiArchitect:
         except (SyntaxError, FileNotFoundError):
             return False
 
-        # 1. Vérification de la complexité (Garde-fou)
+        # 1. Analyse de la complexité
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if self.get_complexity(node) > self.complexity_limit:
                     return False
 
-        # 2. Calcul du Ratio de Radiance (Stabilité mathématique)
+        # 2. Calcul du Ratio (Logique vs Données)
         nodes = list(ast.walk(tree))
         logic_nodes = [n for n in nodes if isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.With))]
         data_nodes = [n for n in nodes if isinstance(n, (ast.Assign, ast.Constant, ast.List, ast.Dict))]
         
-        # Évite la division par zéro et stabilise les petits fichiers
         len_logic = len(logic_nodes)
         len_data = len(data_nodes)
         
+        # Stabilité : Évite division par zéro
         current_ratio = len_data / len_logic if len_logic > 0 else float(len_data)
         
-        # 3. Application de la mutation si l'écart est significatif
+        # 3. Calcul de la déviation
         diff = self.phi - current_ratio
         
-        # Tolérance de 1% pour éviter les cycles de mutation infinis
+        # CORRECTION : Tolérance 0.05 pour stopper les oscillations infinies en CI
         if abs(diff) < 0.05 or math.isnan(diff) or math.isinf(diff):
             return False
 
         if diff > 0:
-            # Injection de "matière" (données) pour tendre vers Phi
-            new_var_name = f"static_sync_{len_data}"
+            # Injection de 'matière' (données) pour équilibrer vers Phi
+            new_var_name = f"static_sync_{len_data}_{int(abs(diff)*10000)}"
             new_data = ast.Assign(
                 targets=[ast.Name(id=new_var_name, ctx=ast.Store())],
                 value=ast.Constant(value=round(diff, 4)),
             )
             tree.body.insert(0, new_data)
 
+        # Nettoyage sécurisé
         tree = self.clean_dead_code(tree)
         
         try:
@@ -125,7 +134,7 @@ class PhiArchitect:
             return False
 
 def handle_github_automation():
-    """Gère l'automatisation GitHub avec injection sécurisée."""
+    """Gère l'interaction avec l'API GitHub pour soumettre les mutations."""
     event = _env_securise("GITHUB_EVENT_NAME")
     repo = _env_securise("GITHUB_REPOSITORY")
     token = _env_securise("GITHUB_TOKEN")
@@ -133,7 +142,7 @@ def handle_github_automation():
     if not token or not repo or "/" not in repo:
         return
     
-    # On autorise le push en mode 'pull_request' pour la mise à jour de la PR #142
+    # Autorise l'exécution en PR pour permettre l'auto-correction lors des échecs CI
     if event not in ["schedule", "workflow_dispatch", "pull_request"]:
         return
 
@@ -145,21 +154,21 @@ def handle_github_automation():
         subprocess.run(["git", "config", "user.name", "Phi-Architect-Bot"], check=True)
         subprocess.run(["git", "config", "user.email", "phi-bot@outlook.fr"], check=True)
         
-        # Vérification si des changements existent réellement
         subprocess.run(["git", "add", "."], check=True)
         status = subprocess.run(["git", "diff", "--cached", "--quiet"], check=False).returncode
         
-        if status == 0: # Pas de changements
+        if status == 0:
             return
 
         subprocess.run(["git", "checkout", "-B", branch_name], check=True)
-        subprocess.run(["git", "commit", "-m", "🧬 [Cron] Harmonisation Ratio Phi"], check=True)
+        subprocess.run(["git", "commit", "-m", "🧬 [Architect] Harmonisation Ratio Phi"], check=True)
+        # Utilisation de force-with-lease pour éviter d'écraser des changements tiers
         subprocess.run(["git", "push", "--force-with-lease", "origin", branch_name], check=True)
         
     except subprocess.CalledProcessError:
         return
 
-    # Logique de Pull Request via API
+    # Création ou vérification de la Pull Request
     api_url = f"https://api.github.com/repos/{repo}/pulls"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -168,18 +177,17 @@ def handle_github_automation():
         "Content-Type": "application/json"
     }
     
-    # Vérifier si une PR est déjà ouverte
     try:
         check_query = parse.urlencode({"state": "open", "head": f"{owner}:{branch_name}"})
         with request.urlopen(request.Request(f"{api_url}?{check_query}", headers=headers)) as resp:
             if json.loads(resp.read().decode("utf-8")):
-                return # PR déjà active
+                return
                 
         payload = json.dumps({
             "title": "✨ Évolution Structurelle (Radiance)",
             "head": branch_name,
             "base": base_branch,
-            "body": "Ajustement automatique des constantes pour atteindre l'équilibre de Phi."
+            "body": "Mutation automatique pour aligner la structure du code sur l'invariant Phi."
         }).encode("utf-8")
         
         request.urlopen(request.Request(api_url, data=payload, method="POST", headers=headers))
