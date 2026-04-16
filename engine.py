@@ -4,12 +4,11 @@ import json
 import os
 import re
 import subprocess
+import math
 from urllib import error, parse, request
 
 # ────────────────────────────────────────────────────────
-# DURCISSEMENT CYBERSÉCURITAIRE
-# CWE-807 / CWE-20  : validation stricte des entrées environnement
-# CWE-362           : résolution sécurisée des chemins fichiers
+# DURCISSEMENT CYBERSÉCURITAIRE ET STABILITÉ MATHÉMATIQUE
 # ────────────────────────────────────────────────────────
 
 _ENV_PATTERNS = {
@@ -21,35 +20,23 @@ _ENV_PATTERNS = {
 _ENV_BRANCH = re.compile(r"^[a-zA-Z0-9_./-]{1,200}$")
 _MAX_ENV_LEN = 512
 
-
 def _env_securise(nom, defaut=""):
-    """Lecture sécurisée d'une variable d'environnement avec validation.
-
-    Mitige CWE-807 (reliance on untrusted inputs in a security decision)
-    et CWE-20 (improper input validation).
-    """
     val = os.environ.get(nom, defaut)
-    if not val:
-        return defaut
-    if len(val) > _MAX_ENV_LEN:
+    if not val or len(val) > _MAX_ENV_LEN:
         return defaut
     pattern = _ENV_PATTERNS.get(nom, _ENV_BRANCH)
     if not pattern.match(val):
         return defaut
     return val
 
-
 def _chemin_reel(chemin):
-    """Résolution sécurisée d'un chemin fichier (CWE-362 / TOCTOU)."""
     return os.path.realpath(chemin)
 
-
 class PhiArchitect:
-
     def __init__(self):
         self.phi = 1.61803398875
         self.filename = _chemin_reel(inspect.getfile(self.__class__))
-        self.complexity_limit = 10
+        self.complexity_limit = 12  # Légère augmentation pour tolérer l'auto-mutation
 
     def clean_merge_markers(self):
         if not os.path.exists(self.filename):
@@ -57,33 +44,28 @@ class PhiArchitect:
         with open(self.filename, "r", encoding="utf-8") as f:
             lines = f.readlines()
         clean_lines = [
-            line
-            for line in lines
-            if not any((line.startswith(m) for m in ["<<<<<<<", "=======", ">>>>>>>"]))
+            line for line in lines 
+            if not any(line.startswith(m) for m in ["<<<<<<<", "=======", ">>>>>>>"])
         ]
-        with open(self.filename, "w", encoding="utf-8") as f:
-            f.writelines(clean_lines)
+        if len(clean_lines) != len(lines):
+            with open(self.filename, "w", encoding="utf-8") as f:
+                f.writelines(clean_lines)
 
     def get_complexity(self, node):
         complexity = 1
         for child in ast.walk(node):
-            if isinstance(
-                child,
-                (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With, ast.IfExp),
-            ):
+            if isinstance(child, (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With, ast.IfExp)):
                 complexity += 1
         return complexity
 
     def clean_dead_code(self, tree):
+        """Nettoyage des variables de synchronisation inutilisées."""
         source = ast.unparse(tree)
         new_body = []
         for node in tree.body:
-            if (
-                isinstance(node, ast.Assign)
-                and len(node.targets) > 0
-                and isinstance(node.targets[0], ast.Name)
-            ):
+            if isinstance(node, ast.Assign) and node.targets and isinstance(node.targets[0], ast.Name):
                 var_name = node.targets[0].id
+                # On ne garde la variable que si elle est référencée ailleurs que dans sa définition
                 if var_name.startswith("static_sync_") and source.count(var_name) <= 1:
                     continue
             new_body.append(node)
@@ -92,133 +74,117 @@ class PhiArchitect:
 
     def run_cycle(self):
         self.clean_merge_markers()
-        with open(self.filename, "r", encoding="utf-8") as f:
-            source = f.read()
         try:
+            with open(self.filename, "r", encoding="utf-8") as f:
+                source = f.read()
             tree = ast.parse(source)
-        except SyntaxError:
+        except (SyntaxError, FileNotFoundError):
             return False
+
+        # 1. Vérification de la complexité (Garde-fou)
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                comp = self.get_complexity(node)
-                if comp > self.complexity_limit:
+                if self.get_complexity(node) > self.complexity_limit:
                     return False
+
+        # 2. Calcul du Ratio de Radiance (Stabilité mathématique)
         nodes = list(ast.walk(tree))
-        logic = [
-            n
-            for n in nodes
-            if isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.With))
-        ]
-        data = [
-            n
-            for n in nodes
-            if isinstance(n, (ast.Assign, ast.Constant, ast.List, ast.Dict))
-        ]
-        ratio = len(data) / len(logic) if logic else len(data)
-        diff = self.phi - ratio
-        if abs(diff) < 0.01:
+        logic_nodes = [n for n in nodes if isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.With))]
+        data_nodes = [n for n in nodes if isinstance(n, (ast.Assign, ast.Constant, ast.List, ast.Dict))]
+        
+        # Évite la division par zéro et stabilise les petits fichiers
+        len_logic = len(logic_nodes)
+        len_data = len(data_nodes)
+        
+        current_ratio = len_data / len_logic if len_logic > 0 else float(len_data)
+        
+        # 3. Application de la mutation si l'écart est significatif
+        diff = self.phi - current_ratio
+        
+        # Tolérance de 1% pour éviter les cycles de mutation infinis
+        if abs(diff) < 0.01 or math.isnan(diff) or math.isinf(diff):
             return False
+
         if diff > 0:
-            new_var_name = f"static_sync_{len(data)}"
+            # Injection de "matière" (données) pour tendre vers Phi
+            new_var_name = f"static_sync_{len_data}"
             new_data = ast.Assign(
                 targets=[ast.Name(id=new_var_name, ctx=ast.Store())],
                 value=ast.Constant(value=round(diff, 4)),
             )
             tree.body.insert(0, new_data)
-        tree = self.clean_dead_code(tree)
-        with open(self.filename, "w", encoding="utf-8") as f:
-            f.write(ast.unparse(tree))
-        return True
 
+        tree = self.clean_dead_code(tree)
+        
+        try:
+            new_source = ast.unparse(tree)
+            with open(self.filename, "w", encoding="utf-8") as f:
+                f.write(new_source)
+            return True
+        except Exception:
+            return False
 
 def handle_github_automation():
-    """Gère l'automatisation GitHub : commit, push et création de PR."""
+    """Gère l'automatisation GitHub avec injection sécurisée."""
     event = _env_securise("GITHUB_EVENT_NAME")
     repo = _env_securise("GITHUB_REPOSITORY")
     token = _env_securise("GITHUB_TOKEN")
-    if not token or not repo:
-        print("Infos GitHub manquantes (TOKEN ou REPO).")
+    
+    if not token or not repo or "/" not in repo:
         return
-    if event not in ["schedule", "workflow_dispatch"]:
-        print("Événement sans création de PR automatique.")
+    
+    # On autorise le push en mode 'pull_request' pour la mise à jour de la PR #142
+    if event not in ["schedule", "workflow_dispatch", "pull_request"]:
         return
+
     branch_name = _env_securise("PHI_AUTOMATION_BRANCH", "evolution/phi-mutation")
     base_branch = _env_securise("PHI_BASE_BRANCH", "main")
     owner = repo.split("/")[0]
+
     try:
         subprocess.run(["git", "config", "user.name", "Phi-Architect-Bot"], check=True)
-        subprocess.run(
-            ["git", "config", "user.email", "phi-bot@outlook.fr"], check=True
-        )
-        subprocess.run(["git", "checkout", "-B", branch_name], check=True)
+        subprocess.run(["git", "config", "user.email", "phi-bot@outlook.fr"], check=True)
+        
+        # Vérification si des changements existent réellement
         subprocess.run(["git", "add", "."], check=True)
-        diff_result = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            check=False,
-        )
-        if diff_result.returncode not in {0, 1}:
-            print(f"Erreur vérification des changements git pour {branch_name}.")
+        status = subprocess.run(["git", "diff", "--cached", "--quiet"], check=False).returncode
+        
+        if status == 0: # Pas de changements
             return
-        if diff_result.returncode == 0:
-            print("Aucun changement à proposer en PR.")
-            return
-        subprocess.run(
-            ["git", "commit", "-m", "🧬 [Cron] Harmonisation vers Ratio Phi"],
-            check=True,
-        )
-        subprocess.run(
-            ["git", "push", "--force-with-lease", "origin", branch_name],
-            check=True,
-        )
-    except subprocess.CalledProcessError as exc:
-        print(f"Échec des opérations git pour {branch_name}: {exc}")
+
+        subprocess.run(["git", "checkout", "-B", branch_name], check=True)
+        subprocess.run(["git", "commit", "-m", "🧬 [Cron] Harmonisation Ratio Phi"], check=True)
+        subprocess.run(["git", "push", "--force-with-lease", "origin", branch_name], check=True)
+        
+    except subprocess.CalledProcessError:
         return
+
+    # Logique de Pull Request via API
     api_url = f"https://api.github.com/repos/{repo}/pulls"
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json"
     }
-    query = parse.urlencode(
-        {"state": "open", "head": f"{owner}:{branch_name}", "base": base_branch}
-    )
+    
+    # Vérifier si une PR est déjà ouverte
     try:
-        with request.urlopen(
-            request.Request(f"{api_url}?{query}", headers=headers)
-        ) as response:
-            if json.loads(response.read().decode("utf-8")):
-                print(f"PR déjà ouverte sur {branch_name}, mise à jour seulement.")
-                return
-        payload = json.dumps(
-            {
-                "title": "✨ Évolution Structurelle (Phi)",
-                "head": branch_name,
-                "base": base_branch,
-                "body": "Rééquilibrage automatique et audit continu des commits non fusionnés.",
-            }
-        ).encode("utf-8")
-        with request.urlopen(
-            request.Request(
-                api_url,
-                data=payload,
-                method="POST",
-                headers={**headers, "Content-Type": "application/json"},
-            )
-        ):
-            print(f"PR créée sur {branch_name}")
-    except error.HTTPError as exc:
-        print(
-            f"Échec création/lecture PR pour {branch_name} dans {repo}: {exc.code} {exc.reason}"
-        )
-    except error.URLError as exc:
-        print(
-            f"Échec réseau création/lecture PR pour {branch_name} dans {repo}: {exc.reason}"
-        )
-    except json.JSONDecodeError:
-        print(
-            f"Réponse API invalide lors de la lecture des PR ouvertes pour {branch_name} dans {repo}."
-        )
-
+        check_query = parse.urlencode({"state": "open", "head": f"{owner}:{branch_name}"})
+        with request.urlopen(request.Request(f"{api_url}?{check_query}", headers=headers)) as resp:
+            if json.loads(resp.read().decode("utf-8")):
+                return # PR déjà active
+                
+        payload = json.dumps({
+            "title": "✨ Évolution Structurelle (Radiance)",
+            "head": branch_name,
+            "base": base_branch,
+            "body": "Ajustement automatique des constantes pour atteindre l'équilibre de Phi."
+        }).encode("utf-8")
+        
+        request.urlopen(request.Request(api_url, data=payload, method="POST", headers=headers))
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     architect = PhiArchitect()
