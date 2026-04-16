@@ -40,3 +40,14 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
+
+  # ─────────────────────────────────────────────
+  # Phi-check — Audit local pour bloquer le code/piratage/lourds risques
+  # ─────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: phi-check
+        name: "Phi audit check"
+        entry: python phi_check.py
+        language: python
+        stages: [commit]
