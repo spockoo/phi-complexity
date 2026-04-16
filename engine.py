@@ -102,7 +102,7 @@ class PhiArchitect:
         diff = self.phi - current_ratio
         
         # Tolérance de 1% pour éviter les cycles de mutation infinis
-        if abs(diff) < 0.01 or math.isnan(diff) or math.isinf(diff):
+        if abs(diff) < 0.05 or math.isnan(diff) or math.isinf(diff):
             return False
 
         if diff > 0:
