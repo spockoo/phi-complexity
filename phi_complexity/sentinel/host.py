@@ -197,6 +197,8 @@ def _collecter_processus_subprocess() -> List[HostEvent]:
             ["ps", "axo", "pid,comm,args"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="ignore",
             timeout=10,
         )
         for ligne in sortie.stdout.splitlines()[1:]:
@@ -230,7 +232,7 @@ def _collecter_reseau_subprocess() -> List[HostEvent]:
     # Essai avec ss (plus moderne), puis netstat
     for cmd in [["ss", "-tnp"], ["netstat", "-tn"]]:
         try:
-            sortie = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            sortie = subprocess.run(cmd, capture_output=True, text=True, timeout=10, encoding="utf-8", errors="ignore")
             for ligne in sortie.stdout.splitlines()[1:]:
                 parties = ligne.split()
                 if len(parties) < 4:
