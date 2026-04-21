@@ -44,7 +44,10 @@ class PipelineSignal:
                 issuer=d.get("issuer", "unknown"),
                 data=d.get("data", {}),
             )
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Failed to decode PipelineSignal JSON: {payload} | Exception: {e}"
+            )
             return cls(action="error", issuer="system", data={"raw": payload})
 
 
