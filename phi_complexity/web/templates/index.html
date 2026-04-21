@@ -221,15 +221,22 @@
 
         ws.onclose = () => {
             statusDot.classList.remove('connected');
-            addLog("[System] Connexion perdue. Tentative de reconnexion conseillée.", 'log-error');
+            addLog("[System] Connexion perdue. Tentative de reconnexion auto dans 3s...", 'log-error');
+            setTimeout(connectWebSocket, 3000);
         };
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'log') {
-                parseAndAddLog(data.message);
-            } else if (data.type === 'alert') {
-                addLog(`[Alerte Système] ${data.message}`, 'log-error');
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'log') {
+                    parseAndAddLog(data.message);
+                } else if (data.type === 'alert') {
+                    addLog(`[Alerte Système] ${data.message}`, 'log-error');
+                } else if (data.type === 'status') {
+                    // Update connection state or UI readiness if needed
+                }
+            } catch (e) {
+                addLog("[System] Erreur critique lors de l'analyse réseau WebSocket.", 'log-error');
             }
         };
 

@@ -55,7 +55,7 @@ class GenerateurRapport:
         if m.get("oudjat"):
             o = m["oudjat"]
             lignes.append(
-                f"  👁  OUDJAT : '{o['nom']}' (Line {o['ligne']}, Complexity: {o['complexite']})"
+                f"  👁  OUDJAT : '{o.get('nom', '?')}' (Line {o.get('ligne', '?')}, Complexity: {o.get('complexite', '?')})"
             )
             lignes.append("")
 
@@ -66,13 +66,13 @@ class GenerateurRapport:
             for ann in annotations:
                 icon = (
                     "🔴"
-                    if ann["niveau"] == "CRITICAL"
-                    else "🟡" if ann["niveau"] == "WARNING" else "🔵"
+                    if ann.get("niveau") == "CRITICAL"
+                    else "🟡" if ann.get("niveau") == "WARNING" else "🔵"
                 )
                 lignes.append(
-                    f"  {icon} Line {ann['ligne']} [{ann['categorie']}] : {ann['message']}"
+                    f"  {icon} Line {ann.get('ligne', '?')} [{ann.get('categorie', '?')}] : {ann.get('message', '?')}"
                 )
-                lignes.append(f"     >> {ann['extrait']}")
+                lignes.append(f"     >> {ann.get('extrait', '')}")
         else:
             lignes.append("  ✦  Aucune rupture de radiance majeure détectée.")
 

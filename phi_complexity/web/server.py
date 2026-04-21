@@ -28,10 +28,10 @@ active_websockets: Set[WebSocket] = set()
 class WebsocketLogHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         msg = self.format(record)
-        for ws in active_websockets:
+        # La conversion en liste (GIL thread-safe) prévient "Set changed size during iteration"
+        for ws in list(active_websockets):
             try:
                 loop = asyncio.get_running_loop()
-                # Pousse le log sans casser la boucle courante
                 loop.create_task(ws.send_json({"type": "log", "message": msg}))
             except Exception:
                 pass

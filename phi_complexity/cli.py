@@ -1016,19 +1016,30 @@ def _executer_ui() -> int:
         url = "http://127.0.0.1:8000"
         
         def open_browser():
+            import urllib.request
             import time
-            time.sleep(1)
-            webbrowser.open(url)
+            from urllib.error import URLError
+            # Polling au lieu de délai fixe pour éviter la race condition
+            for _ in range(30):
+                try:
+                    urllib.request.urlopen(url)
+                    webbrowser.open(url)
+                    return
+                except URLError:
+                    time.sleep(0.2)
             
         print("  ◈  Lancement de la Cyber Station Phidélia...")
         print(f"  ◈  Interface locale : {url}")
         
-        Timer(1.0, open_browser).start()
+        Timer(0.1, open_browser).start()
         uvicorn.run("phi_complexity.web.server:app", host="127.0.0.1", port=8000, reload=False, log_level="warning")
         return 0
     except ImportError:
         print("❌ Erreur : Le module web n'est pas installé.")
-        print("👉 Veuillez installer les dépendances avec : pip install phi-complexity[web]")
+        print("👉 Veuillez installer avec : pip install phi-complexity[web]")
+        return 1
+    except Exception as e:
+        print(f"❌ Erreur critique lors du lancement : {e}")
         return 1
 
 # ────────────────────────────────────────────────────────

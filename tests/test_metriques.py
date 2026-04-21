@@ -348,6 +348,7 @@ class TestCoherenceBayes:
         assert "coherence_bayes" in result
         assert isinstance(result["coherence_bayes"], float)
         assert result["coherence_bayes"] >= 0.0
+        f.unlink(missing_ok=True)
 
     def test_coherence_bayes_dans_resultat_vide(self):
         """_resultat_vide() expose 'coherence_bayes' = 0.0."""
