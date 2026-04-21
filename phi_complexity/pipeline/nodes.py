@@ -20,6 +20,8 @@ class SpecificationNode(PipelineNode):
     async def execute(self) -> None:
         while True:
             signal = await self.inbox.get()
+            if getattr(signal, "action", None) == "shutdown":
+                break
             if signal.action == "start_planning":
                 logger.info("[SpecificationNode] Élaboration du contrat...")
                 # Appel au LLM sous-jacent à implémenter : "Écris un plan structuré (.md) basé sur concept."
@@ -42,6 +44,8 @@ class ValidationNode(PipelineNode):
     async def execute(self) -> None:
         while True:
             signal = await self.inbox.get()
+            if getattr(signal, "action", None) == "shutdown":
+                break
             if signal.action == "review_plan":
                 logger.info(
                     "[ValidationNode] Analyse du contrat pour failles conceptuelles..."
@@ -63,6 +67,8 @@ class ImplementationNode(PipelineNode):
     async def execute(self) -> None:
         while True:
             signal = await self.inbox.get()
+            if getattr(signal, "action", None) == "shutdown":
+                break
             if signal.action in ["approved_plan", "quality_rejected"]:
                 if signal.action == "quality_rejected":
                     logger.warning(
@@ -91,6 +97,8 @@ class QualityGateNode(PipelineNode):
     async def execute(self) -> None:
         while True:
             signal = await self.inbox.get()
+            if getattr(signal, "action", None) == "shutdown":
+                break
             if signal.action == "code_ready":
                 logger.info(
                     "[QualityGateNode] Évaluation de la Radiance Spatiale (φ)..."
@@ -139,6 +147,8 @@ class SecurityGateNode(PipelineNode):
     async def execute(self) -> None:
         while True:
             signal = await self.inbox.get()
+            if getattr(signal, "action", None) == "shutdown":
+                break
             if signal.action == "quality_passed":
                 logger.info("[SecurityGateNode] Scan CWE des vulnérabilités...")
 
@@ -158,5 +168,7 @@ class SecurityGateNode(PipelineNode):
                         "============== PHIDÉLIA PIPELINE TERMINÉ =============="
                     )
 
-                    # Fin du cycle pour orchestrator
-                    # Sys.exit() est à proscrire dans un vrai lib asyncio, mais clôture logique ici.
+                    # Fin du cycle pour orchestrator : lever l'événement de complétion
+                    event = self.context.get("completion_event")
+                    if event:
+                        event.set()

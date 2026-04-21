@@ -64,6 +64,12 @@ class PipelineNode:
         data: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Transmet un signal structuré au noeud suivant."""
+        if target_node is None:
+            logger.error(
+                f"[{self.name}] Impossible d'envoyer '{action}' : noeud cible inexistant dans le contexte."
+            )
+            return
+
         signal = PipelineSignal(action=action, issuer=self.name, data=data)
         logger.info(f"[{self.name}] -> [{target_node.name}] : {signal.action}")
         await target_node.inbox.put(signal)
@@ -78,6 +84,7 @@ class PipelineOrchestrator:
 
     def __init__(self) -> None:
         self.nodes: Dict[str, PipelineNode] = {}
+        self.completion_event: Optional[asyncio.Event] = None
         self.context: Dict[str, Any] = {
             "project_dir": "",
             "concept": "",
@@ -92,9 +99,11 @@ class PipelineOrchestrator:
 
     async def run_pipeline(self, concept: str, project_dir: str) -> None:
         """Démarre l'exécution du Phidélia Pipeline."""
+        self.completion_event = asyncio.Event()
         self.context["concept"] = concept
         self.context["project_dir"] = project_dir
         self.context["start_time"] = time.time()
+        self.context["completion_event"] = self.completion_event
         self._is_running = True
 
         logger.info("============== PHIDÉLIA PIPELINE INITIÉ ==============")
@@ -134,16 +143,26 @@ class PipelineOrchestrator:
             asyncio.create_task(sec_node.execute()),
         ]
 
-        # 3. L'étincelle initiale (Lancement du Pipeline)
+        # L'étincelle initiale (Lancement du Pipeline)
         await spec_node.inbox.put(
             PipelineSignal(action="start_planning", issuer="System_Orchestrator")
         )
 
-        # 4. Attente de résolution (Simulation: attendre 10 secondes puis stopper)
-        await asyncio.sleep(8)
-        logger.warning("[System] Arrêt simulé de l'event loop pour test factice.")
+        # Attente robuste basée sur un évènement (bot review fix)
+        try:
+            # Simule l'attente du signal de complétion avec ou sans timeout
+            await asyncio.wait_for(self.completion_event.wait(), timeout=10.0)
+            logger.info("[System] Boucle événementielle achevée naturellement.")
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[System] Arrêt forcé de l'event loop : cycle de test mocké atteint."
+            )
 
-        # Nettoyage
-        for task in tasks:
-            task.cancel()
+        # Nettoyage gracieux (graceful shutdown)
+        for n in self.nodes.values():
+            await n.inbox.put(
+                PipelineSignal(action="shutdown", issuer="System_Orchestrator")
+            )
+
+        await asyncio.gather(*tasks, return_exceptions=True)
         self._is_running = False
