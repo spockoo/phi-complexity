@@ -1112,8 +1112,6 @@ def _executer_pipeline(args: argparse.Namespace) -> int:
         from .pipeline.orchestrator import PipelineOrchestrator, PipelineSignal
 
         async def cli_signal_callback(signal: PipelineSignal) -> None:
-            color = "\033[91m" if signal.action == "error" else "\033[94m"
-            reset = "\033[0m"
             # Affichage formaté pour la console (sans emoji pour compatibilité Windows)
             print(f"  [PHI] [{signal.issuer}] {signal.action}: {signal.data}")
 
