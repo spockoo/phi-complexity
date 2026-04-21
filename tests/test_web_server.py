@@ -1,3 +1,10 @@
+# ruff: noqa: E402
+import pytest
+
+# Skip this entire module if web dependencies are missing (minimal core matrix)
+pytest.importorskip("fastapi")
+pytest.importorskip("httpx")
+
 from fastapi.testclient import TestClient
 from phi_complexity.web.server import app, active_websockets
 
