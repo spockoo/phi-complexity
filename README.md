@@ -213,6 +213,19 @@ MIT — Tomy Verreault, 2026
 
 *Anchored in the Bibliothèque Céleste — Morphic Phi Framework (φ-Meta)*
 
+## 📜 Historique des Versions (Changelog)
+
+- **v0.2.2 (Souveraineté & Cybersécurité) — Actuelle** :
+  - Implémentation du **"Cerveau de Sécurité"** : Moteur de triage mathématique départageant les failles critiques cybernétiques (CWE-79, CWE-89) des simples anomalies architecturales (Variance Lilith, Complexité).
+  - Algorithmes de **Mémoire Fail-Fast** pour `phi_check` optimisant à 100% le temps processeur et la RAM lors des audits anti-mots-interdits.
+  - Conformité CI parfaite garantissant aucune friction entre Windows et Linux (via normalisation PEP8 stricte).
+
+- **v0.2.1** : Intégration souveraine du `phi_check` pré-commit natif et de la politique `Quality Gate` pour GitHub Actions. Réparation des métriques de base.
+- **v0.2.0** : Introduction de pydantic pour la vérification de la robustesse, ajouts de structures initiales pour les métriques `Souverainete`.
+- **v0.1.0** : Version primaire. Formule mathématique de base implémentée (Lilith, Shannon, Fib, Radiance).
+
+---
+
 ## 🔒 Sécurité : Activation du contrôle phi-check
 
 Ce projet utilise un contrôle automatique (pré-commit) qui bloque tout ajout de code contenant certains mots ou outils réservés (par exemple des scripts ou outils reconnus de piratage).
