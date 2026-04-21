@@ -28,6 +28,9 @@ phi check my_script.py
 # Audit a folder
 phi check ./src/
 
+# Start the Sovereign Web IDE (Local-First browser interface)
+phi ui
+
 # Generate a Markdown report
 phi report my_script.py --output report.md
 
@@ -80,7 +83,8 @@ rapport_markdown("my_script.py", sortie="report.md")
 
 | Command | Stability | Purpose | Output / Side-effects |
 |---|---|---|---|
-| `phi check` | **Stable** | Audit radiance for files/folders | Console or JSON (no writes) |
+| `phi check` | **Stable** | Audit radiance for files/folders | Console (Aesthetic v0.1.0) or JSON |
+| `phi ui` | **Stable** | Launch Local-First Web IDE | Starts Uvicorn server + opens browser |
 | `phi report` | **Stable** | Markdown report | Writes `report.md` if `--output` |
 | `phi oracle` | **Stable** | Release gate (radiance + tests) | Console; exits 1 on failure |
 | `phi harvest` | Experimental | AST vectors collection | Writes `.phi/harvest.jsonl` |
@@ -120,6 +124,15 @@ rapport_markdown("my_script.py", sortie="report.md")
   🔵 Line 67 [SOUVERAINETE] : 'load_data' receives 6 arguments. Encapsulate in an object.
      >> def load_data(path, sep, enc, cols, dtype, na):
 ```
+
+---
+
+## 🚀 Phidélia Cyber Station (Web IDE)
+
+`phi-complexity` dispose maintenant (via les dépendances `[web]`) d'un véritable **IDE Web Local Souverain** (`phi ui`), fonctionnant intégralement en local avec communication WebSockets :
+- **Glassmorphism & Néon** : Design premium ultra-soigné et sans dépendances JS externes (Vanilla JS/CSS).
+- **Monaco Editor** : Le moteur haute-performance derrière VS Code, intégré hors ligne.
+- **WebSocket Streaming** : Dialogue asynchrone direct entre l'orchestrateur Python et le frontend.
 
 ---
 
@@ -215,7 +228,11 @@ MIT — Tomy Verreault, 2026
 
 ## 📜 Historique des Versions (Changelog)
 
-- **v0.2.2 (Souveraineté & Cybersécurité) — Actuelle** :
+- **v0.2.3 (FastAPI & Phidélia Station) — Actuelle** :
+  - **Lancement de l'IDE Web souverain** : Nouveau point d'entrée `phi ui` qui déploie un orchestrateur local avec frontend premium (Monaco Editor, WebSockets, Vanilla JS).
+  - Restauration minutieuse de l'esthétique absolue de la `v0.1.0` pour les rapports `phi check` dans la console.
+  
+- **v0.2.2 (Souveraineté & Cybersécurité)** :
   - Implémentation du **"Cerveau de Sécurité"** : Moteur de triage mathématique départageant les failles critiques cybernétiques (CWE-79, CWE-89) des simples anomalies architecturales (Variance Lilith, Complexité).
   - Algorithmes de **Mémoire Fail-Fast** pour `phi_check` optimisant à 100% le temps processeur et la RAM lors des audits anti-mots-interdits.
   - Conformité CI parfaite garantissant aucune friction entre Windows et Linux (via normalisation PEP8 stricte).

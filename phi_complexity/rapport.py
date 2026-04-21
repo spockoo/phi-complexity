@@ -22,47 +22,47 @@ class GenerateurRapport:
     # ──────────────────────────────────────────────
 
     def console(self) -> str:
-        """Sortie console premium avec barres visuelles."""
+        """Sortie console premium avec barres visuelles (Aesthetic V0.1.0 pure)."""
         m = self.m
-        score = m["radiance"]
+        score = m.get("radiance", 0.0)
         barre = self._barre(score)
         phi_r = m.get("phi_ratio", 1.0)
         delta = m.get("phi_ratio_delta", 0.0)
-        phi_icon = "✦" if delta < 0.15 else "◈" if delta < 0.5 else "░"
+        zeta = m.get("zeta_score", 0.0)
+        lilith = m.get("lilith_variance", 0.0)
+        shannon = m.get("shannon_entropy", 0.0)
+        phi_icon = "◈"
 
         lignes = [
             "╔══════════════════════════════════════════════════╗",
-            "║      PHI-COMPLEXITY — AUDIT DE RADIANCE          ║",
+            "║     PHI-COMPLEXITY — AUDIT DE RADIANCE           ║",
             "╚══════════════════════════════════════════════════╝",
             "",
-            f"  📄 Fichier : {m['fichier']}",
+            f"  📄 Fichier : {m.get('fichier', '?')}",
             f"  📅 Date    : {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}",
             "",
-            f"  ☼  RADIANCE     : {barre}  {score} / 100",
-            f"  ⚖  LILITH       : {m['lilith_variance']:.2f}  (Variance structurelle)",
-            f"  🌊 ENTROPIE     : {m['shannon_entropy']:.3f} bits  (Shannon)",
-            f"  {phi_icon}  PHI-RATIO    : {phi_r:.3f}  (idéal: φ = 1.618, Δ={delta:.3f})",
-            f"  ζ  ZETA-SCORE   : {m['zeta_score']:.4f}  (Résonance globale)",
+            f"  ☼  RADIANCE      : {barre}     {score:.1f} / 100",
+            f"  ⚖  LILITH        : {lilith:<7.1f}  (Structural variance)",
+            f"  🌊 ENTROPIE      : {shannon:<4.2f} bits   (Shannon)",
+            f"  {phi_icon}  PHI-RATIO     : {phi_r:<4.2f}        (ideal: φ = 1.618, Δ={delta:.2f})",
+            f"  ζ  ZETA-SCORE    : {zeta:<6.4f}     (Global resonance)",
+            "",
+            f"  STATUT : {m.get('statut_gnostique', 'INCONNU')} ◈",
             "",
         ]
-
-        # Statut gnostique
-        lignes.append(f"  STATUT : {m['statut_gnostique']}")
-        lignes.append("")
 
         # Oudjat
         if m.get("oudjat"):
             o = m["oudjat"]
             lignes.append(
-                f"  🔎 OUDJAT : '{o['nom']}' (Ligne {o['ligne']}, "
-                f"Complexité: {o['complexite']}, φ-ratio: {o['phi_ratio']})"
+                f"  👁  OUDJAT : '{o['nom']}' (Line {o['ligne']}, Complexity: {o['complexite']})"
             )
             lignes.append("")
 
-        # Annotations
+        # Annotations (Sutures)
         annotations = m.get("annotations", [])
         if annotations:
-            lignes.append(f"  ⚠  SUTURES IDENTIFIÉES ({len(annotations)}) :")
+            lignes.append(f"  ⚠  SUTURES IDENTIFIED ({len(annotations)}):")
             for ann in annotations:
                 icon = (
                     "🔴"
@@ -70,7 +70,7 @@ class GenerateurRapport:
                     else "🟡" if ann["niveau"] == "WARNING" else "🔵"
                 )
                 lignes.append(
-                    f"  {icon} Ligne {ann['ligne']} [{ann['categorie']}] : {ann['message']}"
+                    f"  {icon} Line {ann['ligne']} [{ann['categorie']}] : {ann['message']}"
                 )
                 lignes.append(f"     >> {ann['extrait']}")
         else:
@@ -78,8 +78,6 @@ class GenerateurRapport:
 
         lignes.append("")
         lignes.append("  ─────────────────────────────────────────────────")
-        lignes.append("  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
-
         return "\n".join(lignes)
 
     # ──────────────────────────────────────────────

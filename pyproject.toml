@@ -34,6 +34,7 @@ dependencies = []  # Zero dépendances tierces — Souveraineté totale
 
 [project.optional-dependencies]
 notebooks = ["jupyter", "matplotlib", "numpy"]
+web = ["fastapi", "uvicorn", "websockets", "jinja2"]
 
 [project.scripts]
 phi = "phi_complexity.cli:main"

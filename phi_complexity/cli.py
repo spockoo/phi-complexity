@@ -334,6 +334,8 @@ Exemples :
         help="Fichier JSONL pour le harvest (défaut: .phi/harvest.jsonl)",
     )
 
+    subparsers.add_parser("ui", help="Démarrer le Moteur Web IDE Phidélia local.")
+
     return parser
 
 
@@ -1004,6 +1006,31 @@ def _afficher_scan_resume(total: int, suspects: int) -> None:
     print("  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
 
 
+def _executer_ui() -> int:
+    """Phase 33 : Lance le backend FastAPI et ouvre le navigateur (IDE Web Local)."""
+    try:
+        import uvicorn
+        import webbrowser
+        from threading import Timer
+        
+        url = "http://127.0.0.1:8000"
+        
+        def open_browser():
+            import time
+            time.sleep(1)
+            webbrowser.open(url)
+            
+        print("  ◈  Lancement de la Cyber Station Phidélia...")
+        print(f"  ◈  Interface locale : {url}")
+        
+        Timer(1.0, open_browser).start()
+        uvicorn.run("phi_complexity.web.server:app", host="127.0.0.1", port=8000, reload=False, log_level="warning")
+        return 0
+    except ImportError:
+        print("❌ Erreur : Le module web n'est pas installé.")
+        print("👉 Veuillez installer les dépendances avec : pip install phi-complexity[web]")
+        return 1
+
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
@@ -1017,6 +1044,9 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
     if not args.commande:
         parser.print_help()
         sys.exit(0)
+
+    if args.commande == "ui":
+        sys.exit(_executer_ui())
 
     if args.commande == "memory":
         sys.exit(_executer_memory())
