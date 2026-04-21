@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -617,6 +618,173 @@ def _regle_phi_est_securite(categorie: str) -> bool:
     return categorie.upper().startswith("CWE-")
 
 
+_CWE_TAXONOMY: Dict[str, Dict[str, str]] = {
+    "79": {
+        "category": "injection",
+        "label": "Cross-Site Scripting (XSS)",
+        "vector": "web",
+        "playbook": "Échapper le contenu selon le contexte et appliquer une CSP.",
+    },
+    "89": {
+        "category": "injection",
+        "label": "SQL Injection",
+        "vector": "database",
+        "playbook": "Utiliser des requêtes paramétrées et valider les entrées.",
+    },
+    "134": {
+        "category": "memory",
+        "label": "Format String",
+        "vector": "native",
+        "playbook": "Utiliser des formats sûrs et éviter printf sur entrée utilisateur.",
+    },
+}
+
+_PHI_QUALITY_TAXONOMY: Dict[str, Dict[str, str]] = {
+    "CYCLOMATIQUE": {
+        "category": "complexity",
+        "label": "Complexité cyclomatique",
+        "playbook": "Découper les fonctions et réduire les branches.",
+    },
+    "NESTING": {
+        "category": "complexity",
+        "label": "Niveau d'imbrication élevé",
+        "playbook": "Extraire les blocs imbriqués en fonctions dédiées.",
+    },
+    "LILITH": {
+        "category": "quality",
+        "label": "Variance LILITH",
+        "playbook": "Stabiliser la structure et réduire l'entropie du code.",
+    },
+    "FIBONACCI": {
+        "category": "quality",
+        "label": "Courbes Fibonacci",
+        "playbook": "Lisser la progression des structures et éliminer les pics.",
+    },
+}
+
+
+def _extraire_cwe(rule_id: str) -> Optional[str]:
+    match = re.search(r"(?i)\bcwe[-_ ]?(\d{1,5})\b", rule_id.strip())
+    return match.group(1) if match else None
+
+
+def _priority_par_severite(severite: str, surface: str, security_relevant: bool) -> str:
+    niveau = severite.lower()
+    if not security_relevant:
+        return "P4"
+    if surface == "production" and niveau in {"critical", "high"}:
+        return "P0"
+    if niveau in {"critical", "high"}:
+        return "P1"
+    if niveau == "medium":
+        return "P2"
+    return "P3"
+
+
+def classer_finding(
+    finding: Dict[str, Any], memo: Optional[Dict[str, Dict[str, Any]]] = None
+) -> Dict[str, Any]:
+    """Classe un finding en catégorie exploitable pour la triage sécurité."""
+    source = str(finding.get("source", "")).strip() or "unknown"
+    rule_id = str(finding.get("rule_id", "UNKNOWN")).strip() or "UNKNOWN"
+    severite = str(finding.get("severity", "medium"))
+    surface = str(finding.get("surface", "production"))
+    security_relevant = _est_finding_securite(finding)
+    cwe_id = _extraire_cwe(rule_id)
+    decision_basis = (
+        "explicit-security-relevant"
+        if "security_relevant" in finding
+        else "rule-based-fallback"
+    )
+
+    taxonomy = (
+        _CWE_TAXONOMY.get(cwe_id, {})
+        if cwe_id
+        else _PHI_QUALITY_TAXONOMY.get(rule_id.upper(), {})
+    )
+    family = "security" if security_relevant else "quality"
+    signature = f"{source}:{rule_id}"
+    reused = False
+
+    if memo is not None and signature in memo:
+        precedent = memo[signature]
+        if precedent.get("decision") in {"security", "quality"}:
+            family = str(precedent.get("decision"))
+            decision_basis = "registry-reuse"
+            reused = True
+
+    if taxonomy:
+        category = taxonomy.get("category", "unknown")
+        label = taxonomy.get("label", rule_id)
+        vector = taxonomy.get("vector", "generic")
+        playbook = taxonomy.get("playbook", "")
+    else:
+        category = family
+        label = rule_id
+        vector = "generic"
+        playbook = ""
+
+    priority = _priority_par_severite(severite, surface, family == "security")
+
+    learning = {
+        "signature": signature,
+        "decision": family,
+        "basis": decision_basis,
+        "reused": reused,
+    }
+
+    classification = {
+        "family": family,
+        "category": category,
+        "label": label,
+        "vector": vector,
+        "priority": priority,
+        "decision_basis": decision_basis,
+        "cwe": f"CWE-{cwe_id}" if cwe_id else None,
+        "playbook": playbook,
+        "learning": learning,
+    }
+
+    if memo is not None:
+        memo[signature] = {"decision": family, "basis": decision_basis}
+
+    return classification
+
+
+def classer_findings(
+    findings: List[Dict[str, Any]],
+    memo: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Dict[str, Any]]:
+    registry: Dict[str, Dict[str, Any]] = memo or {}
+    for finding in findings:
+        finding["classification"] = classer_finding(finding, registry)
+    return registry
+
+
+def _resume_classification(findings: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+    par_famille: Dict[str, int] = {"security": 0, "quality": 0, "unknown": 0}
+    famille_inattendue: Dict[str, int] = {}
+    par_categorie: Dict[str, int] = {}
+    par_priorite: Dict[str, int] = {}
+    for finding in findings:
+        classification = finding.get("classification", {})
+        famille = str(classification.get("family", "quality"))
+        if famille not in par_famille:
+            famille_inattendue[famille] = famille_inattendue.get(famille, 0) + 1
+            famille = "unknown"
+        categorie = str(classification.get("category", "unknown"))
+        priorite = str(classification.get("priority", "P4"))
+        par_famille[famille] += 1
+        par_categorie[categorie] = par_categorie.get(categorie, 0) + 1
+        par_priorite[priorite] = par_priorite.get(priorite, 0) + 1
+    return {
+        "by_family": par_famille,
+        "by_category": par_categorie,
+        "by_priority": par_priorite,
+        "unexpected_family": famille_inattendue,
+    }
+
+
 def _est_finding_securite(finding: Dict[str, Any]) -> bool:
     """Détermine si un finding doit impacter le score/policy sécurité.
 
@@ -626,7 +794,17 @@ def _est_finding_securite(finding: Dict[str, Any]) -> bool:
     - autres sources (SARIF/outils externes) : sécurité par défaut.
     """
     if "security_relevant" in finding:
-        return bool(finding.get("security_relevant"))
+        security_relevant = finding.get("security_relevant")
+        if isinstance(security_relevant, bool):
+            return security_relevant
+        if isinstance(security_relevant, str):
+            normalized = security_relevant.strip().lower()
+            if normalized in {"false", "0", "no", "off"}:
+                return False
+            if normalized in {"true", "1", "yes", "on"}:
+                return True
+        if isinstance(security_relevant, (int, float)):
+            return bool(security_relevant)
     source = str(finding.get("source", "")).lower()
     rule_id = str(finding.get("rule_id", ""))
     if source == "phi-complexity":
@@ -833,6 +1011,8 @@ def construire_audit_securite(
     if not include_demo:
         findings = [f for f in findings if f.get("surface") != "demo"]
 
+    classer_findings(findings)
+    classification_summary = _resume_classification(findings)
     score = _score_securite(findings)
     blocking = [
         f
@@ -853,6 +1033,7 @@ def construire_audit_securite(
             "blocking_findings": len(blocking),
             "out_of_scope_findings": len(out_of_scope),
             "status": "PASS" if len(blocking) == 0 else "FAIL",
+            "classification": classification_summary,
         },
         "governance": {
             "severity_distribution": severites,
