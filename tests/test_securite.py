@@ -28,7 +28,10 @@ from phi_complexity.securite import (
     evaluer_politique_gouvernance,
     detecter_drift_heuristique,
     construire_dossier_preuve,
+    _extraire_cwe,
     _est_finding_securite,
+    classer_finding,
+    classer_findings,
 )
 
 CODE_C_VULNERABLE = """\
@@ -575,11 +578,28 @@ class TestAuditSecurite:
 
             audit = construire_audit_securite([file_path])
             summary = audit["summary"]
+            assert audit["findings"], "Audit should return at least one finding."
+            assert all(
+                "security_relevant" in f for f in audit["findings"]
+            ), "Each finding should include security classification metadata."
+            # Verify all findings are quality annotations, not security rules
+            expected_quality_rule_ids = {
+                "CYCLOMATIQUE",
+                "LILITH",
+                "FIBONACCI",
+                "NESTING",
+            }
+            assert all(
+                f["rule_id"] in expected_quality_rule_ids for f in audit["findings"]
+            ), "All findings should be quality annotations, got: " + str(
+                [f["rule_id"] for f in audit["findings"]]
+            )
             non_security = [
                 f for f in audit["findings"] if not f.get("security_relevant", True)
             ]
 
             assert non_security
+            assert len(non_security) == len(audit["findings"])
             assert summary["blocking_findings"] == 0
             assert summary["security_score"] == 100.0
             assert summary["status"] == "PASS"
@@ -589,31 +609,156 @@ class TestAuditSecurite:
     def test_est_finding_securite_prioritize_security_relevant(self):
         assert _est_finding_securite({"security_relevant": True}) is True
         assert _est_finding_securite({"security_relevant": False}) is False
+        assert _est_finding_securite({"security_relevant": "false"}) is False
+        assert _est_finding_securite({"security_relevant": "true"}) is True
+        assert _est_finding_securite({"security_relevant": 0}) is False
+        assert _est_finding_securite({"security_relevant": 42}) is True
         assert (
             _est_finding_securite(
                 {
-                    "security_relevant": False,
+                    "security_relevant": "unknown",
                     "source": "phi-complexity",
-                    "rule_id": "CWE-134",
+                    "rule_id": "CYCLOMATIQUE",
                 }
             )
             is False
         )
+        assert (
+            _est_finding_securite(
+                {
+                    "security_relevant": "",
+                    "source": "phi-complexity",
+                    "rule_id": "CWE-79",
+                }
+            )
+            is True
+        )
+        assert (
+            _est_finding_securite(
+                {
+                    "security_relevant": True,
+                    "source": "phi-complexity",
+                    "rule_id": "CYCLOMATIQUE",
+                }
+            )
+            is True
+        )
 
     def test_est_finding_securite_fallback_par_source(self):
+        """Quand security_relevant est ABSENT, la classification se fait
+        par source + rule_id.  Couvre les CWE critiques (XSS, injection SQL,
+        format-string) et les annotations qualité phi."""
+        # CWE critiques sans clé security_relevant → True
+        assert (
+            _est_finding_securite({"source": "phi-complexity", "rule_id": "CWE-79"})
+            is True
+        ), "CWE-79 (XSS) sans clé security_relevant doit être classé sécurité"
+        assert (
+            _est_finding_securite({"source": "phi-complexity", "rule_id": "CWE-89"})
+            is True
+        ), "CWE-89 (SQL Injection) sans clé security_relevant doit être classé sécurité"
         assert (
             _est_finding_securite({"source": "phi-complexity", "rule_id": "CWE-134"})
             is True
-        )
+        ), "CWE-134 (Format String) doit être classé sécurité"
+        # Annotations qualité phi → False (pas de sécurité)
         assert (
             _est_finding_securite(
                 {"source": "phi-complexity", "rule_id": "CYCLOMATIQUE"}
             )
             is False
-        )
+        ), "CYCLOMATIQUE doit rester une annotation qualité"
+        assert (
+            _est_finding_securite({"source": "phi-complexity", "rule_id": "NESTING"})
+            is False
+        ), "NESTING doit rester une annotation qualité"
         assert (
             _est_finding_securite({"source": "Flawfinder", "rule_id": "FF1009"}) is True
         )
+
+    def test_est_finding_securite_dict_minimal(self):
+        """Un finding vide ou avec uniquement un rule_id doit déclencher le
+        fallback sûr (sécurité par défaut pour source inconnue)."""
+        assert _est_finding_securite({}) is True
+        assert _est_finding_securite({"rule_id": "CWE-79"}) is True
+        assert _est_finding_securite({"source": "phi-complexity"}) is False
+
+
+class TestClassificationFindings:
+    def test_classer_finding_cwe(self):
+        classification = classer_finding(
+            {
+                "source": "phi-complexity",
+                "rule_id": "CWE-79",
+                "severity": "high",
+                "surface": "production",
+            }
+        )
+        assert classification["family"] == "security"
+        assert classification["category"] == "injection"
+        assert classification["priority"] == "P0"
+        assert classification["cwe"] == "CWE-79"
+        assert classification["learning"]["signature"] == "phi-complexity:CWE-79"
+
+    def test_classer_finding_quality(self):
+        classification = classer_finding(
+            {
+                "source": "phi-complexity",
+                "rule_id": "CYCLOMATIQUE",
+                "severity": "medium",
+                "surface": "production",
+                "security_relevant": False,
+            }
+        )
+        assert classification["family"] == "quality"
+        assert classification["category"] == "complexity"
+        assert classification["priority"] == "P4"
+
+    def test_classer_findings_reuse_registry(self):
+        findings = [
+            {
+                "source": "phi-complexity",
+                "rule_id": "CWE-79",
+                "severity": "critical",
+                "surface": "production",
+            }
+        ]
+        registry = {"phi-complexity:CWE-79": {"decision": "quality", "basis": "memo"}}
+        classer_findings(findings, registry)
+        classification = findings[0]["classification"]
+        assert classification["family"] == "quality"
+        assert classification["priority"] == "P4"
+        assert classification["learning"]["reused"] is True
+
+    def test_classer_findings_reuse_registry_security(self):
+        findings = [
+            {
+                "source": "phi-complexity",
+                "rule_id": "CWE-89",
+                "severity": "high",
+                "surface": "production",
+            }
+        ]
+        registry = {"phi-complexity:CWE-89": {"decision": "security", "basis": "memo"}}
+        classer_findings(findings, registry)
+        classification = findings[0]["classification"]
+        assert classification["family"] == "security"
+        assert classification["category"] == "injection"
+        assert classification["priority"] == "P0"
+        assert classification["cwe"] == "CWE-89"
+        assert classification["learning"]["reused"] is True
+
+
+class TestExtractionCwe:
+    def test_extraire_cwe_borne(self):
+        assert _extraire_cwe("CWE-79") == "79"
+        assert _extraire_cwe("CWE-0") == "0"
+        assert _extraire_cwe("CWE-12345") == "12345"
+        assert _extraire_cwe("CWE-99999") == "99999"
+        assert _extraire_cwe("CWE-123456") is None
+        assert _extraire_cwe("CWE-") is None
+        assert _extraire_cwe("CWE-abc") is None
+        assert _extraire_cwe("prefix CWE-89 suffix") == "89"
 
 
 # ────────────────────────────────────────────────────────
