@@ -215,7 +215,8 @@
         const logsContainer = document.getElementById('logs');
         
         function connectWebSocket() {
-            ws = new WebSocket(`ws://${window.location.host}/ws/pipeline`);
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/pipeline`);
             
             ws.onopen = () => {
                 statusDot.classList.add('connected');

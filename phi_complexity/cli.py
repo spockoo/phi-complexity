@@ -786,15 +786,19 @@ def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
 
 def _executer_graph(args: argparse.Namespace) -> int:
     """Phase 16 : Affiche le graphe de radiance du vault."""
-    from .vault import PhiVault
+    try:
+        from .vault import PhiVault
 
-    vault = PhiVault()
-    fmt = getattr(args, "format", "ascii")
-    if fmt == "dot":
-        print(vault.generer_graph())
-    else:
-        print(vault.generer_graph_ascii())
-    return 0
+        vault = PhiVault()
+        fmt = getattr(args, "format", "ascii")
+        if fmt == "dot":
+            print(vault.generer_graph())
+        else:
+            print(vault.generer_graph_ascii())
+        return 0
+    except Exception as e:
+        print(f"  ❌ Erreur lors de la génération du graphe : {e}")
+        return 1
 
 
 def _executer_canvas(args: argparse.Namespace, fichiers: List[str]) -> int:
@@ -1136,6 +1140,9 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_canvas(args, fichiers))
     elif args.commande == "shield":
         sys.exit(_executer_shield(args, fichiers))
+    else:
+        print(f"❌ Commande inconnue : {args.commande}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
