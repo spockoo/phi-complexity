@@ -930,9 +930,17 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
 def _executer_scan(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Phase 24 : Scanner des fichiers avec le φ-fingerprint antiviral."""
     import json as _json
+    import os
+    import sys
 
     from .fingerprint import FingerprintEngine
     from .harvest import HarvestEngine
+
+    if getattr(args, "harvest", False) and getattr(args, "output", None):
+        output_dir = os.path.dirname(args.output)
+        if output_dir and not os.path.exists(output_dir):
+            print(f"❌ Le dossier de sortie n'existe pas : {output_dir}")
+            sys.exit(1)
 
     engine = FingerprintEngine()
     resultats: List[Dict[str, Any]] = []
