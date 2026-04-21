@@ -62,7 +62,18 @@ files = ["phi_complexity"]
 exclude = "^(tests|examples)/|^engine\\.py$"
 
 [[tool.mypy.overrides]]
-module = ["matplotlib", "matplotlib.*", "numpy", "IPython", "IPython.*"]
+module = [
+    "matplotlib",
+    "matplotlib.*",
+    "numpy",
+    "IPython",
+    "IPython.*",
+    "fastapi",
+    "fastapi.*",
+    "uvicorn",
+    "websockets",
+    "jinja2",
+]
 ignore_missing_imports = true
 
 [tool.black]

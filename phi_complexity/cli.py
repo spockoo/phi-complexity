@@ -365,6 +365,35 @@ def _collecter_fichiers(cible: str) -> List[str]:
     return []
 
 
+def _verifier_et_collecter(cible: str, type_scan: str = "audit") -> List[str]:
+    """Collecte les fichiers et fournit un feedback granulaire en cas d'échec."""
+    if not os.path.exists(cible):
+        print(f"❌ Le chemin spécifié n'existe pas : {cible}")
+        sys.exit(1)
+
+    if type_scan == "scan":
+        fichiers = _collecter_fichiers_scan(cible)
+    else:
+        fichiers = _collecter_fichiers(cible)
+
+    if not fichiers:
+        if os.path.isfile(cible):
+            ext = os.path.splitext(cible)[1].lower()
+            if type_scan == "scan":
+                autorisees = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
+            else:
+                autorisees = _EXTENSIONS_SUPPORTEES
+            print(
+                f"❌ Le fichier '{cible}' n'est pas supporté (extension {ext or 'inconnue'})."
+            )
+            print(f"   Autorisées : {', '.join(autorisees)}")
+        else:
+            print(f"❌ Aucun fichier supporté trouvé dans le dossier : {cible}")
+        sys.exit(1)
+
+    return fichiers
+
+
 def _fichiers_depuis_dossier_scan(dossier: str) -> List[str]:
     """Collecte récursivement les fichiers scannables d'un dossier (source + binaire)."""
     toutes = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
@@ -938,9 +967,15 @@ def _executer_scan(args: argparse.Namespace, fichiers: List[str]) -> int:
 
     if getattr(args, "harvest", False) and getattr(args, "output", None):
         output_dir = os.path.dirname(args.output)
-        if output_dir and not os.path.exists(output_dir):
-            print(f"❌ Le dossier de sortie n'existe pas : {output_dir}")
-            sys.exit(1)
+        if output_dir:
+            if not os.path.exists(output_dir):
+                print(f"❌ Le dossier de sortie n'existe pas : {output_dir}")
+                sys.exit(1)
+            if not os.access(output_dir, os.W_OK):
+                print(
+                    f"❌ Le dossier de sortie n'est pas accessible en écriture : {output_dir}"
+                )
+                sys.exit(1)
 
     engine = FingerprintEngine()
     resultats: List[Dict[str, Any]] = []
@@ -1115,24 +1150,15 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
 
     # Phase 14 — commandes sans collecte de fichiers préalable
     if args.commande == "spiral":
-        fichiers = _collecter_fichiers(args.cible)
-        if not fichiers:
-            print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
-            sys.exit(1)
+        fichiers = _verifier_et_collecter(args.cible, type_scan="audit")
         sys.exit(_executer_spiral(fichiers))
 
     # Phase 24 — scan antiviral (accepte source + binaire)
     if args.commande == "scan":
-        fichiers = _collecter_fichiers_scan(args.cible)
-        if not fichiers:
-            print(f"❌ Aucun fichier scannable trouvé dans : {args.cible}")
-            sys.exit(1)
+        fichiers = _verifier_et_collecter(args.cible, type_scan="scan")
         sys.exit(_executer_scan(args, fichiers))
 
-    fichiers = _collecter_fichiers(args.cible)
-    if not fichiers:
-        print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
-        sys.exit(1)
+    fichiers = _verifier_et_collecter(args.cible, type_scan="audit")
 
     if args.commande == "check":
         sys.exit(_executer_check(args, fichiers))
