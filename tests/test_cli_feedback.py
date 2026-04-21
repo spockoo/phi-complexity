@@ -48,9 +48,8 @@ def test_executer_scan_not_writable():
     args = argparse.Namespace(
         harvest=True, output="/dossier_fantome_phi/test.jsonl", format="console"
     )
-    with pytest.raises(SystemExit) as cm:
-        _executer_scan(args, ["test.py"])
-    assert cm.value.code == 1
+    # _executer_scan retourne desormais 1 au lieu de lever SystemExit
+    assert _executer_scan(args, ["test.py"]) == 1
 
 
 def test_executer_graph_error(monkeypatch):

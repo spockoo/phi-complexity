@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
 if TYPE_CHECKING:
-    from phi_complexity.pipeline.orchestrator import PipelineSignal
+    pass
 
 # On essaie d'importer l'Orchestrateur Phidélia
 try:
@@ -26,6 +26,7 @@ TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 active_websockets: Set[WebSocket] = set()
+websocket_lock = asyncio.Lock()
 
 
 # Handler personnalisé pour capturer les logs du pipeline asynchrone et les envoyer au Frontend
@@ -56,7 +57,8 @@ async def get_ide(request: Request) -> Any:
 async def websocket_pipeline(websocket: WebSocket) -> None:
     """Trie les messages de code envoyés par le Frontend et démarre l'Orchestrateur."""
     await websocket.accept()
-    active_websockets.add(websocket)
+    async with websocket_lock:
+        active_websockets.add(websocket)
 
     try:
         while True:
@@ -73,7 +75,7 @@ async def websocket_pipeline(websocket: WebSocket) -> None:
 
                 if PipelineOrchestrator is not None:
                     # Callback de pontage Vers le WebSocket (Signaux Gnostiques)
-                    async def signal_bridge(signal: "PipelineSignal") -> None:
+                    async def signal_bridge(signal: Any) -> None:
                         is_error = getattr(signal, "action", None) == "error"
                         await websocket.send_json(
                             {
@@ -161,4 +163,6 @@ async def websocket_pipeline(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "status", "ready": True})
 
     except WebSocketDisconnect:
-        active_websockets.remove(websocket)
+        async with websocket_lock:
+            if websocket in active_websockets:
+                active_websockets.remove(websocket)

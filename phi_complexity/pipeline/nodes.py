@@ -30,6 +30,8 @@ class SpecificationNode(PipelineNode):
                         action="review_plan",
                         data={"plan_path": "plan.md"},
                     )
+                else:
+                    logger.debug(f"[SpecificationNode] Signal ignoré : {signal.action}")
         except Exception as e:
             await self.broadcast_error(f"Échec de Spécification : {str(e)}")
 
@@ -54,6 +56,8 @@ class ValidationNode(PipelineNode):
                         action="approved_plan",
                         data=signal.data,
                     )
+                else:
+                    logger.debug(f"[ValidationNode] Signal ignoré : {signal.action}")
         except Exception as e:
             await self.broadcast_error(f"Échec de Validation : {str(e)}")
 
@@ -77,6 +81,8 @@ class ImplementationNode(PipelineNode):
                         action="code_ready",
                         data={"target_files": ["*.py"]},
                     )
+                else:
+                    logger.debug(f"[ImplementationNode] Signal ignoré : {signal.action}")
         except Exception as e:
             await self.broadcast_error(f"Échec d'Implémentation : {str(e)}")
 
@@ -108,6 +114,8 @@ class QualityGateNode(PipelineNode):
                             action="quality_passed",
                             data=signal.data,
                         )
+                else:
+                    logger.debug(f"[QualityGateNode] Signal ignoré : {signal.action}")
         except Exception as e:
             await self.broadcast_error(f"Échec Qualité : {str(e)}")
 

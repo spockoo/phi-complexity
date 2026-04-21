@@ -69,15 +69,15 @@ class PipelineNode:
     ) -> None:
         """Transmet un signal structuré au noeud suivant."""
         signal = PipelineSignal(action=action, issuer=self.name, data=data)
-        
+
         # Interception par le framework pour diagnostic profond
         if self.orchestrator and self.orchestrator.signal_callback:
             await self.orchestrator.signal_callback(signal)
 
         if target_node is None:
-            logger.error(
-                f"[{self.name}] Impossible d'envoyer '{action}' : noeud cible inexistant dans le contexte."
-            )
+            # Escalation Pattern (Suture bot review)
+            error_msg = f"Impossible d'envoyer '{action}' : noeud cible inexistant dans le contexte."
+            await self.broadcast_error(error_msg)
             return
 
         logger.info(f"[{self.name}] -> [{target_node.name}] : {signal.action}")
@@ -88,7 +88,7 @@ class PipelineNode:
         data = {"message": message, "details": details or {}}
         signal = PipelineSignal(action="error", issuer=self.name, data=data)
         logger.error(f"[{self.name}] ERREUR CRITIQUE : {message}")
-        
+
         # Interception par le framework pour diagnostic profond
         if self.orchestrator and self.orchestrator.signal_callback:
             await self.orchestrator.signal_callback(signal)
@@ -96,7 +96,7 @@ class PipelineNode:
         # On tente d'envoyer l'erreur au noeud de validation ou directement au moteur
         if "quality_node" in self.context:
             await self.context["quality_node"].inbox.put(signal)
-    
+
     async def execute(self) -> None:
         """Méthode principale à implémenter par chaque Node spécifique."""
         raise NotImplementedError("Les noeuds doivent implémenter la méthode execute()")
@@ -105,10 +105,11 @@ class PipelineNode:
 class PipelineOrchestrator:
     """Centralise et exécute les noeuds dans un flux continu et mathématiquement borné."""
 
-    def __init__(self, signal_callback: Optional[Callable[[PipelineSignal], Awaitable[None]]] = None) -> None:
+    def __init__(self, signal_callback: Optional[Callable[[PipelineSignal], Awaitable[None]]] = None, timeout: float = 10.0) -> None:
         self.nodes: Dict[str, PipelineNode] = {}
         self.completion_event: Optional[asyncio.Event] = None
         self.signal_callback = signal_callback
+        self.timeout = timeout
         self.context: Dict[str, Any] = {
             "project_dir": "",
             "concept": "",
@@ -179,12 +180,12 @@ class PipelineOrchestrator:
         # Attente robuste basée sur un évènement
         try:
             # Simule l'attente du signal de complétion avec ou sans timeout
-            await asyncio.wait_for(self.completion_event.wait(), timeout=10.0)
+            await asyncio.wait_for(self.completion_event.wait(), timeout=self.timeout)
             logger.info("[System] Boucle événementielle achevée naturellement.")
         except asyncio.TimeoutError:
             error_signal = PipelineSignal(
-                action="error", 
-                issuer="System_Orchestrator", 
+                action="error",
+                issuer="System_Orchestrator",
                 data={"message": "Timeout du pipeline : cycle de test mocké atteint."}
             )
             if self.signal_callback:

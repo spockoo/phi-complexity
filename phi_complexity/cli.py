@@ -151,6 +151,8 @@ Exemples :
     metadata_parser = subparsers.add_parser(
         "metadata", help="Synthèse et purge souveraine des métadonnées."
     )
+    # Définit une action par défaut pour éviter l'ambiguïté (Suture bot review)
+    metadata_parser.set_defaults(metadata_action=None)
     metadata_parser.set_defaults(_metadata_parser=metadata_parser)
     metadata_sub = metadata_parser.add_subparsers(dest="metadata_action")
 
@@ -396,7 +398,9 @@ def _verifier_et_collecter(cible: str, type_scan: str = "audit") -> List[str]:
             )
             print(f"   Autorisées : {', '.join(autorisees)}")
         else:
-            print(f"❌ Aucun fichier supporté trouvé dans le dossier : {cible}")
+            # Feedback granulé (Suture bot review)
+            print(f"⚠️  Dossier vide ou sans fichiers supportés : {cible}")
+            print(f"   Recherche typée : {type_scan}")
         sys.exit(1)
 
     return fichiers
@@ -697,8 +701,18 @@ def _executer_oracle(args: argparse.Namespace, fichiers: List[str]) -> int:
 
 
 def _executer_harvest(args: argparse.Namespace, fichiers: List[str]) -> int:
-    """Phase 14 : Collecte des vecteurs AST anonymisés (phi-harvest)."""
+    """Phase 14 : Collecter des vecteurs AST anonymisés (phi-harvest)."""
     from .harvest import HarvestEngine
+
+    # Vérification proactive du dossier de sortie (Suture bot review)
+    if args.output:
+        output_dir = os.path.dirname(os.path.abspath(args.output))
+        if not os.path.exists(output_dir):
+            print(f"❌ Le dossier de sortie harvest n'existe pas : {output_dir}")
+            return 1
+        if not os.access(output_dir, os.W_OK):
+            print(f"❌ Pas de droits d'écriture dans le dossier harvest : {output_dir}")
+            return 1
 
     engine = HarvestEngine(sortie=args.output)
     nb_collectes = 0
@@ -968,22 +982,19 @@ def _executer_scan(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Phase 24 : Scanner des fichiers avec le φ-fingerprint antiviral."""
     import json as _json
     import os
-    import sys
 
     from .fingerprint import FingerprintEngine
     from .harvest import HarvestEngine
 
+    # Vérification proactive du dossier de harvest (Suture bot review)
     if getattr(args, "harvest", False) and getattr(args, "output", None):
-        output_dir = os.path.dirname(args.output)
-        if output_dir:
-            if not os.path.exists(output_dir):
-                print(f"❌ Le dossier de sortie n'existe pas : {output_dir}")
-                sys.exit(1)
-            if not os.access(output_dir, os.W_OK):
-                print(
-                    f"❌ Le dossier de sortie n'est pas accessible en écriture : {output_dir}"
-                )
-                sys.exit(1)
+        output_dir = os.path.dirname(os.path.abspath(args.output))
+        if not os.path.exists(output_dir):
+            print(f"❌ Le dossier de sortie harvest n'existe pas : {output_dir}")
+            return 1
+        if not os.access(output_dir, os.W_OK):
+            print(f"❌ Pas de droits d'écriture dans le dossier harvest : {output_dir}")
+            return 1
 
     engine = FingerprintEngine()
     resultats: List[Dict[str, Any]] = []
@@ -1078,19 +1089,22 @@ def _executer_ui() -> int:
             import time
             from urllib.error import URLError
 
-            # Polling au lieu de délai fixe pour éviter la race condition
-            for _ in range(30):
+            # Polling robuste (Suture bot review)
+            # On attend que le serveur réponde réellement avant d'ouvrir
+            for i in range(50):
                 try:
-                    urllib.request.urlopen(url)
-                    webbrowser.open(url)
-                    return
-                except URLError:
+                    with urllib.request.urlopen(url) as response:
+                        if response.getcode() == 200:
+                            webbrowser.open(url)
+                            return
+                except (URLError, ConnectionResetError):
                     time.sleep(0.2)
 
         print("  ◈  Lancement de la Cyber Station Phidélia...")
         print(f"  ◈  Interface locale : {url}")
 
-        Timer(0.1, open_browser).start()
+        # Déclenchement du monitor (Timer plus généreux pour l'init)
+        Timer(0.5, open_browser).start()
         uvicorn.run(
             "phi_complexity.web.server:app",
             host="127.0.0.1",
@@ -1128,9 +1142,6 @@ def _executer_pipeline(args: argparse.Namespace) -> int:
         return 1
     except Exception as e:
         print(f"Error : Échec critique du Pipeline : {e}")
-        return 1
-    except Exception as e:
-        print(f"❌ Erreur critique lors du lancement : {e}")
         return 1
 
 

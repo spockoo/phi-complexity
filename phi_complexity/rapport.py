@@ -52,10 +52,10 @@ class GenerateurRapport:
         ]
 
         # Oudjat
-        if m.get("oudjat"):
-            o = m["oudjat"]
+        oudjat_data = m.get("oudjat")
+        if oudjat_data:
             lignes.append(
-                f"  👁  OUDJAT : '{o.get('nom', '?')}' (Line {o.get('ligne', '?')}, Complexity: {o.get('complexite', '?')})"
+                f"  👁  OUDJAT : '{oudjat_data.get('nom', '?')}' (Line {oudjat_data.get('ligne', '?')}, Complexity: {oudjat_data.get('complexite', '?')})"
             )
             lignes.append("")
 
@@ -113,13 +113,13 @@ class GenerateurRapport:
         rapport += f"| **Ratio commentaires** | {m['ratio_commentaires']} | Densité de sagesse |\n\n"
 
         # Section 3 — Oudjat
-        if m.get("oudjat"):
-            o = m["oudjat"]
+        oudjat_data = m.get("oudjat")
+        if oudjat_data:
             rapport += "## 3. IDENTIFICATION DE L'OUDJAT\n\n"
-            rapport += f"La fonction la plus 'chargée' est **`{o['nom']}`** (Ligne {o['ligne']}).\n\n"
-            rapport += f"- Pression : **{o['complexite']}** unités de complexité\n"
-            rapport += f"- Taille   : **{o['nb_lignes']}** lignes\n"
-            rapport += f"- φ-Ratio  : **{o['phi_ratio']}** (idéal: 1.618)\n\n"
+            rapport += f"La fonction la plus 'chargée' est **`{oudjat_data.get('nom', '?')}`** (Ligne {oudjat_data.get('ligne', '?')}).\n\n"
+            rapport += f"- Pression : **{oudjat_data.get('complexite', '?')}** unités de complexité\n"
+            rapport += f"- Taille   : **{oudjat_data.get('nb_lignes', '?')}** lignes\n"
+            rapport += f"- φ-Ratio  : **{oudjat_data.get('phi_ratio', '?')}** (idéal: 1.618)\n\n"
 
         # Section 4 — Audit Fractal
         rapport += "## 4. REVUE DE DÉTAIL (AUDIT FRACTAL)\n\n"

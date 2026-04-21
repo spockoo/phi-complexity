@@ -11,6 +11,14 @@ from phi_complexity.web.server import app, active_websockets
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def clear_websockets():
+    """Garantit l'isolation des tests en purgeant les sockets actifs (Suture bot review)."""
+    active_websockets.clear()
+    yield
+    active_websockets.clear()
+
+
 def test_read_main():
     """Vérifie que la page d'accueil de l'IDE est servie."""
     response = client.get("/")
