@@ -196,13 +196,15 @@ class TestEntropieFibonacci:
         from phi_complexity.analyseur import AnalyseurPhi
         from phi_complexity.metriques import CalculateurRadiance
 
-        code = textwrap.dedent("""
+        code = textwrap.dedent(
+            """
             def f(x):
                 return x * 2
 
             def g(a, b):
                 return a + b
-        """)
+        """
+        )
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as temp_file:
@@ -337,10 +339,12 @@ class TestCoherenceBayes:
         from phi_complexity.analyseur import AnalyseurPhi
         from phi_complexity.metriques import CalculateurRadiance
 
-        code = textwrap.dedent("""\
+        code = textwrap.dedent(
+            """\
             def f(): pass
             def g(): pass
-        """)
+        """
+        )
         f = tmp_path / "test.py"
         f.write_text(code)
         r = AnalyseurPhi(str(f)).analyser()

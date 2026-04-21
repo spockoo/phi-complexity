@@ -740,7 +740,8 @@ def _executer_memory() -> int:
 
 def _executer_fund() -> None:
     """Affiche le message de soutien à la recherche souveraine."""
-    print("""
+    print(
+        """
 ╔══════════════════════════════════════════════════╗
 ║      PHI-COMPLEXITY — RECHERCHE SOUVERAINE       ║
 ╚══════════════════════════════════════════════════╝
@@ -757,7 +758,8 @@ def _executer_fund() -> None:
   ◈  WEB : https://phidelia.dev
 
   Merci de participer à la SUTURE universelle. ✦
-    """)
+    """
+    )
 
 
 def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
@@ -765,6 +767,7 @@ def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
     from .vault import PhiVault
 
     vault = PhiVault()
+    nb_erreurs = 0
     for fichier in fichiers:
         try:
             metriques = auditer(fichier)
@@ -776,9 +779,9 @@ def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
             print(f"  ✦ {fichier} → vault ({radiance:.1f}) : {note_path}")
         except Exception as e:
             print(f"  ❌ {fichier} : {e}")
-            return 1
+            nb_erreurs += 1
     print(f"\n  ◈ {len(fichiers)} fichier(s) archivé(s) dans le Phi Vault.")
-    return 0
+    return 1 if nb_erreurs > 0 else 0
 
 
 def _executer_graph(args: argparse.Namespace) -> int:
@@ -1012,13 +1015,14 @@ def _executer_ui() -> int:
         import uvicorn
         import webbrowser
         from threading import Timer
-        
+
         url = "http://127.0.0.1:8000"
-        
-        def open_browser():
+
+        def open_browser() -> None:
             import urllib.request
             import time
             from urllib.error import URLError
+
             # Polling au lieu de délai fixe pour éviter la race condition
             for _ in range(30):
                 try:
@@ -1027,12 +1031,18 @@ def _executer_ui() -> int:
                     return
                 except URLError:
                     time.sleep(0.2)
-            
+
         print("  ◈  Lancement de la Cyber Station Phidélia...")
         print(f"  ◈  Interface locale : {url}")
-        
+
         Timer(0.1, open_browser).start()
-        uvicorn.run("phi_complexity.web.server:app", host="127.0.0.1", port=8000, reload=False, log_level="warning")
+        uvicorn.run(
+            "phi_complexity.web.server:app",
+            host="127.0.0.1",
+            port=8000,
+            reload=False,
+            log_level="warning",
+        )
         return 0
     except ImportError:
         print("❌ Erreur : Le module web n'est pas installé.")
@@ -1041,6 +1051,7 @@ def _executer_ui() -> int:
     except Exception as e:
         print(f"❌ Erreur critique lors du lancement : {e}")
         return 1
+
 
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)

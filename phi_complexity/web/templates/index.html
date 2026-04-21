@@ -210,35 +210,41 @@
         });
 
         // WebSocket Logic
-        const ws = new WebSocket(`ws://${window.location.host}/ws/pipeline`);
+        let ws;
         const statusDot = document.getElementById('socket-status');
         const logsContainer = document.getElementById('logs');
         
-        ws.onopen = () => {
-            statusDot.classList.add('connected');
-            addLog("[System] Connexion au PipelineOrchestrator établie.", 'log-success');
-        };
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://${window.location.host}/ws/pipeline`);
+            
+            ws.onopen = () => {
+                statusDot.classList.add('connected');
+                addLog("[System] Connexion au PipelineOrchestrator établie.", 'log-success');
+            };
 
-        ws.onclose = () => {
-            statusDot.classList.remove('connected');
-            addLog("[System] Connexion perdue. Tentative de reconnexion auto dans 3s...", 'log-error');
-            setTimeout(connectWebSocket, 3000);
-        };
+            ws.onclose = () => {
+                statusDot.classList.remove('connected');
+                addLog("[System] Connexion perdue. Tentative de reconnexion auto dans 3s...", 'log-error');
+                setTimeout(connectWebSocket, 3000);
+            };
 
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'log') {
-                    parseAndAddLog(data.message);
-                } else if (data.type === 'alert') {
-                    addLog(`[Alerte Système] ${data.message}`, 'log-error');
-                } else if (data.type === 'status') {
-                    // Update connection state or UI readiness if needed
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'log') {
+                        parseAndAddLog(data.message);
+                    } else if (data.type === 'alert') {
+                        addLog(`[Alerte Système] ${data.message}`, 'log-error');
+                    } else if (data.type === 'status') {
+                        // Update connection state or UI readiness if needed
+                    }
+                } catch (e) {
+                    addLog("[System] Erreur critique lors de l'analyse réseau WebSocket.", 'log-error');
                 }
-            } catch (e) {
-                addLog("[System] Erreur critique lors de l'analyse réseau WebSocket.", 'log-error');
-            }
-        };
+            };
+        }
+        
+        connectWebSocket();
 
         function parseAndAddLog(msg) {
             let cssClass = '';
