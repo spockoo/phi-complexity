@@ -17,11 +17,18 @@ for file in sys.argv[1:]:
     path = pathlib.Path(file)
     if path.is_file():
         try:
-            text = path.read_text(errors="ignore").lower()
-            for keyword in BLOCKED_KEYWORDS:
-                if keyword in text:
-                    blocked.append((file, keyword))
-        except Exception:
+            with path.open("r", encoding="utf-8", errors="ignore") as f:
+                found_keyword = False
+                for line in f:
+                    line_lower = line.lower()
+                    for keyword in BLOCKED_KEYWORDS:
+                        if keyword in line_lower:
+                            blocked.append((file, keyword))
+                            found_keyword = True
+                            break
+                    if found_keyword:
+                        break
+        except OSError:
             continue
 
 if blocked:
