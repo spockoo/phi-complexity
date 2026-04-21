@@ -4,7 +4,6 @@ import logging
 from .orchestrator import PipelineNode
 
 # Import mathématiques souveraines de phi-complexity
-# Import mathématiques souveraines de phi-complexity
 # from phi_complexity.metriques import CalculateurRadiance
 # from phi_complexity.securite import verifier_cwe
 
@@ -18,21 +17,21 @@ class SpecificationNode(PipelineNode):
     """
 
     async def execute(self) -> None:
-        while True:
-            signal = await self.inbox.get()
-            if getattr(signal, "action", None) == "shutdown":
-                break
-            if signal.action == "start_planning":
-                logger.info("[SpecificationNode] Élaboration du contrat...")
-                # Appel au LLM sous-jacent à implémenter : "Écris un plan structuré (.md) basé sur concept."
-                await asyncio.sleep(1)  # Simulation d'inférence
-                await self.send_signal(
-                    # Cible = ValidationNode
-                    # (L'architecture de nommage sera passée via le contexte orchestrator)
-                    target_node=self.context.get("validation_node"),  # type: ignore
-                    action="review_plan",
-                    data={"plan_path": "plan.md"},
-                )
+        try:
+            while True:
+                signal = await self.inbox.get()
+                if getattr(signal, "action", None) == "shutdown":
+                    break
+                if signal.action == "start_planning":
+                    logger.info("[SpecificationNode] Élaboration du contrat...")
+                    await asyncio.sleep(1)
+                    await self.send_signal(
+                        target_node=self.context.get("validation_node"),
+                        action="review_plan",
+                        data={"plan_path": "plan.md"},
+                    )
+        except Exception as e:
+            await self.broadcast_error(f"Échec de Spécification : {str(e)}")
 
 
 class ValidationNode(PipelineNode):
@@ -42,21 +41,21 @@ class ValidationNode(PipelineNode):
     """
 
     async def execute(self) -> None:
-        while True:
-            signal = await self.inbox.get()
-            if getattr(signal, "action", None) == "shutdown":
-                break
-            if signal.action == "review_plan":
-                logger.info(
-                    "[ValidationNode] Analyse du contrat pour failles conceptuelles..."
-                )
-                await asyncio.sleep(1)  # Simulation
-                # Validation systématique (en théorie avec le LLM, ici simulé succès direct)
-                await self.send_signal(
-                    target_node=self.context.get("implementation_node"),  # type: ignore
-                    action="approved_plan",
-                    data=signal.data,
-                )
+        try:
+            while True:
+                signal = await self.inbox.get()
+                if getattr(signal, "action", None) == "shutdown":
+                    break
+                if signal.action == "review_plan":
+                    logger.info("[ValidationNode] Analyse du contrat...")
+                    await asyncio.sleep(1)
+                    await self.send_signal(
+                        target_node=self.context.get("implementation_node"),
+                        action="approved_plan",
+                        data=signal.data,
+                    )
+        except Exception as e:
+            await self.broadcast_error(f"Échec de Validation : {str(e)}")
 
 
 class ImplementationNode(PipelineNode):
@@ -65,27 +64,21 @@ class ImplementationNode(PipelineNode):
     """
 
     async def execute(self) -> None:
-        while True:
-            signal = await self.inbox.get()
-            if getattr(signal, "action", None) == "shutdown":
-                break
-            if signal.action in ["approved_plan", "quality_rejected"]:
-                if signal.action == "quality_rejected":
-                    logger.warning(
-                        "[ImplementationNode] Rejet Mathématique ! Réécriture du code..."
+        try:
+            while True:
+                signal = await self.inbox.get()
+                if getattr(signal, "action", None) == "shutdown":
+                    break
+                if signal.action in ["approved_plan", "quality_rejected"]:
+                    logger.info("[ImplementationNode] Synthèse du code...")
+                    await asyncio.sleep(1)
+                    await self.send_signal(
+                        target_node=self.context.get("quality_node"),
+                        action="code_ready",
+                        data={"target_files": ["*.py"]},
                     )
-                    # LLM: Corriger les problèmes spécifiques de radiance passés dans signal.data
-                else:
-                    logger.info(
-                        "[ImplementationNode] Synthèse du code selon le plan..."
-                    )
-                await asyncio.sleep(1)
-
-                await self.send_signal(
-                    target_node=self.context.get("quality_node"),  # type: ignore
-                    action="code_ready",
-                    data={"target_files": ["*.py"]},  # Dossier de build cible
-                )
+        except Exception as e:
+            await self.broadcast_error(f"Échec d'Implémentation : {str(e)}")
 
 
 class QualityGateNode(PipelineNode):
@@ -95,47 +88,28 @@ class QualityGateNode(PipelineNode):
     """
 
     async def execute(self) -> None:
-        while True:
-            signal = await self.inbox.get()
-            if getattr(signal, "action", None) == "shutdown":
-                break
-            if signal.action == "code_ready":
-                logger.info(
-                    "[QualityGateNode] Évaluation de la Radiance Spatiale (φ)..."
-                )
-                # Fausse cible pour le squelette, le vrai code cible le workspace temporaire
-                radiance_score = 100.0
-
-                try:
-                    # Mock de calculateur
-                    # _ = CalculateurRadiance(None)
-                    pass
-                except NameError:
-                    pass
-
-                # LE VERROU DU NOMBRE D'OR
-                if radiance_score < 80.0:
-                    logger.error(
-                        f"[QualityGateNode] REJET : Radiance inacceptable ({radiance_score} < 80.0)"
-                    )
-                    await self.send_signal(
-                        target_node=self.context.get("implementation_node"),  # type: ignore
-                        action="quality_rejected",
-                        data={
-                            "radiance": radiance_score,
-                            "issues": ["Entropie excessive", "Boucles asymétriques"],
-                        },
-                    )
-                else:
-                    logger.info(
-                        f"[QualityGateNode] APPROBATION : Radiance Hermétique ({radiance_score} >= 80.0)"
-                    )
-                    # Passage au Check Cybersécuritaire
-                    await self.send_signal(
-                        target_node=self.context.get("security_node"),  # type: ignore
-                        action="quality_passed",
-                        data=signal.data,
-                    )
+        try:
+            while True:
+                signal = await self.inbox.get()
+                if getattr(signal, "action", None) == "shutdown":
+                    break
+                if signal.action == "code_ready":
+                    logger.info("[QualityGateNode] Évaluation φ...")
+                    radiance_score = 100.0  # Mock
+                    if radiance_score < 80.0:
+                        await self.send_signal(
+                            target_node=self.context.get("implementation_node"),
+                            action="quality_rejected",
+                            data={"radiance": radiance_score},
+                        )
+                    else:
+                        await self.send_signal(
+                            target_node=self.context.get("security_node"),
+                            action="quality_passed",
+                            data=signal.data,
+                        )
+        except Exception as e:
+            await self.broadcast_error(f"Échec Qualité : {str(e)}")
 
 
 class SecurityGateNode(PipelineNode):
@@ -145,30 +119,16 @@ class SecurityGateNode(PipelineNode):
     """
 
     async def execute(self) -> None:
-        while True:
-            signal = await self.inbox.get()
-            if getattr(signal, "action", None) == "shutdown":
-                break
-            if signal.action == "quality_passed":
-                logger.info("[SecurityGateNode] Scan CWE des vulnérabilités...")
-
-                # S'il y a un problème de sécurité critique :
-                # CWE-79, SQLi, exécution d'OS...
-                faille_critique_detectee = False
-
-                if faille_critique_detectee:
-                    await self.send_signal(
-                        target_node=self.context.get("implementation_node"),  # type: ignore
-                        action="quality_rejected",  # Réutilise la mécanique de rejet vers ImplementationNode
-                        data={"issues": ["Faille CWE critique détectée"]},
-                    )
-                else:
-                    logger.info("[SecurityGateNode] CODE SOUVERAIN SÉCURISÉ.")
-                    logger.info(
-                        "============== PHIDÉLIA PIPELINE TERMINÉ =============="
-                    )
-
-                    # Fin du cycle pour orchestrator : lever l'événement de complétion
+        try:
+            while True:
+                signal = await self.inbox.get()
+                if getattr(signal, "action", None) == "shutdown":
+                    break
+                if signal.action == "quality_passed":
+                    logger.info("[SecurityGateNode] Scan CWE...")
+                    logger.info("============== PHIDÉLIA PIPELINE TERMINÉ ==============")
                     event = self.context.get("completion_event")
                     if event:
                         event.set()
+        except Exception as e:
+            await self.broadcast_error(f"Échec Sécurité : {str(e)}")

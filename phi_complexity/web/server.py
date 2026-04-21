@@ -1,12 +1,15 @@
 import asyncio
 import logging
-from typing import Set, Any
+from typing import Set, Any, TYPE_CHECKING
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
+
+if TYPE_CHECKING:
+    from phi_complexity.pipeline.orchestrator import PipelineSignal
 
 # On essaie d'importer l'Orchestrateur Phidélia
 try:
@@ -38,11 +41,9 @@ class WebsocketLogHandler(logging.Handler):
                 pass
 
 
-# Injection du Handler dans le logger commun de l'orchestrateur
-logger = logging.getLogger("phi_pipeline")
-ws_handler = WebsocketLogHandler()
-ws_handler.setFormatter(logging.Formatter("%(asctime)s | %(name)s | %(message)s"))
-logger.addHandler(ws_handler)
+# Configuration du logger pour router vers les Websockets
+pipeline_logger = logging.getLogger("phi_pipeline")
+pipeline_logger.addHandler(WebsocketLogHandler())
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -71,8 +72,19 @@ async def websocket_pipeline(websocket: WebSocket) -> None:
                 )
 
                 if PipelineOrchestrator is not None:
+                    # Callback de pontage Vers le WebSocket (Signaux Gnostiques)
+                    async def signal_bridge(signal: "PipelineSignal") -> None:
+                        is_error = getattr(signal, "action", None) == "error"
+                        await websocket.send_json(
+                            {
+                                "type": "log",
+                                "message": f"[{signal.issuer}] {signal.action}: {signal.data}",
+                                "error": is_error
+                            }
+                        )
+
                     # Exécution asynchrone absolue de l'orchestrateur
-                    orchestrator = PipelineOrchestrator()
+                    orchestrator = PipelineOrchestrator(signal_callback=signal_bridge)
                     await orchestrator.run_pipeline(
                         "Analyse Cybersécuritaire en ligne", "/tmp/phidelia_web_session"
                     )
@@ -102,7 +114,6 @@ async def websocket_pipeline(websocket: WebSocket) -> None:
                         tmp_path = f.name
 
                     try:
-                        await asyncio.sleep(0.5)  # Effet visuel scanning
                         metrics = auditer(tmp_path)
                         await websocket.send_json(
                             {

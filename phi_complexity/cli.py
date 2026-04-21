@@ -139,6 +139,14 @@ Exemples :
         help="Fichier JSONL de sortie (défaut: .phi/harvest.jsonl)",
     )
 
+    pipeline_parser = subparsers.add_parser(
+        "pipeline", help="Lancer le pipeline Phidélia profond (Phase 33)."
+    )
+    pipeline_parser.add_argument("concept", help="L'objectif architectural à atteindre")
+    pipeline_parser.add_argument(
+        "--dir", default=".", help="Dossier du projet (défaut: .)"
+    )
+
     # Phase 15 — Metadata (gouvernance harvest/vault)
     metadata_parser = subparsers.add_parser(
         "metadata", help="Synthèse et purge souveraine des métadonnées."
@@ -1095,6 +1103,34 @@ def _executer_ui() -> int:
         print("❌ Erreur : Le module web n'est pas installé.")
         print("👉 Veuillez installer avec : pip install phi-complexity[web]")
         return 1
+
+
+def _executer_pipeline(args: argparse.Namespace) -> int:
+    """Lance l'orchestrateur de pipeline en mode console (Diagnostic Profond)."""
+    try:
+        import asyncio
+        from .pipeline.orchestrator import PipelineOrchestrator, PipelineSignal
+
+        async def cli_signal_callback(signal: PipelineSignal) -> None:
+            color = "\033[91m" if signal.action == "error" else "\033[94m"
+            reset = "\033[0m"
+            # Affichage formaté pour la console (sans emoji pour compatibilité Windows)
+            print(f"  [PHI] [{signal.issuer}] {signal.action}: {signal.data}")
+
+        orchestrator = PipelineOrchestrator(signal_callback=cli_signal_callback)
+
+        print(f"\n  Lancement du Pipeline pour : '{args.concept}'")
+        print(f"  Dossier cible : {os.path.abspath(args.dir)}\n")
+
+        asyncio.run(orchestrator.run_pipeline(args.concept, args.dir))
+        return 0
+    except ImportError:
+        print("Error : Les dépendances du Pipeline (FastAPI/asyncio) sont incomplètes.")
+        print("   Installez les avec : pip install phi-complexity[web]")
+        return 1
+    except Exception as e:
+        print(f"Error : Échec critique du Pipeline : {e}")
+        return 1
     except Exception as e:
         print(f"❌ Erreur critique lors du lancement : {e}")
         return 1
@@ -1116,6 +1152,9 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
 
     if args.commande == "ui":
         sys.exit(_executer_ui())
+
+    if args.commande == "pipeline":
+        sys.exit(_executer_pipeline(args))
 
     if args.commande == "memory":
         sys.exit(_executer_memory())
