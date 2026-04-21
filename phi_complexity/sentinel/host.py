@@ -201,6 +201,8 @@ def _collecter_processus_subprocess() -> List[HostEvent]:
             errors="ignore",
             timeout=10,
         )
+        if sortie.returncode != 0:
+            return events
         for ligne in sortie.stdout.splitlines()[1:]:
             parties = ligne.split(None, 2)
             if len(parties) < 2:
@@ -240,6 +242,8 @@ def _collecter_reseau_subprocess() -> List[HostEvent]:
                 encoding="utf-8",
                 errors="ignore",
             )
+            if sortie.returncode != 0:
+                continue
             for ligne in sortie.stdout.splitlines()[1:]:
                 parties = ligne.split()
                 if len(parties) < 4:
