@@ -83,7 +83,9 @@ class PipelineNode:
         logger.info(f"[{self.name}] -> [{target_node.name}] : {signal.action}")
         await target_node.inbox.put(signal)
 
-    async def broadcast_error(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+    async def broadcast_error(
+        self, message: str, details: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Diffuse une erreur critique à tous les observateurs via le bus de signaux."""
         data = {"message": message, "details": details or {}}
         signal = PipelineSignal(action="error", issuer=self.name, data=data)
@@ -105,7 +107,11 @@ class PipelineNode:
 class PipelineOrchestrator:
     """Centralise et exécute les noeuds dans un flux continu et mathématiquement borné."""
 
-    def __init__(self, signal_callback: Optional[Callable[[PipelineSignal], Awaitable[None]]] = None, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        signal_callback: Optional[Callable[[PipelineSignal], Awaitable[None]]] = None,
+        timeout: float = 10.0,
+    ) -> None:
         self.nodes: Dict[str, PipelineNode] = {}
         self.completion_event: Optional[asyncio.Event] = None
         self.signal_callback = signal_callback
@@ -119,6 +125,8 @@ class PipelineOrchestrator:
 
     def register_node(self, node: PipelineNode) -> None:
         """Ajoute un noeud au pipeline et lie l'orchestrateur."""
+        if node.name in self.nodes:
+            logger.warning(f"Le noeud '{node.name}' est déjà enregistré, il sera écrasé.")
         node.orchestrator = self
         self.nodes[node.name] = node
         logger.info(f"Noeud enregistré dans le pipeline : {node.name}")
@@ -170,7 +178,9 @@ class PipelineOrchestrator:
         ]
 
         # Signal initial broadcasté à la UI/CLI aussi
-        start_signal = PipelineSignal(action="start_planning", issuer="System_Orchestrator")
+        start_signal = PipelineSignal(
+            action="start_planning", issuer="System_Orchestrator"
+        )
         if self.signal_callback:
             await self.signal_callback(start_signal)
 
@@ -186,7 +196,7 @@ class PipelineOrchestrator:
             error_signal = PipelineSignal(
                 action="error",
                 issuer="System_Orchestrator",
-                data={"message": "Timeout du pipeline : cycle de test mocké atteint."}
+                data={"message": "Timeout du pipeline : cycle de test mocké atteint."},
             )
             if self.signal_callback:
                 await self.signal_callback(error_signal)
@@ -199,13 +209,27 @@ class PipelineOrchestrator:
             )
 
         # Catch exceptions in tasks to avoid silent failures
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED, timeout=2.0)
+        done, pending = await asyncio.wait(
+            tasks, return_when=asyncio.ALL_COMPLETED, timeout=2.0
+        )
+        
+        for p in pending:
+            p.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+            
         for task in done:
             try:
                 task.result()
             except Exception as e:
                 logger.error(f"Task failure: {e}")
                 if self.signal_callback:
-                    await self.signal_callback(PipelineSignal(action="error", issuer="System_Orchestrator", data={"message": f"Exception critique : {e}"}))
+                    await self.signal_callback(
+                        PipelineSignal(
+                            action="error",
+                            issuer="System_Orchestrator",
+                            data={"message": f"Exception critique : {e}"},
+                        )
+                    )
 
         self._is_running = False

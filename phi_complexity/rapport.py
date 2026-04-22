@@ -87,30 +87,30 @@ class GenerateurRapport:
     def markdown(self) -> str:
         """Rapport Markdown complet, style Bibliothèque Céleste."""
         m = self.m
-        score = m["radiance"]
+        score = m.get("radiance", 0.0)
         barre = self._barre_md(score)
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        rapport = f"# ☼ RAPPORT DE RADIANCE : {m['fichier']}\n\n"
+        rapport = f"# ☼ RAPPORT DE RADIANCE : {m.get('fichier', '?')}\n\n"
         rapport += f"**Date de l'Audit** : {date}  \n"
-        rapport += f"**Statut Gnostique** : **{m['statut_gnostique']}**\n\n"
+        rapport += f"**Statut Gnostique** : **{m.get('statut_gnostique', 'INCONNU')}**\n\n"
 
         # Section 1 — Score
         rapport += "## 1. INDICE DE RADIANCE\n\n"
-        rapport += f"**Score : {score} / 100**\n\n"
-        rapport += f"`[{barre}]` {score}%\n\n"
+        rapport += f"**Score : {score:.1f} / 100**\n\n"
+        rapport += f"`[{barre}]` {score:.1f}%\n\n"
 
         # Section 2 — Métriques brutes
         rapport += "## 2. MÉTRIQUES SOUVERAINES\n\n"
         rapport += "| Métrique | Valeur | Interprétation |\n"
         rapport += "|---|---|---|\n"
-        rapport += f"| **Variance de Lilith** | {m['lilith_variance']} | Instabilité structurelle |\n"
-        rapport += f"| **Entropie de Shannon** | {m['shannon_entropy']} bits | Densité informationnelle |\n"
-        rapport += f"| **φ-Ratio** | {m['phi_ratio']} (Δ={m['phi_ratio_delta']}) | Idéal: 1.618 |\n"
-        rapport += f"| **Zeta-Score** | {m['zeta_score']} | Résonance globale |\n"
-        rapport += f"| **Distance Fibonacci** | {m['fibonacci_distance']} | Éloignement des tailles naturelles |\n"
-        rapport += f"| **Fonctions analysées** | {m['nb_fonctions']} | — |\n"
-        rapport += f"| **Ratio commentaires** | {m['ratio_commentaires']} | Densité de sagesse |\n\n"
+        rapport += f"| **Variance de Lilith** | {m.get('lilith_variance', 0.0):.2f} | Instabilité structurelle |\n"
+        rapport += f"| **Entropie de Shannon** | {m.get('shannon_entropy', 0.0):.2f} bits | Densité informationnelle |\n"
+        rapport += f"| **φ-Ratio** | {m.get('phi_ratio', 1.0):.2f} (Δ={m.get('phi_ratio_delta', 0.0):.2f}) | Idéal: 1.618 |\n"
+        rapport += f"| **Zeta-Score** | {m.get('zeta_score', 0.0):.4f} | Résonance globale |\n"
+        rapport += f"| **Distance Fibonacci** | {m.get('fibonacci_distance', 0.0):.2f} | Éloignement des tailles naturelles |\n"
+        rapport += f"| **Fonctions analysées** | {m.get('nb_fonctions', 0)} | — |\n"
+        rapport += f"| **Ratio commentaires** | {m.get('ratio_commentaires', 0.0):.2f} | Densité de sagesse |\n\n"
 
         # Section 3 — Oudjat
         oudjat_data = m.get("oudjat")

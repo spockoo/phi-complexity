@@ -81,7 +81,7 @@ async def websocket_pipeline(websocket: WebSocket) -> None:
                             {
                                 "type": "log",
                                 "message": f"[{signal.issuer}] {signal.action}: {signal.data}",
-                                "error": is_error
+                                "error": is_error,
                             }
                         )
 

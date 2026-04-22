@@ -25,8 +25,12 @@ class SpecificationNode(PipelineNode):
                 if signal.action == "start_planning":
                     logger.info("[SpecificationNode] Élaboration du contrat...")
                     await asyncio.sleep(1)
+                    target = self.context.get("validation_node")
+                    if not target:
+                        await self.broadcast_error("Missing validation_node in context.")
+                        continue
                     await self.send_signal(
-                        target_node=self.context.get("validation_node"),
+                        target_node=target,
                         action="review_plan",
                         data={"plan_path": "plan.md"},
                     )
@@ -51,8 +55,12 @@ class ValidationNode(PipelineNode):
                 if signal.action == "review_plan":
                     logger.info("[ValidationNode] Analyse du contrat...")
                     await asyncio.sleep(1)
+                    target = self.context.get("implementation_node")
+                    if not target:
+                        await self.broadcast_error("Missing implementation_node in context.")
+                        continue
                     await self.send_signal(
-                        target_node=self.context.get("implementation_node"),
+                        target_node=target,
                         action="approved_plan",
                         data=signal.data,
                     )
@@ -76,13 +84,19 @@ class ImplementationNode(PipelineNode):
                 if signal.action in ["approved_plan", "quality_rejected"]:
                     logger.info("[ImplementationNode] Synthèse du code...")
                     await asyncio.sleep(1)
+                    target = self.context.get("quality_node")
+                    if not target:
+                        await self.broadcast_error("Missing quality_node in context.")
+                        continue
                     await self.send_signal(
-                        target_node=self.context.get("quality_node"),
+                        target_node=target,
                         action="code_ready",
                         data={"target_files": ["*.py"]},
                     )
                 else:
-                    logger.debug(f"[ImplementationNode] Signal ignoré : {signal.action}")
+                    logger.debug(
+                        f"[ImplementationNode] Signal ignoré : {signal.action}"
+                    )
         except Exception as e:
             await self.broadcast_error(f"Échec d'Implémentation : {str(e)}")
 
@@ -101,16 +115,25 @@ class QualityGateNode(PipelineNode):
                     break
                 if signal.action == "code_ready":
                     logger.info("[QualityGateNode] Évaluation φ...")
-                    radiance_score = 100.0  # Mock
+                    # Mock pending Phase 34 real computation
+                    radiance_score = 100.0  
                     if radiance_score < 80.0:
+                        target = self.context.get("implementation_node")
+                        if not target:
+                            await self.broadcast_error("Missing implementation_node in context.")
+                            continue
                         await self.send_signal(
-                            target_node=self.context.get("implementation_node"),
+                            target_node=target,
                             action="quality_rejected",
                             data={"radiance": radiance_score},
                         )
                     else:
+                        target = self.context.get("security_node")
+                        if not target:
+                            await self.broadcast_error("Missing security_node in context.")
+                            continue
                         await self.send_signal(
-                            target_node=self.context.get("security_node"),
+                            target_node=target,
                             action="quality_passed",
                             data=signal.data,
                         )
@@ -134,7 +157,9 @@ class SecurityGateNode(PipelineNode):
                     break
                 if signal.action == "quality_passed":
                     logger.info("[SecurityGateNode] Scan CWE...")
-                    logger.info("============== PHIDÉLIA PIPELINE TERMINÉ ==============")
+                    logger.info(
+                        "============== PHIDÉLIA PIPELINE TERMINÉ =============="
+                    )
                     event = self.context.get("completion_event")
                     if event:
                         event.set()
