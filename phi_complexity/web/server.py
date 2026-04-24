@@ -163,6 +163,7 @@ async def websocket_pipeline(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "status", "ready": True})
 
     except WebSocketDisconnect:
+        pass
+    finally:
         async with websocket_lock:
-            if websocket in active_websockets:
-                active_websockets.remove(websocket)
+            active_websockets.discard(websocket)

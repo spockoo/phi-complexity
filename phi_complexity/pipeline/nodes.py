@@ -1,13 +1,25 @@
 import asyncio
 import logging
+import os
 
 from .orchestrator import PipelineNode
 
-# Import mathématiques souveraines de phi-complexity
-# from phi_complexity.metriques import CalculateurRadiance
-# from phi_complexity.securite import verifier_cwe
-
 logger = logging.getLogger("phi_pipeline.nodes")
+
+# Extensions supportées par le framework φ-Meta (souveraineté : zéro dépendance CLI)
+_EXTENSIONS_SUPPORTEES = (".py", ".c", ".cpp", ".rs", ".h", ".hpp", ".s", ".asm")
+
+
+def _collecter_fichiers_projet(dossier: str) -> list[str]:
+    """Collecte récursivement les fichiers supportés d'un répertoire projet."""
+    fichiers: list[str] = []
+    for racine, _, noms in os.walk(dossier):
+        fichiers.extend(
+            os.path.join(racine, nom)
+            for nom in noms
+            if nom.lower().endswith(_EXTENSIONS_SUPPORTEES)
+        )
+    return sorted(fichiers)
 
 
 class SpecificationNode(PipelineNode):
@@ -109,6 +121,7 @@ class QualityGateNode(PipelineNode):
     """
     Le Bloqueur Ultime Mathématique (L'Oracle).
     Remplace le testeur incertain par un analyseur déterministe (Radiance >= 80).
+    Phase 34 — Calcul réel basé sur PHI-META-KERNEL et la Bibliothèque Céleste.
     """
 
     async def execute(self) -> None:
@@ -120,18 +133,18 @@ class QualityGateNode(PipelineNode):
                 if signal.action == "code_ready":
                     logger.info("[QualityGateNode] Évaluation φ...")
 
-                    # Phase 34 : Calcul réel de la radiance basé sur PHI-META-KERNEL
-                    from phi_complexity.metriques import CalculateurRadiance
+                    # Phase 34 : Calcul réel de la radiance (PHI-META-KERNEL)
                     from phi_complexity.analyseur import AnalyseurPhi
+                    from phi_complexity.metriques import CalculateurRadiance
 
                     project_dir = self.context.get("project_dir", ".")
-                    analyseur = AnalyseurPhi()
-                    fichiers = analyseur.collecter_fichiers(project_dir)
+                    fichiers = _collecter_fichiers_projet(project_dir)
 
-                    scores = []
-                    for f in fichiers:
+                    scores: list[float] = []
+                    for fpath in fichiers:
                         try:
-                            res = analyseur.analyser_fichier(f)
+                            analyseur = AnalyseurPhi(fpath)
+                            res = analyseur.analyser()
                             calc = CalculateurRadiance(res)
                             scores.append(calc.calculer()["radiance"])
                         except Exception:
@@ -139,7 +152,8 @@ class QualityGateNode(PipelineNode):
 
                     radiance_score = sum(scores) / len(scores) if scores else 0.0
                     logger.info(
-                        f"[QualityGateNode] Score de Radiance Global : {radiance_score:.2f}"
+                        f"[QualityGateNode] Score de Radiance Global"
+                        f" : {radiance_score:.2f}"
                     )
 
                     if radiance_score < 80.0:
