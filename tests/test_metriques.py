@@ -143,6 +143,7 @@ class TestHeisenbergDansResultat:
         assert "heisenberg_tension" in sortie
         assert isinstance(sortie["heisenberg_tension"], float)
         assert sortie["heisenberg_tension"] >= 0.0
+        fichier.unlink(missing_ok=True)
 
     def test_heisenberg_tension_present_resultat_vide(self):
         """heisenberg_tension doit apparaître même pour un fichier sans fonctions."""
@@ -352,6 +353,7 @@ class TestCoherenceBayes:
         assert "coherence_bayes" in result
         assert isinstance(result["coherence_bayes"], float)
         assert result["coherence_bayes"] >= 0.0
+        f.unlink(missing_ok=True)
 
     def test_coherence_bayes_dans_resultat_vide(self):
         """_resultat_vide() expose 'coherence_bayes' = 0.0."""
@@ -415,6 +417,7 @@ class TestBoucleZero:
             "POST_RENAISSANCE",
         }
         assert 0.0 <= result["quasicrystal_coherence"] <= 1.0
+        fichier.unlink(missing_ok=True)
 
     def test_boucle_zero_resultat_vide(self):
         from phi_complexity.analyseur import ResultatAnalyse

@@ -139,10 +139,20 @@ Exemples :
         help="Fichier JSONL de sortie (défaut: .phi/harvest.jsonl)",
     )
 
+    pipeline_parser = subparsers.add_parser(
+        "pipeline", help="Lancer le pipeline Phidélia profond (Phase 33)."
+    )
+    pipeline_parser.add_argument("concept", help="L'objectif architectural à atteindre")
+    pipeline_parser.add_argument(
+        "--dir", default=".", help="Dossier du projet (défaut: .)"
+    )
+
     # Phase 15 — Metadata (gouvernance harvest/vault)
     metadata_parser = subparsers.add_parser(
         "metadata", help="Synthèse et purge souveraine des métadonnées."
     )
+    # Définit une action par défaut pour éviter l'ambiguïté (Suture bot review)
+    metadata_parser.set_defaults(metadata_action=None)
     metadata_parser.set_defaults(_metadata_parser=metadata_parser)
     metadata_sub = metadata_parser.add_subparsers(dest="metadata_action")
 
@@ -334,6 +344,8 @@ Exemples :
         help="Fichier JSONL pour le harvest (défaut: .phi/harvest.jsonl)",
     )
 
+    subparsers.add_parser("ui", help="Démarrer le Moteur Web IDE Phidélia local.")
+
     return parser
 
 
@@ -363,13 +375,53 @@ def _collecter_fichiers(cible: str) -> List[str]:
     return []
 
 
+def _verifier_et_collecter(cible: str, type_scan: str = "audit") -> List[str]:
+    """Collecte les fichiers et fournit un feedback granulaire en cas d'échec."""
+    if not os.path.exists(cible):
+        print(f"❌ Le chemin spécifié n'existe pas : {cible}")
+        sys.exit(1)
+
+    if type_scan == "scan":
+        fichiers = _collecter_fichiers_scan(cible)
+    else:
+        fichiers = _collecter_fichiers(cible)
+
+    if not fichiers:
+        if os.path.isfile(cible):
+            ext = os.path.splitext(cible)[1].lower()
+            if type_scan == "scan":
+                autorisees = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
+            else:
+                autorisees = _EXTENSIONS_SUPPORTEES
+            print(
+                f"❌ Le fichier '{cible}' n'est pas supporté (extension {ext or 'inconnue'})."
+            )
+            print(f"   Autorisées : {', '.join(autorisees)}")
+        else:
+            # Feedback granulé (Suture bot review)
+            print(f"⚠️  Dossier vide ou sans fichiers supportés : {cible}")
+            print(f"   Recherche typée : {type_scan}")
+        sys.exit(1)
+
+    return fichiers
+
+
 def _fichiers_depuis_dossier_scan(dossier: str) -> List[str]:
-    """Collecte récursivement les fichiers scannables d'un dossier (source + binaire)."""
+    """Collecte récursivement les fichiers scannables d'un dossier (source + binaire).
+
+    Fournit un feedback explicite si aucun fichier supporté n'est trouvé
+    (Suture ReviewBot — conseil : pas de retour silencieux).
+    """
     toutes = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
     fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
             os.path.join(racine, nom) for nom in noms if nom.lower().endswith(toutes)
+        )
+    if not fichiers:
+        print(
+            f"\u26a0\ufe0f  Aucun fichier supporté trouvé dans : {dossier}\n"
+            f"   Extensions recherchées : {', '.join(toutes)}"
         )
     return sorted(fichiers)
 
@@ -658,21 +710,36 @@ def _executer_oracle(args: argparse.Namespace, fichiers: List[str]) -> int:
 
 
 def _executer_harvest(args: argparse.Namespace, fichiers: List[str]) -> int:
-    """Phase 14 : Collecte des vecteurs AST anonymisés (phi-harvest)."""
+    """Phase 14 : Collecter des vecteurs AST anonymisés (phi-harvest)."""
     from .harvest import HarvestEngine
+
+    # Vérification proactive du dossier de sortie (Suture bot review)
+    if args.output:
+        output_dir = os.path.dirname(os.path.abspath(args.output))
+        if not os.path.exists(output_dir):
+            print(f"❌ Le dossier de sortie harvest n'existe pas : {output_dir}")
+            return 1
+        if not os.access(output_dir, os.W_OK):
+            print(f"❌ Pas de droits d'écriture dans le dossier harvest : {output_dir}")
+            return 1
 
     engine = HarvestEngine(sortie=args.output)
     nb_collectes = 0
     nb_erreurs = 0
-    for fichier in fichiers:
-        try:
-            engine.collecter_et_exporter(fichier)
-            nb_collectes += 1
-        except Exception as e:
-            print(f"  ⚠  {fichier} : {e}")
-            nb_erreurs += 1
-    print(f"\n  ✦  {nb_collectes} vecteur(s) collecté(s) → {args.output}")
-    print(engine.rapport_harvest())
+    try:
+        for fichier in fichiers:
+            try:
+                engine.collecter_et_exporter(fichier)
+                nb_collectes += 1
+            except Exception as e:
+                print(f"  ⚠  {fichier} : {e}")
+                nb_erreurs += 1
+        print(f"\n  ✦  {nb_collectes} vecteur(s) collecté(s) → {args.output}")
+        print(engine.rapport_harvest())
+    finally:
+        # Nettoyage des ressources du moteur (Suture ReviewBot — conseil #3)
+        if hasattr(engine, "close"):
+            engine.close()
     return 1 if nb_erreurs > 0 else 0
 
 
@@ -765,6 +832,7 @@ def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
     from .vault import PhiVault
 
     vault = PhiVault()
+    nb_erreurs = 0
     for fichier in fichiers:
         try:
             metriques = auditer(fichier)
@@ -776,22 +844,26 @@ def _executer_vault(args: argparse.Namespace, fichiers: List[str]) -> int:
             print(f"  ✦ {fichier} → vault ({radiance:.1f}) : {note_path}")
         except Exception as e:
             print(f"  ❌ {fichier} : {e}")
-            return 1
+            nb_erreurs += 1
     print(f"\n  ◈ {len(fichiers)} fichier(s) archivé(s) dans le Phi Vault.")
-    return 0
+    return 1 if nb_erreurs > 0 else 0
 
 
 def _executer_graph(args: argparse.Namespace) -> int:
     """Phase 16 : Affiche le graphe de radiance du vault."""
-    from .vault import PhiVault
+    try:
+        from .vault import PhiVault
 
-    vault = PhiVault()
-    fmt = getattr(args, "format", "ascii")
-    if fmt == "dot":
-        print(vault.generer_graph())
-    else:
-        print(vault.generer_graph_ascii())
-    return 0
+        vault = PhiVault()
+        fmt = getattr(args, "format", "ascii")
+        if fmt == "dot":
+            print(vault.generer_graph())
+        else:
+            print(vault.generer_graph_ascii())
+        return 0
+    except Exception as e:
+        print(f"  ❌ Erreur lors de la génération du graphe : {e}")
+        return 1
 
 
 def _executer_canvas(args: argparse.Namespace, fichiers: List[str]) -> int:
@@ -923,9 +995,20 @@ def _executer_shield(args: argparse.Namespace, fichiers: List[str]) -> int:
 def _executer_scan(args: argparse.Namespace, fichiers: List[str]) -> int:
     """Phase 24 : Scanner des fichiers avec le φ-fingerprint antiviral."""
     import json as _json
+    import os
 
     from .fingerprint import FingerprintEngine
     from .harvest import HarvestEngine
+
+    # Vérification proactive du dossier de harvest (Suture bot review)
+    if getattr(args, "harvest", False) and getattr(args, "output", None):
+        output_dir = os.path.dirname(os.path.abspath(args.output))
+        if not os.path.exists(output_dir):
+            print(f"❌ Le dossier de sortie harvest n'existe pas : {output_dir}")
+            return 1
+        if not os.access(output_dir, os.W_OK):
+            print(f"❌ Pas de droits d'écriture dans le dossier harvest : {output_dir}")
+            return 1
 
     engine = FingerprintEngine()
     resultats: List[Dict[str, Any]] = []
@@ -1006,6 +1089,76 @@ def _afficher_scan_resume(total: int, suspects: int) -> None:
     print("  Ancré dans le Morphic Phi Framework — φ-Meta 2026")
 
 
+def _executer_ui() -> int:
+    """Phase 33 : Lance le backend FastAPI et ouvre le navigateur (IDE Web Local)."""
+    try:
+        import uvicorn
+        import webbrowser
+        from threading import Timer
+
+        url = "http://127.0.0.1:8000"
+
+        def open_browser() -> None:
+            import urllib.request
+            import time
+            from urllib.error import URLError
+
+            # Polling robuste (Suture bot review)
+            # On attend que le serveur réponde réellement avant d'ouvrir
+            for i in range(50):
+                try:
+                    with urllib.request.urlopen(url) as response:
+                        if response.getcode() == 200:
+                            webbrowser.open(url)
+                            return
+                except (URLError, ConnectionResetError):
+                    time.sleep(0.2)
+
+        print("  ◈  Lancement de la Cyber Station Phidélia...")
+        print(f"  ◈  Interface locale : {url}")
+
+        # Déclenchement du monitor (Timer plus généreux pour l'init)
+        Timer(0.5, open_browser).start()
+        uvicorn.run(
+            "phi_complexity.web.server:app",
+            host="127.0.0.1",
+            port=8000,
+            reload=False,
+            log_level="warning",
+        )
+        return 0
+    except ImportError:
+        print("❌ Erreur : Le module web n'est pas installé.")
+        print("👉 Veuillez installer avec : pip install phi-complexity[web]")
+        return 1
+
+
+def _executer_pipeline(args: argparse.Namespace) -> int:
+    """Lance l'orchestrateur de pipeline en mode console (Diagnostic Profond)."""
+    try:
+        import asyncio
+        from .pipeline.orchestrator import PipelineOrchestrator, PipelineSignal
+
+        async def cli_signal_callback(signal: PipelineSignal) -> None:
+            # Affichage formaté pour la console (sans emoji pour compatibilité Windows)
+            print(f"  [PHI] [{signal.issuer}] {signal.action}: {signal.data}")
+
+        orchestrator = PipelineOrchestrator(signal_callback=cli_signal_callback)
+
+        print(f"\n  Lancement du Pipeline pour : '{args.concept}'")
+        print(f"  Dossier cible : {os.path.abspath(args.dir)}\n")
+
+        asyncio.run(orchestrator.run_pipeline(args.concept, args.dir))
+        return 0
+    except ImportError:
+        print("Error : Les dépendances du Pipeline (FastAPI/asyncio) sont incomplètes.")
+        print("   Installez les avec : pip install phi-complexity[web]")
+        return 1
+    except Exception as e:
+        print(f"Error : Échec critique du Pipeline : {e}")
+        return 1
+
+
 # ────────────────────────────────────────────────────────
 # POINT D'ENTRÉE (hermétique — orchestre uniquement)
 # ────────────────────────────────────────────────────────
@@ -1019,6 +1172,12 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
     if not args.commande:
         parser.print_help()
         sys.exit(0)
+
+    if args.commande == "ui":
+        sys.exit(_executer_ui())
+
+    if args.commande == "pipeline":
+        sys.exit(_executer_pipeline(args))
 
     if args.commande == "memory":
         sys.exit(_executer_memory())
@@ -1053,24 +1212,21 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
 
     # Phase 14 — commandes sans collecte de fichiers préalable
     if args.commande == "spiral":
-        fichiers = _collecter_fichiers(args.cible)
-        if not fichiers:
-            print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
-            sys.exit(1)
+        fichiers = _verifier_et_collecter(args.cible, type_scan="audit")
         sys.exit(_executer_spiral(fichiers))
 
     # Phase 24 — scan antiviral (accepte source + binaire)
     if args.commande == "scan":
-        fichiers = _collecter_fichiers_scan(args.cible)
-        if not fichiers:
-            print(f"❌ Aucun fichier scannable trouvé dans : {args.cible}")
-            sys.exit(1)
+        fichiers = _verifier_et_collecter(args.cible, type_scan="scan")
         sys.exit(_executer_scan(args, fichiers))
 
-    fichiers = _collecter_fichiers(args.cible)
-    if not fichiers:
-        print(f"❌ Aucun fichier supporté trouvé dans : {args.cible}")
-        sys.exit(1)
+    fichiers = _verifier_et_collecter(args.cible, type_scan="audit")
+
+    # Validation d'existence et d'accessibilité (Suture ReviewBot — conseil #2)
+    for f in fichiers:
+        if not os.path.isfile(f) or not os.access(f, os.R_OK):
+            print(f"\u274c Fichier inaccessible : {f}")
+            sys.exit(1)
 
     if args.commande == "check":
         sys.exit(_executer_check(args, fichiers))
@@ -1086,6 +1242,9 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_canvas(args, fichiers))
     elif args.commande == "shield":
         sys.exit(_executer_shield(args, fichiers))
+    else:
+        print(f"❌ Commande inconnue : {args.commande}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
