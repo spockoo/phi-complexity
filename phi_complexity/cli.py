@@ -407,12 +407,21 @@ def _verifier_et_collecter(cible: str, type_scan: str = "audit") -> List[str]:
 
 
 def _fichiers_depuis_dossier_scan(dossier: str) -> List[str]:
-    """Collecte récursivement les fichiers scannables d'un dossier (source + binaire)."""
+    """Collecte récursivement les fichiers scannables d'un dossier (source + binaire).
+
+    Fournit un feedback explicite si aucun fichier supporté n'est trouvé
+    (Suture ReviewBot — conseil : pas de retour silencieux).
+    """
     toutes = _EXTENSIONS_SUPPORTEES + _EXTENSIONS_BINAIRES
     fichiers: List[str] = []
     for racine, _, noms in os.walk(dossier):
         fichiers.extend(
             os.path.join(racine, nom) for nom in noms if nom.lower().endswith(toutes)
+        )
+    if not fichiers:
+        print(
+            f"\u26a0\ufe0f  Aucun fichier supporté trouvé dans : {dossier}\n"
+            f"   Extensions recherchées : {', '.join(toutes)}"
         )
     return sorted(fichiers)
 
@@ -717,15 +726,20 @@ def _executer_harvest(args: argparse.Namespace, fichiers: List[str]) -> int:
     engine = HarvestEngine(sortie=args.output)
     nb_collectes = 0
     nb_erreurs = 0
-    for fichier in fichiers:
-        try:
-            engine.collecter_et_exporter(fichier)
-            nb_collectes += 1
-        except Exception as e:
-            print(f"  ⚠  {fichier} : {e}")
-            nb_erreurs += 1
-    print(f"\n  ✦  {nb_collectes} vecteur(s) collecté(s) → {args.output}")
-    print(engine.rapport_harvest())
+    try:
+        for fichier in fichiers:
+            try:
+                engine.collecter_et_exporter(fichier)
+                nb_collectes += 1
+            except Exception as e:
+                print(f"  ⚠  {fichier} : {e}")
+                nb_erreurs += 1
+        print(f"\n  ✦  {nb_collectes} vecteur(s) collecté(s) → {args.output}")
+        print(engine.rapport_harvest())
+    finally:
+        # Nettoyage des ressources du moteur (Suture ReviewBot — conseil #3)
+        if hasattr(engine, "close"):
+            engine.close()
     return 1 if nb_erreurs > 0 else 0
 
 
@@ -1207,6 +1221,12 @@ def main() -> None:  # phi: ignore[CYCLOMATIQUE]
         sys.exit(_executer_scan(args, fichiers))
 
     fichiers = _verifier_et_collecter(args.cible, type_scan="audit")
+
+    # Validation d'existence et d'accessibilité (Suture ReviewBot — conseil #2)
+    for f in fichiers:
+        if not os.path.isfile(f) or not os.access(f, os.R_OK):
+            print(f"\u274c Fichier inaccessible : {f}")
+            sys.exit(1)
 
     if args.commande == "check":
         sys.exit(_executer_check(args, fichiers))
