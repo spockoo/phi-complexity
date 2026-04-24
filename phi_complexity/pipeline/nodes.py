@@ -119,8 +119,29 @@ class QualityGateNode(PipelineNode):
                     break
                 if signal.action == "code_ready":
                     logger.info("[QualityGateNode] Évaluation φ...")
-                    # Mock pending Phase 34 real computation
-                    radiance_score = 100.0
+
+                    # Phase 34 : Calcul réel de la radiance basé sur PHI-META-KERNEL
+                    from phi_complexity.metriques import CalculateurRadiance
+                    from phi_complexity.analyseur import AnalyseurPhi
+
+                    project_dir = self.context.get("project_dir", ".")
+                    analyseur = AnalyseurPhi()
+                    fichiers = analyseur.collecter_fichiers(project_dir)
+
+                    scores = []
+                    for f in fichiers:
+                        try:
+                            res = analyseur.analyser_fichier(f)
+                            calc = CalculateurRadiance(res)
+                            scores.append(calc.calculer()["radiance"])
+                        except Exception:
+                            continue
+
+                    radiance_score = sum(scores) / len(scores) if scores else 0.0
+                    logger.info(
+                        f"[QualityGateNode] Score de Radiance Global : {radiance_score:.2f}"
+                    )
+
                     if radiance_score < 80.0:
                         target = self.context.get("implementation_node")
                         if not target:
