@@ -131,6 +131,41 @@ Relation d'incertitude de Heisenberg-Phi (CM-HUP) :
 ΔC · ΔL ≥ ħ_φ / 2 ≈ 0.309.
 Traduit le compromis irréductible entre complexité et lisibilité d'un code."""
 
+# PHASE 34 — SIGNATURE DE MATURATION R9 & GARDIENS PISOT
+TAU_CONV: float = 2.9328263158
+"""Constante de convergence (Gardien du 3). R9(τ_conv × 1000) = 7."""
+
+
+def r9(n: float) -> int:
+    """
+    Réduction à la racine numérique (Base 9).
+    Ancrage : EQ-TSL-003. Signature de maturation.
+    """
+    val = int(abs(n))
+    if val == 0:
+        return 0
+    res = val % 9
+    return 9 if res == 0 else res
+
+
+def signature_maturation(valeurs: list[float]) -> float:
+    """
+    Calcule la signature de maturation R9 moyenne.
+    TH-R9M-001 : Convergence vers l'état dominant.
+    """
+    if not valeurs:
+        return 0.0
+    reductions = [r9(v * 1000) for v in valeurs]
+    return sum(reductions) / len(reductions)
+
+
+def distance_pisot(x: float) -> float:
+    """
+    Distance de Pisot (EQ-HEI-003).
+    Mesure l'écart à l'entier le plus proche, pondéré par la stabilité dorée.
+    """
+    return abs(x - round(x)) * PHI_INV
+
 
 def statut_gnostique(score: float) -> str:
     """Retourne le verdict gnostique basé sur le score de radiance."""

@@ -172,7 +172,7 @@ class CalculateurRadiance:
 
     def _indice_radiance(self, brutes: Dict[str, Any]) -> float:
         """
-        R = 100 - f(Lilith) - g(Shannon) - h(Anomalies) - i(Fibonacci) - j(C_Bayes)
+        R = 100 - f(Lilith) - g(Shannon) - h(Anomalies) - i(Fibonacci) - j(C_Bayes) - k(R9)
         Chaque déduction est plafonnée (Loi d'Indulgence).
         Plancher : 40 (Loi Antifragile — EQ-AFR-BMAD).
         """
@@ -182,7 +182,24 @@ class CalculateurRadiance:
         score -= self._deduction_anomalies(brutes["nb_anomalies"])
         score -= self._deduction_fibonacci(brutes["fibonacci_distance"])
         score -= self._deduction_bayes(brutes["coherence_bayes"])
+
+        # Phase 34 : Signature de Maturation R9
+        from .core import signature_maturation
+
+        r9_moyenne = signature_maturation(
+            [
+                brutes["lilith_variance"],
+                brutes["shannon_entropy"],
+                brutes["fibonacci_distance"],
+            ]
+        )
+        score -= self._deduction_maturation(r9_moyenne)
+
         return max(40.0, score)
+
+    def _deduction_maturation(self, r9_moy: float) -> float:
+        """k(R9) = min(5, abs(R9_moy - 7) * φ). Cible R9 = 7 (√7 encodage)."""
+        return min(5.0, abs(r9_moy - 7.0) * PHI)
 
     def _deduction_lilith(self, variance: float) -> float:
         """f(Lilith) = min(25, (σ²_L / seuil) × 25). Seuil naturel = φ² × 100."""
