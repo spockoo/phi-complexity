@@ -93,7 +93,9 @@ class GenerateurRapport:
 
         rapport = f"# ☼ RAPPORT DE RADIANCE : {m.get('fichier', '?')}\n\n"
         rapport += f"**Date de l'Audit** : {date}  \n"
-        rapport += f"**Statut Gnostique** : **{m.get('statut_gnostique', 'INCONNU')}**\n\n"
+        rapport += (
+            f"**Statut Gnostique** : **{m.get('statut_gnostique', 'INCONNU')}**\n\n"
+        )
 
         # Section 1 — Score
         rapport += "## 1. INDICE DE RADIANCE\n\n"
@@ -107,7 +109,9 @@ class GenerateurRapport:
         rapport += f"| **Variance de Lilith** | {m.get('lilith_variance', 0.0):.2f} | Instabilité structurelle |\n"
         rapport += f"| **Entropie de Shannon** | {m.get('shannon_entropy', 0.0):.2f} bits | Densité informationnelle |\n"
         rapport += f"| **φ-Ratio** | {m.get('phi_ratio', 1.0):.2f} (Δ={m.get('phi_ratio_delta', 0.0):.2f}) | Idéal: 1.618 |\n"
-        rapport += f"| **Zeta-Score** | {m.get('zeta_score', 0.0):.4f} | Résonance globale |\n"
+        rapport += (
+            f"| **Zeta-Score** | {m.get('zeta_score', 0.0):.4f} | Résonance globale |\n"
+        )
         rapport += f"| **Distance Fibonacci** | {m.get('fibonacci_distance', 0.0):.2f} | Éloignement des tailles naturelles |\n"
         rapport += f"| **Fonctions analysées** | {m.get('nb_fonctions', 0)} | — |\n"
         rapport += f"| **Ratio commentaires** | {m.get('ratio_commentaires', 0.0):.2f} | Densité de sagesse |\n\n"

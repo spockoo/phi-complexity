@@ -27,7 +27,9 @@ class SpecificationNode(PipelineNode):
                     await asyncio.sleep(1)
                     target = self.context.get("validation_node")
                     if not target:
-                        await self.broadcast_error("Missing validation_node in context.")
+                        await self.broadcast_error(
+                            "Missing validation_node in context."
+                        )
                         continue
                     await self.send_signal(
                         target_node=target,
@@ -57,7 +59,9 @@ class ValidationNode(PipelineNode):
                     await asyncio.sleep(1)
                     target = self.context.get("implementation_node")
                     if not target:
-                        await self.broadcast_error("Missing implementation_node in context.")
+                        await self.broadcast_error(
+                            "Missing implementation_node in context."
+                        )
                         continue
                     await self.send_signal(
                         target_node=target,
@@ -116,11 +120,13 @@ class QualityGateNode(PipelineNode):
                 if signal.action == "code_ready":
                     logger.info("[QualityGateNode] Évaluation φ...")
                     # Mock pending Phase 34 real computation
-                    radiance_score = 100.0  
+                    radiance_score = 100.0
                     if radiance_score < 80.0:
                         target = self.context.get("implementation_node")
                         if not target:
-                            await self.broadcast_error("Missing implementation_node in context.")
+                            await self.broadcast_error(
+                                "Missing implementation_node in context."
+                            )
                             continue
                         await self.send_signal(
                             target_node=target,
@@ -130,7 +136,9 @@ class QualityGateNode(PipelineNode):
                     else:
                         target = self.context.get("security_node")
                         if not target:
-                            await self.broadcast_error("Missing security_node in context.")
+                            await self.broadcast_error(
+                                "Missing security_node in context."
+                            )
                             continue
                         await self.send_signal(
                             target_node=target,

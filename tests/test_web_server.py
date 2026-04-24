@@ -47,7 +47,10 @@ def test_websocket_connection():
 
         full_log = "\n".join(messages)
         # On vérifie qu'on a bien eu une trace d'analyse du pipeline ou du fallback
-        assert any(keyword in full_log for keyword in ["Radiance", "Phase", "QualityGateNode", "radiance"])
+        assert any(
+            keyword in full_log
+            for keyword in ["Radiance", "Phase", "QualityGateNode", "radiance"]
+        )
         assert "Initialisation" in full_log
 
     # Après déconnexion, il doit être retiré

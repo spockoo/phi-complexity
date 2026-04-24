@@ -126,7 +126,9 @@ class PipelineOrchestrator:
     def register_node(self, node: PipelineNode) -> None:
         """Ajoute un noeud au pipeline et lie l'orchestrateur."""
         if node.name in self.nodes:
-            logger.warning(f"Le noeud '{node.name}' est déjà enregistré, il sera écrasé.")
+            logger.warning(
+                f"Le noeud '{node.name}' est déjà enregistré, il sera écrasé."
+            )
         node.orchestrator = self
         self.nodes[node.name] = node
         logger.info(f"Noeud enregistré dans le pipeline : {node.name}")
@@ -212,12 +214,12 @@ class PipelineOrchestrator:
         done, pending = await asyncio.wait(
             tasks, return_when=asyncio.ALL_COMPLETED, timeout=2.0
         )
-        
+
         for p in pending:
             p.cancel()
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)
-            
+
         for task in done:
             try:
                 task.result()
