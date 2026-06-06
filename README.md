@@ -1,4 +1,5 @@
 # phi-complexity
+[Pour M'offrir un café sur Buy Me a Coffee](buymeacoffee.com/mardeux777a)
 
 > *Code quality metrics based on Golden Ratio (φ) mathematical invariants*
 
