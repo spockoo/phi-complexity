@@ -1,5 +1,5 @@
 # phi-complexity
-[Pour M'offrir un café sur Buy Me a Coffee](https://www.buymeacoffee.com/mardeux777a)
+[Pour M'offrir un café sur Buy Me a Coffee](https://www.buymeacoffee.com/spockoo)
 
 > *Code quality metrics based on Golden Ratio (φ) mathematical invariants*
 
