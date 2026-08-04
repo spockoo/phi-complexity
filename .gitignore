@@ -155,3 +155,7 @@ RAPPORT_*.md
 
 # Phidélia Akashic Memory (Phase 11)
 .phi/
+
+# Temporary diagnostics artifacts
+diag-artifact.zip
+tmp_pr*_diff*.txt
