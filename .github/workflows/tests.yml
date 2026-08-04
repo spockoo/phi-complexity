@@ -42,8 +42,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install 'ruff==0.15.10' 'black==25.11.0' 'mypy==1.20.0'
-          pip install -e ".[notebooks]" || pip install -e .
-          pip install ipython || true
+          pip install -e .
 
       - name: ✨ Lint (Ruff)
         run: ruff check .
@@ -200,18 +199,19 @@ jobs:
             echo "  1. Cloner et basculer sur le commit fautif :"
             echo "     git checkout ${{ github.sha }}"
             echo ""
-            echo "  2. Installer les dépendances :"
-            echo "     pip install -e '.[notebooks]' || pip install -e ."
-            echo "     pip install 'ruff==0.15.10' 'black==25.11.0' 'mypy==1.20.0' pytest pytest-cov"
+            echo "  2. Installer les dépendances qualité :"
+            echo "     pip install -e ."
+            echo "     pip install 'ruff==0.15.10' 'black==25.11.0' 'mypy==1.20.0'"
             echo ""
-            echo "  3. Reproduire chaque étape CI dans l'ordre :"
+            echo "  3. Reproduire quality :"
             echo "     ruff check ."
             echo "     black --check ."
             echo "     mypy phi_complexity --ignore-missing-imports"
-            echo "     pytest --cov=phi_complexity --cov-report=term-missing --cov-fail-under=89 -v"
             echo ""
-            echo "  4. Consulter le rapport de couverture pour identifier"
-            echo "     les modules sous le seuil de 89%."
+            echo "  4. Reproduire tests :"
+            echo "     pip install -e '.[notebooks]' || pip install -e ."
+            echo "     pip install pytest pytest-cov"
+            echo "     pytest --cov=phi_complexity --cov-report=term-missing --cov-fail-under=89 -v"
             echo ""
             echo "══ Liens utiles ═══════════════════════════════════════"
             echo "  Logs CI : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
