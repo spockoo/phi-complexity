@@ -34,6 +34,7 @@ dependencies = []  # Zero dépendances tierces — Souveraineté totale
 
 [project.optional-dependencies]
 notebooks = ["jupyter", "matplotlib", "numpy"]
+web = ["fastapi", "uvicorn", "websockets", "jinja2"]
 
 [project.scripts]
 phi = "phi_complexity.cli:main"
@@ -61,8 +62,27 @@ files = ["phi_complexity"]
 exclude = "^(tests|examples)/|^engine\\.py$"
 
 [[tool.mypy.overrides]]
-module = ["matplotlib", "matplotlib.*", "numpy", "IPython", "IPython.*"]
+module = [
+    "matplotlib",
+    "matplotlib.*",
+    "numpy",
+    "IPython",
+    "IPython.*",
+]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fastapi",
+    "fastapi.*",
+    "uvicorn",
+    "jinja2",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "phi_complexity.web.server"
+disallow_untyped_decorators = false
 
 [tool.black]
 target-version = ["py39"]

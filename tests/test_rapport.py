@@ -54,12 +54,12 @@ class TestGenerateurConsole:
         finally:
             os.unlink(fichier)
 
-    def test_console_contient_phi_meta(self):
-        """Le pied de page doit mentionner le Morphic Phi Framework."""
+    def test_console_contient_header_phi_complexity(self):
+        """L'en-tête doit mentionner PHI-COMPLEXITY."""
         fichier = creer_fichier(CODE_SIMPLE)
         try:
             sortie = rapport_console(fichier)
-            assert "φ-Meta" in sortie
+            assert "PHI-COMPLEXITY" in sortie
         finally:
             os.unlink(fichier)
 
